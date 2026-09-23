@@ -76,6 +76,12 @@
   min-width: 200px;
 }
 
+.toolbar-row .icon-btn {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+}
+
 .sort-select {
   max-width: 190px;
 }
@@ -269,6 +275,24 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.market-item {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.market-item .market-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.market-edit {
+  width: 48px;
+  height: auto;
+  border-radius: var(--radius);
+  flex: 0 0 auto;
 }
 
 .market-row {
@@ -560,18 +584,51 @@
 
   .hero .ring {
     margin: 0 auto;
+    width: 96px;
+    height: 96px;
   }
 
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+
+  .hero-actions .btn--primary {
+    grid-column: 1 / -1;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .stat {
+    padding: 13px 14px;
+  }
+
+  /* Une seule colonne de cartes : tous les boutons restent visibles. */
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
   }
 
   .product-body {
-    padding: 10px 11px 8px;
+    padding: 11px 13px 9px;
   }
 
   .product-foot {
-    padding: 0 11px 11px;
+    padding: 0 13px 13px;
+    gap: var(--space-2);
+  }
+
+  .product-foot .btn {
+    min-height: 44px;
+  }
+
+  .product-foot .icon-btn {
+    width: 42px;
+    height: 42px;
   }
 
   .picker {
@@ -582,6 +639,15 @@
     max-width: 320px;
   }
 
+  .picker-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .picker-actions .btn--ghost {
+    grid-column: 1 / -1;
+  }
+
   .setting-block {
     flex-direction: column;
     gap: var(--space-3);
@@ -589,6 +655,16 @@
 
   .setting-side {
     justify-content: flex-start;
+    width: 100%;
+  }
+
+  .segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .segmented button {
+    flex: 1;
   }
 
   .dialog-foot .form-message {
@@ -596,8 +672,39 @@
     order: -1;
   }
 
+  .dialog-foot .btn {
+    flex: 1;
+  }
+
   .sort-select {
     max-width: none;
     flex: 1;
+  }
+
+  /* La barre collante du marché ne passe jamais à la ligne. */
+  .sticky-bar {
+    flex-wrap: nowrap;
+  }
+
+  .sticky-bar .btn {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat strong {
+    font-size: 19px;
+  }
+
+  .product-name {
+    font-size: 14.5px;
+  }
+
+  .product-price {
+    font-size: 13px;
+  }
+
+  .sticky-bar small {
+    display: none;
   }
 }

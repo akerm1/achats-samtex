@@ -890,4 +890,10 @@
   .stepper input {
     font-size: 16px;
   }
+
+  .dialog,
+  .dialog--sm {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
 }

@@ -40,9 +40,7 @@ function counts() {
 function header() {
   const prefs = getPrefs()
   const products = getProducts()
-  const bought = products.filter((item) => item.status === STATUS.BOUGHT).length
   const scoped = filterProducts(products, { status: prefs.filter, category: prefs.category, query })
-  const hasFilters = prefs.filter !== 'todo' || prefs.category !== 'all' || Boolean(query.trim())
   return `
     <div class="view-head">
       <div>
@@ -52,16 +50,27 @@ function header() {
           Préparez à l'atelier, cochez au marché.
         </p>
       </div>
-      <div class="view-head-actions">
-        <button type="button" class="btn btn--ghost btn--sm" data-action="share-list">${icon('share', 14)} Partager</button>
-        ${
-          bought
-            ? `<button type="button" class="btn btn--ghost btn--sm" data-action="clear-bought">${icon('trash', 14)} Vider les achetés (${bought})</button>`
-            : ''
-        }
-        ${hasFilters ? `<button type="button" class="btn btn--ghost btn--sm" data-action="reset-filters">${icon('filter', 14)} Réinitialiser</button>` : ''}
-        <button type="button" class="btn btn--primary btn--sm" data-action="open-form">${icon('plus', 14)} Ajouter</button>
-      </div>
+    </div>`
+}
+
+function toolbarActionsHtml(total) {
+  const prefs = getPrefs()
+  const hasFilters = prefs.filter !== 'todo' || prefs.category !== 'all' || Boolean(query.trim())
+  return `
+    <div class="toolbar-row" data-role="toolbar-actions">
+      <button type="button" class="icon-btn" data-action="share-list" title="Partager la liste" aria-label="Partager la liste">
+        ${icon('share', 16)}
+      </button>
+      ${
+        total.bought
+          ? `<button type="button" class="icon-btn" data-action="clear-bought" title="Vider les achetés (${total.bought})" aria-label="Vider les achetés (${total.bought})">${icon('trash', 16)}</button>`
+          : ''
+      }
+      ${
+        hasFilters
+          ? `<button type="button" class="icon-btn" data-action="reset-filters" title="Réinitialiser les filtres" aria-label="Réinitialiser les filtres">${icon('filter', 16)}</button>`
+          : ''
+      }
     </div>`
 }
 
@@ -82,10 +91,8 @@ function toolbar() {
             (item) => `<option value="${item.value}"${item.value === prefs.sort ? ' selected' : ''}>${esc(item.label)}</option>`,
           ).join('')}
         </select>
-        <button type="button" class="icon-btn" data-action="reset-filters" title="Réinitialiser les filtres" aria-label="Réinitialiser les filtres">
-          ${icon('refresh', 15)}
-        </button>
       </div>
+      ${toolbarActionsHtml(total)}
       <div class="scroller" data-role="status-tabs" role="tablist" aria-label="Statut">${statusTabsHtml(total)}</div>
       <div class="scroller" data-role="category-chips">${categoryChipsHtml(total)}</div>
     </div>`
@@ -215,6 +222,8 @@ function refreshResults() {
   if (tabsRegion) tabsRegion.innerHTML = statusTabsHtml(total)
   const chipsRegion = host?.querySelector('[data-role="category-chips"]')
   if (chipsRegion) chipsRegion.innerHTML = categoryChipsHtml(total)
+  const actionsRegion = host?.querySelector('[data-role="toolbar-actions"]')
+  if (actionsRegion) actionsRegion.outerHTML = toolbarActionsHtml(total)
 }
 
 function refresh() {

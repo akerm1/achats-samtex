@@ -287,15 +287,25 @@
   place-items: center;
 }
 
-/* Bouton flottant (mobile) --------------------------------------- */
+/* Onglet central Ajouter (mobile) */
+.navtab--add {
+  justify-content: center;
+  color: var(--teal);
+}
 
-.fab {
-  display: none;
-  position: fixed;
-  right: 16px;
-  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
-  z-index: 44;
+.navtab--add svg {
+  width: 40px;
+  height: 40px;
+  margin-top: -18px;
+  padding: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mint), var(--teal) 78%);
+  color: #0b0f14;
   box-shadow: var(--shadow-brand);
+}
+
+.navtab--add span {
+  color: var(--ink-2);
 }
 
 /* Barre d'action collante ---------------------------------------- */
@@ -365,12 +375,8 @@
     display: block;
   }
 
-  .fab {
-    display: inline-flex;
-  }
-
-  /* Le marché a déjà sa barre collante : on masque le bouton flottant. */
-  body.route-market .fab {
+  /* L'ajout se fait par l'onglet central de la barre du bas. */
+  #add-btn {
     display: none;
   }
 
@@ -403,6 +409,29 @@
 
   .view-head {
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .appbar {
+    gap: var(--space-2);
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  /* La pastille de synchro devient un simple point (touche = synchro). */
+  .sync-pill {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .sync-pill::before {
+    width: 8px;
+    height: 8px;
   }
 }
 

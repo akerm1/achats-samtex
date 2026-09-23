@@ -42,7 +42,7 @@ function renderNav() {
   const bottom = $('#bottomnav-inner')
   if (!bottom) return
   const { pendingCount } = getState()
-  bottom.innerHTML = NAV_ITEMS.map((item) => {
+  const tabs = NAV_ITEMS.map((item) => {
     const active = item.route === shell.activeRoute
     const badge =
       item.route === 'liste' && pendingCount ? `<span class="navtab-badge">${pendingCount}</span>` : ''
@@ -51,7 +51,12 @@ function renderNav() {
          aria-current="${active ? 'page' : 'false'}">
         ${icon(item.icon, 19)}<span>${esc(item.label)}</span>${badge}
       </a>`
-  }).join('')
+  })
+  tabs.splice(2, 0, `
+    <button type="button" class="navtab navtab--add" data-action="open-form" aria-label="Ajouter un produit">
+      ${icon('plus', 22)}<span>Ajouter</span>
+    </button>`)
+  bottom.innerHTML = tabs.join('')
 }
 
 /* Pastille de synchronisation ------------------------------------- */

@@ -54,6 +54,17 @@ Raison du changement : comme la liste est partagée et synchronisée automatique
 6 secondes entre tous les appareils, l'option « envoyer à l'acheteur » n'apportait plus rien :
 tout le monde voit la même liste, prête à être cochée.
 
+### Version 6.2 — pensé pour le téléphone
+
+- **Ajout central** : l'ajout se fait par le gros bouton **+ au centre de la barre du bas**
+  (toujours sous le pouce) ; le bouton flottant est supprimé.
+- **Liste en une colonne sur téléphone** : une carte = une ligne pleine largeur, les boutons
+  (Acheté, Modifier, Dupliquer, Supprimer) restent toujours visibles et tactiles.
+- **Marché modifiable** : chaque ligne a un crayon ✎ pour modifier le produit sans quitter le marché.
+- **Barre du haut allégée** : la pastille de synchronisation devient un point sur les petits écrans ;
+  plus rien ne déborde ni ne disparaît. Statistiques de l'accueil en grille 2×2, thème et priorité
+  en pleine largeur, dialogue du formulaire en plein écran.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

@@ -83,20 +83,24 @@ export function renderMarketRow(item) {
   const name = displayName(item)
   const color = colorBlock(item)
   return `
-    <button type="button" class="market-row ${item.isBought ? 'is-bought' : ''}" data-action="toggle" data-id="${esc(item.id)}"
-            aria-pressed="${item.isBought ? 'true' : 'false'}">
-      <span class="market-box">${icon('check', 16)}</span>
-      ${
-        item.photo
-          ? `<img class="market-thumb" src="${esc(item.photo)}" alt="" loading="lazy">`
-          : `<span class="market-thumb market-thumb--empty">${icon('imageOff', 16)}</span>`
-      }
-      <span class="market-text">
-        <strong>${esc(name)}</strong>
-        <small>${esc(item.qtyLabel)}${color ? ` · ${color}` : ''}${item.supplier ? ` · ${esc(item.supplier)}` : ''}</small>
-      </span>
-      <span class="market-price">${item.hasPrice ? formatMoney(item.lineTotal) : ''}</span>
-    </button>`
+    <div class="market-item ${item.isBought ? 'is-bought' : ''}">
+      <button type="button" class="market-row ${item.isBought ? 'is-bought' : ''}" data-action="toggle" data-id="${esc(item.id)}"
+              aria-pressed="${item.isBought ? 'true' : 'false'}">
+        <span class="market-box">${icon('check', 16)}</span>
+        ${
+          item.photo
+            ? `<img class="market-thumb" src="${esc(item.photo)}" alt="" loading="lazy">`
+            : `<span class="market-thumb market-thumb--empty">${icon('imageOff', 16)}</span>`
+        }
+        <span class="market-text">
+          <strong>${esc(name)}</strong>
+          <small>${esc(item.qtyLabel)}${color ? ` · ${color}` : ''}${item.supplier ? ` · ${esc(item.supplier)}` : ''}</small>
+        </span>
+        <span class="market-price">${item.hasPrice ? formatMoney(item.lineTotal) : ''}</span>
+      </button>
+      <button type="button" class="icon-btn market-edit" data-action="edit" data-id="${esc(item.id)}"
+              aria-label="Modifier ${esc(name)}" title="Modifier">${icon('edit', 16)}</button>
+    </div>`
 }
 
 /** Vignette compacte (aperçus du tableau de bord). */
