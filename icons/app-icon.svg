@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Icône de l'application « Mes achats » (sashes & tissus).
+     Fond vert atelier + monogramme S&T, identique à l'entête de l'application. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" ry="112" fill="#28685e"/>
+  <text x="256" y="330" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="210" font-weight="600">S<tspan fill="#f0a875">&amp;</tspan><tspan fill="#ffffff">T</tspan></text>
+</svg>

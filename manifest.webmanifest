@@ -1,0 +1,42 @@
+{
+  "id": "./",
+  "name": "Mes achats — Sashes & Tissus",
+  "short_name": "Mes achats",
+  "description": "Liste des produits à acheter en gros (sashes & tissus) : photos, couleurs, quantités et prix. L'atelier prépare la liste, le mode marché permet de cocher pendant les achats. Synchronisée automatiquement entre vos appareils via GitHub.",
+  "lang": "fr",
+  "dir": "ltr",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "start_url": "./#/accueil",
+  "scope": "./",
+  "theme_color": "#0c0f14",
+  "background_color": "#0c0f14",
+  "categories": ["shopping", "business", "productivity", "utilities"],
+  "icons": [
+    { "src": "icons/pwa-64x64.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/pwa-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ajouter un produit",
+      "short_name": "Ajouter",
+      "url": "./#/ajouter",
+      "icons": [{ "src": "icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Ma liste d'achat",
+      "short_name": "Liste",
+      "url": "./#/liste",
+      "icons": [{ "src": "icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Mode marché",
+      "short_name": "Marché",
+      "url": "./#/marche",
+      "icons": [{ "src": "icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

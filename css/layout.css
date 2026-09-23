@@ -1,0 +1,421 @@
+/* ------------------------------------------------------------------ */
+/* Layout — coquille de l'application, barre du haut, navigation       */
+/* ------------------------------------------------------------------ */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1100px 480px at 100% -12%, var(--bg-accent-1), transparent 62%),
+    radial-gradient(820px 420px at -12% 112%, var(--bg-accent-2), transparent 62%),
+    var(--bg);
+}
+
+/* Barre du haut --------------------------------------------------- */
+
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: calc(var(--appbar-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) clamp(14px, 3.4vw, 34px) 0;
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: inherit;
+  flex: 0 0 auto;
+}
+
+.brand-mark {
+  font-family: var(--font-head);
+  background: linear-gradient(135deg, var(--mint), var(--teal) 72%);
+  color: #0b0f14;
+  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  box-shadow: var(--shadow-brand);
+}
+
+.brand-mark span {
+  color: #ffe3c8;
+}
+
+.brand-text strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 0.1px;
+}
+
+.brand-text small {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.3px;
+}
+
+.appbar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+
+.navlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.navlink svg {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+.navlink:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.navlink.is-active {
+  background: var(--surface);
+  color: var(--teal);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+}
+
+.appbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* Pastille de synchronisation */
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.sync-pill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+.sync-pill.is-live {
+  color: var(--teal);
+  border-color: var(--teal-soft);
+  background: var(--teal-soft);
+}
+
+.sync-pill.is-syncing {
+  color: var(--blue);
+  border-color: var(--blue-soft);
+  background: var(--blue-soft);
+}
+
+.sync-pill.is-syncing::before {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.sync-pill.is-offline {
+  color: var(--orange);
+  border-color: var(--orange-soft);
+  background: var(--orange-soft);
+}
+
+.sync-pill.is-config {
+  color: var(--ink-2);
+}
+
+.sync-pill small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Page ------------------------------------------------------------ */
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 34px) clamp(14px, 3.4vw, 34px) 96px;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.4vw, 26px);
+  animation: rise 0.32s var(--ease) both;
+}
+
+.view-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.view-head p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 62ch;
+}
+
+.view-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Navigation mobile ---------------------------------------------- */
+
+.bottomnav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border-top: 1px solid var(--line);
+}
+
+.bottomnav-inner {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.navtab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+
+.navtab.is-active {
+  color: var(--teal);
+  background: var(--teal-soft);
+  font-weight: 600;
+}
+
+.navtab-badge {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(6px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--orange);
+  color: #0b0f14;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+/* Bouton flottant (mobile) --------------------------------------- */
+
+.fab {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+  z-index: 44;
+  box-shadow: var(--shadow-brand);
+}
+
+/* Barre d'action collante ---------------------------------------- */
+
+.sticky-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+}
+
+/* Notifications --------------------------------------------------- */
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.toasts > * {
+  pointer-events: auto;
+}
+
+/* Responsive ------------------------------------------------------ */
+
+@media (max-width: 1020px) {
+  .appbar-nav {
+    display: none;
+  }
+
+  .brand-text {
+    display: block;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --appbar-h: 62px;
+  }
+
+  body {
+    font-size: 14.5px;
+  }
+
+  .page {
+    padding-bottom: calc(var(--nav-h) + 104px);
+  }
+
+  .bottomnav {
+    display: block;
+  }
+
+  .fab {
+    display: inline-flex;
+  }
+
+  /* Le marché a déjà sa barre collante : on masque le bouton flottant. */
+  body.route-market .fab {
+    display: none;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    font-size: 13.5px;
+    border-radius: 12px;
+  }
+
+  .sticky-bar {
+    bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));
+  }
+
+  .toasts {
+    bottom: calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));
+  }
+
+  .sync-pill {
+    padding: 7px 10px;
+  }
+
+  .sync-pill small {
+    display: none;
+  }
+
+  .view-head {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

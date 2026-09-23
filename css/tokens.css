@@ -1,0 +1,119 @@
+/* ------------------------------------------------------------------ */
+/* Design tokens — Mes achats                                          */
+/* Thème sombre moderne par défaut ; clair via [data-theme="light"].   */
+/* ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0c0f14;
+  --bg-accent-1: rgba(63, 217, 162, 0.13);
+  --bg-accent-2: rgba(177, 140, 247, 0.1);
+  --surface: #14181f;
+  --surface-2: #1a1f28;
+  --surface-3: #222836;
+  --surface-glass: rgba(20, 24, 31, 0.82);
+
+  /* Encre */
+  --ink: #f2f5f9;
+  --ink-2: #c3cad6;
+  --muted: #8b94a5;
+
+  /* Lignes */
+  --line: #232a36;
+  --line-strong: #313b4a;
+
+  /* Couleurs de marque */
+  --teal: #3fd9a2;
+  --teal-dark: #2bb889;
+  --teal-soft: rgba(63, 217, 162, 0.16);
+  --mint: #5ce8b6;
+  --orange: #f5a96b;
+  --orange-soft: rgba(245, 169, 107, 0.15);
+  --red: #f07b72;
+  --red-soft: rgba(240, 123, 114, 0.15);
+  --blue: #8ea8f4;
+  --blue-soft: rgba(142, 168, 244, 0.16);
+  --gold: #e7bd62;
+  --gold-soft: rgba(231, 189, 98, 0.16);
+  --violet: #b18cf7;
+  --violet-soft: rgba(177, 140, 247, 0.16);
+
+  /* Rayons */
+  --radius-xs: 9px;
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 26px;
+  --radius-pill: 999px;
+
+  /* Espaces */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 22px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Ombres */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -20px rgba(0, 0, 0, 0.7);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.35), 0 20px 44px -24px rgba(0, 0, 0, 0.8);
+  --shadow-3: 0 30px 70px -28px rgba(0, 0, 0, 0.85);
+  --shadow-brand: 0 16px 34px -16px rgba(26, 201, 150, 0.45);
+
+  /* Typographie */
+  --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Consolas, monospace;
+
+  /* Mise en page */
+  --appbar-h: 68px;
+  --page-max: 1180px;
+  --nav-h: 66px;
+
+  /* Divers */
+  --ring: 0 0 0 3px rgba(63, 217, 162, 0.28);
+  --ease: cubic-bezier(0.22, 0.68, 0.32, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #eef5f1;
+  --bg-accent-1: rgba(52, 196, 147, 0.16);
+  --bg-accent-2: rgba(245, 163, 97, 0.13);
+  --surface: #ffffff;
+  --surface-2: #f6faf7;
+  --surface-3: #eef4f0;
+  --surface-glass: rgba(255, 255, 255, 0.82);
+
+  --ink: #12281f;
+  --ink-2: #44604f;
+  --muted: #7f928a;
+
+  --line: #e2ebe6;
+  --line-strong: #cfdcd5;
+
+  --teal: #14795a;
+  --teal-dark: #0d5f46;
+  --teal-soft: #e5f4ee;
+  --mint: #34c493;
+  --orange: #ef9650;
+  --orange-soft: #fdf1e5;
+  --red: #dd6a58;
+  --red-soft: #fdecea;
+  --blue: #4f7fd6;
+  --blue-soft: #eaf0fc;
+  --gold: #d8a13a;
+  --gold-soft: #fbf3e2;
+  --violet: #7b5ce0;
+  --violet-soft: #f0ecfc;
+
+  --shadow-1: 0 1px 2px rgba(18, 40, 31, 0.05), 0 10px 26px -18px rgba(18, 40, 31, 0.2);
+  --shadow-2: 0 2px 4px rgba(18, 40, 31, 0.04), 0 18px 40px -22px rgba(18, 40, 31, 0.3);
+  --shadow-3: 0 30px 70px -28px rgba(18, 40, 31, 0.45);
+  --shadow-brand: 0 16px 34px -14px rgba(20, 121, 90, 0.75);
+
+  --ring: 0 0 0 3px rgba(20, 121, 90, 0.2);
+}
