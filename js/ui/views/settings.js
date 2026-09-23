@@ -26,7 +26,7 @@ import { isInstalled } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.3'
+export const APP_VERSION = '6.3.4'
 
 let host = null
 

@@ -1,11 +1,11 @@
 /* ------------------------------------------------------------------ */
-/* Service worker — coquille hors-ligne (v6.3.3)                       */
+/* Service worker — coquille hors-ligne (v6.3.4)                       */
 /*  - navigation : réseau d'abord, repli sur le cache                  */
 /*  - fichiers locaux : cache d'abord + mise à jour en arrière-plan    */
 /*  - polices : cache dédié                                          */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v6.3.3'
+const VERSION = 'mes-achats-v6.3.4'
 const CACHE = `${VERSION}-shell`
 const FONT_CACHE = `${VERSION}-fonts`
 

@@ -94,6 +94,11 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   dès qu'une synchronisation ne passe pas (GitHub 404 = le dépôt n'est pas dans la « Repository
   access » du jeton).
 
+### Version 6.3.4 — mise à jour forcée
+
+- Bascule du service worker pour forcer l'application installée à détecter la nouvelle version
+  (bandeau vert « Recharger » en haut de l'écran).
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
