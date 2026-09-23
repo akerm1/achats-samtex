@@ -80,6 +80,9 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   se synchronise immédiatement avec GitHub.
 - **Premier lancement guidé** : si aucune connexion GitHub n'est configurée, une carte explique
   comment partager la liste (bouton direct vers Réglages).
+- **Configuration en un clic** : bouton « Configurer automatiquement » dans Réglages → GitHub —
+  il pré-remplit propriétaire/dépôt/branche (depuis `sync-defaults.json`) ; il ne reste qu'à coller
+  le jeton et Enregistrer.
 
 ## Écrans & fonctionnalités
 
@@ -103,6 +106,7 @@ les cartes, même sans valeur RGB enregistrée (voir `js/data/colors.js`).
 ```
 index.html                  coquille de l'application (barre, navigation, conteneurs)
 manifest.webmanifest        manifeste PWA (Ajouter, Liste)
+sync-defaults.json          valeurs par défaut pour le bouton « Configurer automatiquement »
 sw.js                       service worker : hors-ligne + cache des polices
 css/
   tokens.css                variables de design (palette sombre moderne, thème clair optionnel)

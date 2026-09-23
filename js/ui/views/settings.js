@@ -26,7 +26,7 @@ import { isInstalled } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.1'
+export const APP_VERSION = '6.3.2'
 
 let host = null
 
@@ -104,6 +104,7 @@ function githubBlock() {
           <span class="form-message" data-role="github-status">${
             message ? esc(message) : ''
           }</span>
+          <button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>
           <button type="button" class="btn btn--ghost btn--sm" data-action="test-github">${icon('link', 13)} Tester la connexion</button>
           <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
           ${
@@ -251,6 +252,34 @@ async function handleTest() {
   setStatus(result.message, result.ok ? 'ok' : 'error')
 }
 
+/** Valeurs de repli si `sync-defaults.json` est indisponible (hors-ligne…). */
+const FALLBACK_DEFAULTS = { owner: 'akerm1', repo: 'achats-test', branch: 'main' }
+let syncDefaults = null
+
+/** Pré-remplit automatiquement propriétaire / dépôt / branche. */
+async function handleAutoConfig() {
+  setStatus('Préparation de la configuration…')
+  if (!syncDefaults) {
+    try {
+      const response = await fetch('./sync-defaults.json', { cache: 'no-cache' })
+      if (response.ok) syncDefaults = await response.json()
+    } catch {
+      syncDefaults = null
+    }
+  }
+  const d = syncDefaults && typeof syncDefaults === 'object' ? syncDefaults : FALLBACK_DEFAULTS
+  host.querySelector('#setting-owner').value = d.owner || ''
+  host.querySelector('#setting-repo').value = d.repo || ''
+  host.querySelector('#setting-branch').value = d.branch || 'main'
+  const hasToken = Boolean(host.querySelector('#setting-token')?.value.trim())
+  setStatus(
+    hasToken
+      ? `Pré-rempli : ${d.owner}/${d.repo} — cliquez Enregistrer.`
+      : `Pré-rempli : ${d.owner}/${d.repo} — collez votre jeton puis Enregistrer.`,
+    'ok',
+  )
+}
+
 async function handleImport(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -302,6 +331,7 @@ function bind() {
   })
 
   host.querySelector('[data-action="test-github"]')?.addEventListener('click', handleTest)
+  host.querySelector('[data-action="auto-config"]')?.addEventListener('click', handleAutoConfig)
   host.querySelector('[data-action="import-json"]')?.addEventListener('click', () =>
     host.querySelector('[data-role="import-file"]')?.click(),
   )
