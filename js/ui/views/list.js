@@ -12,7 +12,7 @@ import {
   sortProducts,
   sumTotal,
 } from '../../data/model.js'
-import { getPrefs, getProducts, isLoaded, setPrefs } from '../../data/store.js'
+import { getPrefs, getProducts, getState, isLoaded, setPrefs } from '../../data/store.js'
 import { icon } from '../icons.js'
 import { renderProductCard } from '../product-card.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
@@ -113,7 +113,20 @@ function results() {
       title = 'Aucun produit coché'
       message = 'Les articles que vous cochez après achat apparaîtront ici.'
     }
+    const intro = !getState().isConfigured
+      ? `
+      <div class="setup-card" data-role="setup">
+        <span class="setup-mark">${icon('link', 18)}</span>
+        <div class="setup-copy">
+          <strong>Retrouvez la même liste partout</strong>
+          <p>Connectez votre compte GitHub une fois : téléphone et ordinateur affichent alors la même liste,
+             synchronisée automatiquement toutes les 6 secondes.</p>
+        </div>
+        <button type="button" class="btn btn--primary btn--sm" data-action="go-settings">${icon('sliders', 13)} Ouvrir les réglages</button>
+      </div>`
+      : ''
     return `
+      ${intro}
       <div class="empty">
         ${icon(needle ? 'searchX' : 'bag', 28)}
         <div><strong>${title}</strong>${message}</div>

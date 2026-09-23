@@ -182,6 +182,7 @@ const ACTIONS = {
   'set-filter': (node) => setPrefs({ filter: node.dataset.value }),
   'set-category': (node) => setPrefs({ category: node.dataset.value }),
   'share-list': () => shareList(),
+  'go-settings': () => navigate('reglages'),
   'sync-now': async () => {
     await syncNow()
     const status = getStatus()
@@ -286,6 +287,15 @@ function initInstallFlow() {
   })
   window.addEventListener('appinstalled', () => {
     dismissInstall()
+    /* Après installation, on force une synchronisation immédiate. */
+    syncNow().then((result) => {
+      toast(
+        result.ok && getStatus() !== 'config'
+          ? 'Application installée — liste synchronisée.'
+          : 'Application installée — connectez GitHub dans Réglages pour tout partager.',
+        { type: result.ok && getStatus() !== 'config' ? 'ok' : 'info' },
+      )
+    })
   })
 }
 

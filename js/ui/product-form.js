@@ -33,7 +33,6 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
   const initialUnit = product?.unit || defaultUnitFor(initialType)
   const initialPriority = PRIORITIES.some((item) => item.value === product?.priority) ? product.priority : 'normale'
   const hex = colorHex(product)
-  const pickerHex = hex || '#808080'
 
   let photo = product?.photo || ''
   let busy = false
@@ -88,8 +87,8 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
                 <div class="color-line">
                   <input class="input" id="product-color" data-field="color" autocomplete="off"
                          placeholder="Ex. rose bébé, bleu roi, ivoire" value="${esc(product?.color || '')}">
-                  <input class="color-box" data-rgb-picker type="color" value="${esc(pickerHex)}"
-                         aria-label="Couleur de finition" title="Choisir une couleur">
+                  <button type="button" class="color-box" data-role="color-picker" aria-label="Choisir une couleur"
+                          title="Choisir une couleur dans la table"></button>
                 </div>
                 <div class="color-preview" data-role="color-preview" tabindex="0" role="button"
                      aria-label="Aperçu de la couleur" title="Aperçu — cliquez pour changer"></div>
@@ -205,8 +204,9 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
     })
   })
 
-  /* Couleur : petite boîte à côté du nom + grande boîte d'aperçu en dessous. */
-  const picker = dialog.querySelector('[data-rgb-picker]')
+  /* Couleur : boîte à côté du nom + grande boîte d'aperçu en dessous.
+     Les deux ouvrent la table de couleurs — identique sur téléphone et PC. */
+  const colorBox = dialog.querySelector('[data-role="color-picker"]')
   const colorPreview = dialog.querySelector('[data-role="color-preview"]')
   let currentHex = hex || null
 
@@ -221,30 +221,119 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
   }
   const paintColor = (value) => {
     currentHex = value || null
-    if (!colorPreview) return
-    colorPreview.style.background = value || ''
-    colorPreview.classList.toggle('is-empty', !value)
-    if (value && picker) picker.value = value
+    if (colorPreview) {
+      colorPreview.style.background = value || ''
+      colorPreview.classList.toggle('is-empty', !value)
+    }
+    if (colorBox) {
+      colorBox.style.setProperty('--sw', value || '')
+      colorBox.classList.toggle('is-empty', !value)
+    }
   }
-  picker?.addEventListener('input', () => paintColor(picker.value || null))
   /* Saisie du libellé de couleur : la table française remplit boîte + aperçu. */
   field('color')?.addEventListener('input', () => {
     const found = colorFromText(field('color')?.value)
     if (found) paintColor(found)
   })
-  /* Palette de suggestions : un toucher remplit le libellé, la boîte et l'aperçu. */
+
+  /* Table de couleurs : fenêtre partagée (PC et téléphone). */
+  const colorListSorted = () =>
+    [...colorList()].sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }))
+  const colorTableHtml = (needle = '') => {
+    const matches = needle
+      ? colorListSorted().filter(
+          ({ label, hex }) => label.includes(needle) || hex.replace('#', '').includes(needle),
+        )
+      : colorListSorted()
+    return matches
+      .map(
+        ({ label, hex }) => `
+      <button type="button" class="color-cell ${hex === currentHex ? 'is-selected' : ''}"
+              data-color-cell="${esc(label)}" data-hex="${hex}" title="${esc(label)}">
+        <span class="color-cell-dot" style="background:${hex}"></span>
+        <span>${esc(label)}</span>
+      </button>`,
+      )
+      .join('')
+  }
+
+  const openColorTable = () => {
+    const table = document.createElement('dialog')
+    table.className = 'dialog dialog--sm color-table-dialog'
+    table.innerHTML = `
+      <form method="dialog">
+        <div class="dialog-body u-stack">
+          <div class="panel-head" style="margin-bottom:0">
+            <div>
+              <h2>${icon('palette', 16)} Choisir une couleur</h2>
+              <p>Touchez la teinte qui correspond, ou affinez avec une couleur personnalisée.</p>
+            </div>
+            <button type="button" class="icon-btn" data-close aria-label="Fermer">${icon('x', 15)}</button>
+          </div>
+          <label class="input-wrap" for="color-table-search">
+            ${icon('search', 14)}
+            <input id="color-table-search" type="search" autocomplete="off" placeholder="Rechercher (rose, bleu, ivoire…)" aria-label="Rechercher une couleur">
+          </label>
+          <div class="color-custom">
+            <input class="color-box" data-custom type="color" value="${esc(currentHex || '#808080')}"
+                   aria-label="Couleur personnalisée" title="Couleur personnalisée">
+            <span class="u-muted">Couleur personnalisée — choisissez dans le sélecteur, puis touchez OK.</span>
+          </div>
+          <div class="color-table" data-role="color-table">${colorTableHtml()}</div>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn btn--ghost" data-clear>${icon('trash', 13)} Effacer</button>
+          <button type="button" class="btn btn--ghost" data-close>Annuler</button>
+          <button type="submit" class="btn btn--primary">OK</button>
+        </div>
+      </form>`
+    table.addEventListener('close', () => table.remove())
+
+    const apply = (label, hex) => {
+      if (hex) {
+        field('color').value = label
+        paintColor(hex)
+      } else {
+        field('color').value = ''
+        paintColor(null)
+      }
+      table.close()
+    }
+
+    const search = table.querySelector('#color-table-search')
+    const grid = table.querySelector('[data-role="color-table"]')
+    search?.addEventListener('input', () => {
+      grid.innerHTML = colorTableHtml(search.value.trim().toLowerCase())
+    })
+    grid?.addEventListener('click', (event) => {
+      const cell = event.target.closest('[data-color-cell]')
+      if (cell) apply(cell.dataset.colorCell, cell.dataset.hex)
+    })
+    const custom = table.querySelector('[data-custom]')
+    custom?.addEventListener('change', () => apply(custom.value, custom.value))
+    table.querySelector('[data-clear]')?.addEventListener('click', () => apply('', null))
+    table.querySelector('[data-close]')?.addEventListener('click', () => table.close())
+
+    document.body.appendChild(table)
+    table.showModal()
+    requestAnimationFrame(() => search?.focus())
+  }
+
+  colorBox?.addEventListener('click', openColorTable)
+  colorPreview?.addEventListener('click', openColorTable)
+  colorPreview?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openColorTable()
+    }
+  })
+
+  /* Palette de suggestions sous le champ : un toucher remplit libellé + couleur. */
   dialog.querySelectorAll('[data-color-swatch]').forEach((button) => {
     button.addEventListener('click', () => {
       field('color').value = button.dataset.colorSwatch
       paintColor(button.style.getPropertyValue('--sw'))
     })
-  })
-  colorPreview?.addEventListener('click', () => picker?.click())
-  colorPreview?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      picker?.click()
-    }
   })
   paintColor(hex)
 

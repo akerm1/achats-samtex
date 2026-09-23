@@ -71,6 +71,16 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   est la liste partagée GitHub (ou la saisie locale).
 - Carte simplifiée : **Acheté / Modifier / Supprimer** (la duplication a été retirée).
 
+### Version 6.3.1 — couleur & synchronisation
+
+- **Table de couleurs** : cliquer sur la boîte de couleur (ou l'aperçu) ouvre **la même fenêtre
+  de recherche et de grille de teintes** sur le téléphone et sur l'ordinateur ; une couleur
+  « personnalisée » reste possible via le sélecteur natif intégré.
+- **Synchronisation automatique après installation** : dès que l'application est installée, elle
+  se synchronise immédiatement avec GitHub.
+- **Premier lancement guidé** : si aucune connexion GitHub n'est configurée, une carte explique
+  comment partager la liste (bouton direct vers Réglages).
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
