@@ -8,7 +8,6 @@ import { getThemePreference, setTheme } from '../core/theme.js'
 import { STATUS, normalizeList, normalizeProduct } from './model.js'
 import { fetchRemoteList, putRemoteList, normalizeConfig } from './github.js'
 import { mergeProducts } from './backup.js'
-import { buildSeedDb } from './seed.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
@@ -169,13 +168,11 @@ export function clearConfig() {
 /* ------------------------------------------------------------------ */
 
 function loadLocal() {
-  const list = normalizeList(storage.get(PRODUCTS_KEY, null))
-  if (list.length) {
-    products = list
-  } else {
-    products = normalizeList(buildSeedDb())
-    persistLocal()
-  }
+  /* Pas de démonstration : une liste vide reste vide, le partage GitHub
+     (ou l'ajout manuel) reste la seule source de données — ainsi chaque
+     appareil affiche exactement la même chose. */
+  products = normalizeList(storage.get(PRODUCTS_KEY, null))
+  persistLocal()
 }
 
 function persistLocal() {
@@ -354,24 +351,6 @@ export function addProduct(input = {}) {
   touch()
   push()
   return product
-}
-
-/** Ajoute un produit en tête de liste (mode marché : « encore un »). */
-export function duplicateProduct(id) {
-  const source = find(id)
-  if (!source) return null
-  const copy = normalizeProduct({
-    ...source,
-    id: uid('local'),
-    status: STATUS.TODO,
-    boughtAt: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
-  products = [...products, copy]
-  touch()
-  push()
-  return copy
 }
 
 export function updateProduct(id, changes = {}) {

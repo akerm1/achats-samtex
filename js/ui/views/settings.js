@@ -26,7 +26,7 @@ import { isInstalled } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.2.0'
+export const APP_VERSION = '6.3.0'
 
 let host = null
 
@@ -207,7 +207,7 @@ function aboutBlock() {
         <strong>Raccourcis clavier</strong>
         <p>
           <code>N</code> nouveau produit · <code>/</code> rechercher · <code>Échap</code> fermer une fenêtre ·
-          <code>1</code>…<code>4</code> changer de vue · <code>S</code> synchroniser.
+          <code>1</code><code>2</code> changer de vue · <code>S</code> synchroniser.
         </p>
       </div>
     </div>`

@@ -12,7 +12,6 @@ import {
   clearBought,
   clearConfig,
   deleteProduct,
-  duplicateProduct,
   getProducts,
   getStatus,
   getSyncMessage,
@@ -39,20 +38,18 @@ import {
   setUpdateAvailable,
   showInstallHelp,
 } from './ui/shell.js'
-import { homeView } from './ui/views/home.js'
 import { listView } from './ui/views/list.js'
-import { marketView } from './ui/views/market.js'
 import { settingsView } from './ui/views/settings.js'
 
 const VIEWS = {
-  accueil: homeView,
   liste: listView,
-  marche: marketView,
   reglages: settingsView,
 }
 const ROUTE_ORDER = Object.keys(VIEWS)
+/** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
+const REDIRECT = { accueil: 'liste', marche: 'liste' }
 
-let activeRoute = 'accueil'
+let activeRoute = 'liste'
 let viewHost = null
 
 /* ------------------------------------------------------------------ */
@@ -60,11 +57,10 @@ let viewHost = null
 /* ------------------------------------------------------------------ */
 
 function showRoute(route) {
-  const next = ROUTE_ORDER.includes(route) ? route : 'accueil'
+  const next = REDIRECT[route] || (ROUTE_ORDER.includes(route) ? route : 'liste')
   if (activeRoute !== next && viewHost) window.scrollTo({ top: 0, behavior: 'auto' })
   activeRoute = next
   setActiveRoute(next)
-  document.body.classList.toggle('route-market', next === 'marche')
   VIEWS[next].mount(viewHost)
 }
 
@@ -167,10 +163,6 @@ const ACTIONS = {
     const product = productById(node.dataset.id)
     if (product) openProductForm(product)
   },
-  duplicate: (node) => {
-    const copy = duplicateProduct(node.dataset.id)
-    if (copy) toast(`« ${displayName(copy)} » ajouté à nouveau.`, { type: 'ok' })
-  },
   toggle: (node) => {
     toggleBought(node.dataset.id)
   },
@@ -190,29 +182,6 @@ const ACTIONS = {
   'set-filter': (node) => setPrefs({ filter: node.dataset.value }),
   'set-category': (node) => setPrefs({ category: node.dataset.value }),
   'share-list': () => shareList(),
-  'market-share': () => shareList(),
-  'market-finish': () => {
-    const bought = getProducts().filter((item) => item.status === 'bought')
-    navigate('liste')
-    if (!bought.length) {
-      toast('Aucun produit coché pour ce marché.', { type: 'info' })
-      return
-    }
-    toast(`${bought.length} produit(s) dans le panier.`, {
-      type: 'ok',
-      actionLabel: 'Vider les achetés',
-      onAction: () => {
-        const removed = clearBought()
-        if (removed.length) {
-          toast(`${removed.length} produit(s) retiré(s).`, {
-            type: 'info',
-            actionLabel: 'Annuler',
-            onAction: () => restoreMany(removed),
-          })
-        }
-      },
-    })
-  },
   'sync-now': async () => {
     await syncNow()
     const status = getStatus()
@@ -348,7 +317,7 @@ function init() {
   })
 
   /* Le premier rendu de la vue dépend du chargement (local ou GitHub). */
-  showRoute('accueil')
+  showRoute('liste')
 }
 
 if (document.readyState === 'loading') {

@@ -1,11 +1,11 @@
 /* ------------------------------------------------------------------ */
-/* Service worker — coquille hors-ligne (v6.2)                         */
+/* Service worker — coquille hors-ligne (v6.3)                         */
 /*  - navigation : réseau d'abord, repli sur le cache                  */
 /*  - fichiers locaux : cache d'abord + mise à jour en arrière-plan    */
 /*  - polices : cache dédié                                          */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v6.2'
+const VERSION = 'mes-achats-v6.3'
 const CACHE = `${VERSION}-shell`
 const FONT_CACHE = `${VERSION}-fonts`
 
@@ -30,15 +30,12 @@ const ASSETS = [
   'js/data/github.js',
   'js/data/store.js',
   'js/data/backup.js',
-  'js/data/seed.js',
   'js/ui/icons.js',
   'js/ui/shell.js',
   'js/ui/view.js',
   'js/ui/product-card.js',
   'js/ui/product-form.js',
-  'js/ui/views/home.js',
   'js/ui/views/list.js',
-  'js/ui/views/market.js',
   'js/ui/views/settings.js',
   'icons/app-icon.svg',
   'icons/apple-touch-icon-180x180.png',

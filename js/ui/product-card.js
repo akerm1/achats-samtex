@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/* Composants partagés — carte produit (grille) et ligne (marché)      */
+/* Composant partagé — carte produit (grille de la liste)              */
 /* ------------------------------------------------------------------ */
 
 import { esc, formatDate, formatMoney } from '../core/utils.js'
@@ -52,9 +52,6 @@ export function renderProductCard(item) {
       <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}" aria-label="Modifier ${esc(name)}" title="Modifier">
         ${icon('edit', 14)}
       </button>
-      <button type="button" class="icon-btn" data-action="duplicate" data-id="${esc(item.id)}" aria-label="Dupliquer ${esc(name)}" title="Dupliquer">
-        ${icon('copy', 14)}
-      </button>
       <button type="button" class="icon-btn is-danger" data-action="delete" data-id="${esc(item.id)}" aria-label="Supprimer ${esc(name)}" title="Supprimer">
         ${icon('trash', 14)}
       </button>`
@@ -76,61 +73,4 @@ export function renderProductCard(item) {
         ${actions}
       </div>
     </article>`
-}
-
-/** Ligne tactile du mode marché. */
-export function renderMarketRow(item) {
-  const name = displayName(item)
-  const color = colorBlock(item)
-  return `
-    <div class="market-item ${item.isBought ? 'is-bought' : ''}">
-      <button type="button" class="market-row ${item.isBought ? 'is-bought' : ''}" data-action="toggle" data-id="${esc(item.id)}"
-              aria-pressed="${item.isBought ? 'true' : 'false'}">
-        <span class="market-box">${icon('check', 16)}</span>
-        ${
-          item.photo
-            ? `<img class="market-thumb" src="${esc(item.photo)}" alt="" loading="lazy">`
-            : `<span class="market-thumb market-thumb--empty">${icon('imageOff', 16)}</span>`
-        }
-        <span class="market-text">
-          <strong>${esc(name)}</strong>
-          <small>${esc(item.qtyLabel)}${color ? ` · ${color}` : ''}${item.supplier ? ` · ${esc(item.supplier)}` : ''}</small>
-        </span>
-        <span class="market-price">${item.hasPrice ? formatMoney(item.lineTotal) : ''}</span>
-      </button>
-      <button type="button" class="icon-btn market-edit" data-action="edit" data-id="${esc(item.id)}"
-              aria-label="Modifier ${esc(name)}" title="Modifier">${icon('edit', 16)}</button>
-    </div>`
-}
-
-/** Vignette compacte (aperçus du tableau de bord). */
-export function renderMiniRow(item) {
-  return `
-    <div class="u-between" style="gap:12px">
-      <div class="u-row u-grow">
-        ${
-          item.photo
-            ? `<img class="market-thumb" style="width:34px;height:34px" src="${esc(item.photo)}" alt="" loading="lazy">`
-            : `<span class="market-thumb market-thumb--empty" style="width:34px;height:34px">${icon('imageOff', 13)}</span>`
-        }
-        <div class="u-grow">
-          <div class="u-truncate" style="font-size:13px;font-weight:600">${esc(displayName(item))}</div>
-          <small class="u-muted">${esc(item.typeLabel)} · ${esc(item.qtyLabel)}</small>
-        </div>
-      </div>
-      <span class="bar-row-value">${item.hasPrice ? formatMoney(item.lineTotal) : '—'}</span>
-    </div>`
-}
-
-/** Ligne de répartition (catégorie ou fournisseur). */
-export function renderBarRow(label, value, share) {
-  return `
-    <div class="bar-row">
-      <span class="bar-row-label">
-        <span class="dot" style="opacity:.65"></span>
-        <span>${esc(label)}</span>
-      </span>
-      <span class="bar-row-track"><span style="width:${Math.max(2, Math.round(share * 100))}%"></span></span>
-      <span class="bar-row-value">${value}</span>
-    </div>`
 }

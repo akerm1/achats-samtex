@@ -5,7 +5,6 @@
 import { esc, formatMoney } from '../../core/utils.js'
 import {
   CATEGORY_VALUES,
-  SORTS,
   STATUS,
   categoryLabel,
   filterProducts,
@@ -45,38 +44,12 @@ function header() {
     <div class="view-head">
       <div>
         <h1>Ma liste d'achat</h1>
-        <p>
-          ${products.length} produit(s) en mémoire · ${formatMoney(sumTotal(sortProducts(scoped, prefs.sort)).total)} dans la vue en cours.
-          Préparez à l'atelier, cochez au marché.
-        </p>
+        <p>${products.length} produit(s) · ≈ ${formatMoney(sumTotal(sortProducts(scoped, prefs.sort)).total)} dans la vue en cours.</p>
       </div>
     </div>`
 }
 
-function toolbarActionsHtml(total) {
-  const prefs = getPrefs()
-  const hasFilters = prefs.filter !== 'todo' || prefs.category !== 'all' || Boolean(query.trim())
-  return `
-    <div class="toolbar-row" data-role="toolbar-actions">
-      <button type="button" class="icon-btn" data-action="share-list" title="Partager la liste" aria-label="Partager la liste">
-        ${icon('share', 16)}
-      </button>
-      ${
-        total.bought
-          ? `<button type="button" class="icon-btn" data-action="clear-bought" title="Vider les achetés (${total.bought})" aria-label="Vider les achetés (${total.bought})">${icon('trash', 16)}</button>`
-          : ''
-      }
-      ${
-        hasFilters
-          ? `<button type="button" class="icon-btn" data-action="reset-filters" title="Réinitialiser les filtres" aria-label="Réinitialiser les filtres">${icon('filter', 16)}</button>`
-          : ''
-      }
-    </div>`
-}
-
 function toolbar() {
-  const prefs = getPrefs()
-  const total = counts()
   return `
     <div class="toolbar">
       <div class="toolbar-row">
@@ -86,15 +59,9 @@ function toolbar() {
                  placeholder="Rechercher un produit, une couleur, un fournisseur…"
                  value="${esc(query)}" aria-label="Rechercher dans la liste">
         </label>
-        <select class="select sort-select" data-role="sort" aria-label="Trier la liste">
-          ${SORTS.map(
-            (item) => `<option value="${item.value}"${item.value === prefs.sort ? ' selected' : ''}>${esc(item.label)}</option>`,
-          ).join('')}
-        </select>
       </div>
-      ${toolbarActionsHtml(total)}
-      <div class="scroller" data-role="status-tabs" role="tablist" aria-label="Statut">${statusTabsHtml(total)}</div>
-      <div class="scroller" data-role="category-chips">${categoryChipsHtml(total)}</div>
+      <div class="scroller" data-role="status-tabs" role="tablist" aria-label="Statut">${statusTabsHtml(counts())}</div>
+      <div class="scroller" data-role="category-chips">${categoryChipsHtml(counts())}</div>
     </div>`
 }
 
@@ -140,11 +107,11 @@ function results() {
       title = 'Aucun résultat'
       message = `Aucun produit ne correspond à « ${esc(needle)} ».`
     } else if (prefs.filter === 'todo') {
-      title = 'Tout est acheté'
-      message = 'Rien à prévoir pour le moment : ajoutez un produit pour préparer la prochaine commande.'
+      title = 'Liste vide'
+      message = 'Ajoutez vos articles à acheter : la liste est partagée sur vos appareils via GitHub.'
     } else if (prefs.filter === 'bought') {
       title = 'Aucun produit coché'
-      message = 'Les produits cochés apparaîtront ici.'
+      message = 'Les articles que vous cochez après achat apparaîtront ici.'
     }
     return `
       <div class="empty">
@@ -208,22 +175,16 @@ function bindToolbar() {
     query = event.target.value
     refreshResults()
   })
-  host.querySelector('[data-role="sort"]')?.addEventListener('change', (event) => {
-    setPrefs({ sort: event.target.value })
-  })
 }
 
 /** Rafraîchit uniquement les zones de contenu (le champ de recherche survit). */
 function refreshResults() {
-  const total = counts()
   const resultsRegion = host?.querySelector('[data-role="results"]')
   if (resultsRegion) resultsRegion.innerHTML = results()
   const tabsRegion = host?.querySelector('[data-role="status-tabs"]')
-  if (tabsRegion) tabsRegion.innerHTML = statusTabsHtml(total)
+  if (tabsRegion) tabsRegion.innerHTML = statusTabsHtml(counts())
   const chipsRegion = host?.querySelector('[data-role="category-chips"]')
-  if (chipsRegion) chipsRegion.innerHTML = categoryChipsHtml(total)
-  const actionsRegion = host?.querySelector('[data-role="toolbar-actions"]')
-  if (actionsRegion) actionsRegion.outerHTML = toolbarActionsHtml(total)
+  if (chipsRegion) chipsRegion.innerHTML = categoryChipsHtml(counts())
 }
 
 function refresh() {

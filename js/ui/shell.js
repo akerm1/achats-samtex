@@ -7,14 +7,12 @@ import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, statusLabel } from '../data/store.js'
 
 export const NAV_ITEMS = [
-  { route: 'accueil', label: 'Accueil', icon: 'home' },
   { route: 'liste', label: 'Liste', icon: 'cart' },
-  { route: 'marche', label: 'Marché', icon: 'bag' },
   { route: 'reglages', label: 'Réglages', icon: 'sliders' },
 ]
 
 const shell = {
-  activeRoute: 'accueil',
+  activeRoute: 'liste',
   installEvent: null,
   updateAvailable: false,
   offlineReady: false,
@@ -52,7 +50,7 @@ function renderNav() {
         ${icon(item.icon, 19)}<span>${esc(item.label)}</span>${badge}
       </a>`
   })
-  tabs.splice(2, 0, `
+  tabs.splice(1, 0, `
     <button type="button" class="navtab navtab--add" data-action="open-form" aria-label="Ajouter un produit">
       ${icon('plus', 22)}<span>Ajouter</span>
     </button>`)

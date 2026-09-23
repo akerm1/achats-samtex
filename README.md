@@ -1,11 +1,11 @@
 # Mes achats — Sashes & Tissus
 
 **La liste des produits à acheter en gros (ceintures, tissus, tulle, rubans…) avec photos,
-couleurs (noms français + RGB), mode marché et synchronisation automatique entre appareils via GitHub.**
+couleurs (noms français + RGB) et prix, synchronisée automatiquement entre tous les appareils via GitHub.**
 
-L'atelier prépare la liste (photo, couleur, quantité, prix) ; le mode marché permet de cocher
-ce qu'on prend pendant les achats, sur n'importe quel appareil. Aucune dépendance, aucun build :
-des fichiers statiques HTML/CSS/JS, une PWA installable, hébergeable gratuitement sur **GitHub Pages**.
+Une liste, un écran : on ajoute ses articles, on les coche à l'achat, on les supprime quand ils sont
+livrés. C'est la même liste sur le téléphone et sur l'ordinateur — aucun réglage d'appareil à faire,
+aucune donnée de démonstration. PWA gratuite et sans build, hébergeable sur **GitHub Pages**.
 
 ## Sommaire
 
@@ -30,7 +30,7 @@ des fichiers statiques HTML/CSS/JS, une PWA installable, hébergeable gratuiteme
 ### En double-cliquant
 
 Tous les navigateurs récents acceptent les modules ES : un double-clic sur `index.html` suffit.
-La liste démarre avec des produits de démonstration pour découvrir l'application.
+La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou ajoutez vos articles.
 
 ### Héberger sur GitHub Pages
 
@@ -47,79 +47,82 @@ La liste démarre avec des produits de démonstration pour découvrir l'applicat
 |---|---|
 | Rôle par appareil (Atelier / Acheteur) | **Rôle supprimé** — tous les appareils partagent la même liste |
 | Envoi à l'acheteur (bouton « Envoyer », badge « Envoyé ») | **Envoi supprimé** — la synchronisation GitHub partage déjà tout, sans action manuelle |
-| Édition de couleur par valeurs R/V/B | **Boîte de couleur à côté du nom + grande boîte d'aperçu en dessous** (sélecteur natif) |
+| Tableau de bord + mode Marché + plusieurs sections | **Une seule liste simple** : ajouter, cocher, modifier, supprimer |
+| Données de démonstration au premier lancement | **Aucune donnée de démonstration** — la liste partagée affiche la même chose partout |
+| Édition de couleur par valeurs R/V/B, ~64 noms | **Boîte + grande aperçu + palette de ~160 couleurs à toucher**, identique sur téléphone et ordinateur |
 | Thème clair par défaut, sombre optionnel | **Thème sombre moderne par défaut** (clair toujours disponible dans Réglages) |
-
-Raison du changement : comme la liste est partagée et synchronisée automatiquement toutes les
-6 secondes entre tous les appareils, l'option « envoyer à l'acheteur » n'apportait plus rien :
-tout le monde voit la même liste, prête à être cochée.
 
 ### Version 6.2 — pensé pour le téléphone
 
 - **Ajout central** : l'ajout se fait par le gros bouton **+ au centre de la barre du bas**
   (toujours sous le pouce) ; le bouton flottant est supprimé.
 - **Liste en une colonne sur téléphone** : une carte = une ligne pleine largeur, les boutons
-  (Acheté, Modifier, Dupliquer, Supprimer) restent toujours visibles et tactiles.
-- **Marché modifiable** : chaque ligne a un crayon ✎ pour modifier le produit sans quitter le marché.
+  (Acheté, Modifier, Supprimer) restent toujours visibles et tactiles.
 - **Barre du haut allégée** : la pastille de synchronisation devient un point sur les petits écrans ;
-  plus rien ne déborde ni ne disparaît. Statistiques de l'accueil en grille 2×2, thème et priorité
-  en pleine largeur, dialogue du formulaire en plein écran.
+  plus rien ne déborde ni ne disparaît.
+
+### Version 6.3 — une liste, un écran
+
+- **Accueil et Marché supprimés** : la page d'accueil est la liste des articles à acheter.
+- **Deux vues seulement** : **Liste** (tout) et **Réglages**.
+- **Palette de couleurs** : ~160 nuances françaises proposées sous le champ Couleur, à un toucher —
+  le même sélecteur sur téléphone et sur ordinateur.
+- **Même information partout** : plus de produits de démonstration ; la seule source de données
+  est la liste partagée GitHub (ou la saisie locale).
+- Carte simplifiée : **Acheté / Modifier / Supprimer** (la duplication a été retirée).
 
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
 |---|---|
-| **Accueil** | Anneau de progression, 4 indicateurs (à acheter, cochés, dépensé, sans prix), répartition par catégorie, derniers ajouts |
-| **Liste** | Barre d'outils (recherche, tri, statut, catégories), produits groupés par catégorie avec sous-totaux, pastille de couleur, partage texte, vidage des achetés |
-| **Marché** | Grandes lignes tactiles à cocher, priorités en tête, panier en direct (nombre + montant), bilan « Terminer » |
-| **Réglages** | Thème (sombre/clair/système), configuration GitHub, export/import, vidage complet, informations et raccourcis |
+| **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter (bouton + en bas), cocher, modifier, supprimer |
+| **Réglages** | Thème (sombre/clair/système), configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
 Formulaire produit (ajout **et** modification) : photo (caméra ou galerie, compressée en
 JPEG ≤ 900 px), **nom facultatif**, catégorie (l'unité suit la catégorie), **couleur avec
-boîte de couleur à côté du nom + grande boîte d'aperçu en dessous**, fournisseur
-(autocomplétion), quantité avec curseur, unité, prix unitaire, priorité, détails.
+boîte de couleur à côté du nom, grande boîte d'aperçu et palette de ~160 suggestions**,
+fournisseur (autocomplétion), quantité avec curseur, unité, prix unitaire, priorité, détails.
 
-La saisie du libellé de couleur est assistée : tapez « rose bébé », « bleu roi »,
-« ivoire »… et la boîte de couleur et l'aperçu se remplissent automatiquement
-grâce à une table intégrée de ~64 noms de couleurs français (voir `js/data/colors.js`).
-Un nom reconnu affiche aussi une pastille dans les cartes, même sans valeur RGB enregistrée.
+La saisie du libellé de couleur est assistée : tapez « rose bébé », « bleu roi », « ivoire »… et
+la boîte de couleur et l'aperçu se remplissent automatiquement. Un toucher sur une tuile de la
+palette remplit le libellé et la couleur d'un coup. Un nom reconnu affiche aussi une pastille dans
+les cartes, même sans valeur RGB enregistrée (voir `js/data/colors.js`).
 
 ## Structure du projet
 
 ```
 index.html                  coquille de l'application (barre, navigation, conteneurs)
-manifest.webmanifest        manifeste PWA (Ajouter, Liste, Marché)
+manifest.webmanifest        manifeste PWA (Ajouter, Liste)
 sw.js                       service worker : hors-ligne + cache des polices
 css/
   tokens.css                variables de design (palette sombre moderne, thème clair optionnel)
   base.css                  réinitialisation, typographie, utilitaires
-  layout.css                barre du haut, navigations, toasts, responsive
-  components.css            boutons, champs, cartes, pastilles de couleur, dialogues, toasts
-  views.css                 styles propres aux 4 vues
+  layout.css                barre du haut, navigation, toasts, responsive
+  components.css            boutons, champs, cartes, pastilles de couleur, dialogues
+  views.css                 styles des vues (liste, réglages, formulaire)
 js/
   main.js                   démarrage, routeur, actions globales, raccourcis, PWA
   core/
     utils.js                DOM, formatage (€, dates, quantités), échappement, presse-papiers
     storage.js              localStorage sûr (navigation privée, quota)
-    router.js               routeur par hash (#/accueil, #/liste, #/marche…)
+    router.js               routeur par hash (#/liste, #/reglages…)
     theme.js                thème clair/sombre/système
     feedback.js             toasts et dialogues de confirmation
     photo.js                compression des photos côté navigateur
   data/
     model.js                catégories, unités, priorités, couleurs RGB, normalisation, statistiques
-    colors.js               table des noms de couleurs français (+ détection automatique)
+    colors.js               ~160 noms de couleurs français (+ palette et détection automatique)
     github.js               client API GitHub (lecture, écriture, test, conflits)
     store.js                état global, synchronisation, actions métier, préférences
     backup.js               export/import JSON et CSV, fusion
-    seed.js                 données de démonstration
   ui/
     icons.js                icônes SVG inline
     shell.js                barre du haut, navigations, bandeaux, pastille de sync
     view.js                 helpers de vue (ne pas casser une saisie en cours)
-    product-card.js         carte produit, ligne marché, lignes de répartition
+    product-card.js         carte produit
     product-form.js         formulaire produit (ajout / modification)
     views/
-      home.js  list.js  market.js  settings.js
+      list.js  settings.js
 icons/                      icônes de l'application (PWA)
 ```
 
@@ -162,8 +165,8 @@ sur iPhone/iPad, il ouvre la marche à suivre Safari.
 | **Ordinateur** (Chrome) | Icône ⬇ dans la barre → **Installer** (l'app s'ouvre depuis le bureau) |
 
 L'application fonctionne hors-ligne (service worker) et propose des raccourcis d'app :
-ajouter un produit, ouvrir la liste, passer en mode marché. Après installation, les mises à
-jour se téléchargent en arrière-plan (bandeau « Recharger »).
+ajouter un produit, ouvrir la liste. Après installation, les mises à jour se téléchargent
+en arrière-plan (bandeau « Recharger »).
 
 ## Données
 
@@ -220,5 +223,5 @@ synchronisation.
 | `N` | Nouveau produit |
 | `/` | Rechercher dans la liste |
 | `S` | Synchroniser maintenant |
-| `1` … `4` | Accueil · Liste · Marché · Réglages |
+| `1` `2` | Liste · Réglages |
 | `Échap` | Fermer la fenêtre active |

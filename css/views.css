@@ -1,55 +1,6 @@
 /* ------------------------------------------------------------------ */
-/* Vues — tableau de bord, liste, marché, réglages, formulaire */
+/* Vues — liste, réglages, formulaire                                  */
 /* ------------------------------------------------------------------ */
-
-/* Tableau de bord -------------------------------------------------- */
-
-.hero {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: clamp(18px, 3vw, 34px);
-  padding: clamp(18px, 3vw, 30px);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background:
-    radial-gradient(520px 260px at 92% 8%, var(--teal-soft), transparent 68%),
-    var(--surface);
-  box-shadow: var(--shadow-1);
-}
-
-.hero-copy h1 {
-  margin-bottom: 8px;
-}
-
-.hero-copy p {
-  color: var(--ink-2);
-  font-size: 13.5px;
-  max-width: 52ch;
-}
-
-.hero-actions {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-top: var(--space-4);
-}
-
-.hero-note {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: var(--space-3);
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.two-col {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: clamp(16px, 2.2vw, 24px);
-  align-items: start;
-}
 
 /* Liste : barre d'outils ------------------------------------------ */
 
@@ -80,10 +31,6 @@
   width: 40px;
   height: 40px;
   flex: 0 0 auto;
-}
-
-.sort-select {
-  max-width: 190px;
 }
 
 /* Liste : groupes par catégorie ----------------------------------- */
@@ -267,117 +214,6 @@
 
 .product-foot .btn {
   flex: 1;
-}
-
-/* Mode marché ----------------------------------------------------- */
-
-.market-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.market-item {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-2);
-}
-
-.market-item .market-row {
-  flex: 1;
-  min-width: 0;
-}
-
-.market-edit {
-  width: 48px;
-  height: auto;
-  border-radius: var(--radius);
-  flex: 0 0 auto;
-}
-
-.market-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  box-shadow: var(--shadow-1);
-  text-align: left;
-  width: 100%;
-  transition: transform 0.18s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-
-.market-row:active {
-  transform: scale(0.99);
-}
-
-.market-row.is-bought {
-  background: var(--teal-soft);
-  border-color: var(--teal-soft);
-}
-
-.market-box {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  border: 2px solid var(--line-strong);
-  display: grid;
-  place-items: center;
-  color: transparent;
-  flex: 0 0 auto;
-  transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease);
-}
-
-.market-row.is-bought .market-box {
-  background: var(--teal);
-  border-color: var(--teal);
-  color: #0b0f14;
-}
-
-.market-thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-  background: var(--surface-3);
-  flex: 0 0 auto;
-}
-
-.market-thumb--empty {
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-
-.market-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.market-text strong {
-  display: block;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.market-row.is-bought .market-text strong {
-  text-decoration: line-through;
-  color: var(--ink-2);
-}
-
-.market-text small {
-  color: var(--muted);
-  font-size: 11.5px;
-}
-
-.market-price {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--teal);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 /* Réglages -------------------------------------------------------- */
@@ -577,36 +413,72 @@
   box-shadow: none;
 }
 
+/* La couleur bénéficie d'une ligne entière (libellé + pastille + suggestions). */
+.range-row .field:has([data-field="color"]) {
+  grid-column: 1 / -1;
+}
+
+.color-hint {
+  margin-top: var(--space-3);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-2);
+  max-height: 168px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.color-swatches button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px 5px 5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), transform 0.1s var(--ease);
+}
+
+.color-swatches button:hover {
+  border-color: var(--teal);
+}
+
+.color-swatches button:active {
+  transform: scale(0.96);
+}
+
+.color-swatches button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.color-swatches .swatch,
+.color-swatches .swatch--dot {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.color-swatches .swatch-name {
+  white-space: nowrap;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 720px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-
-  .hero .ring {
-    margin: 0 auto;
-    width: 96px;
-    height: 96px;
-  }
-
-  .hero-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
-  }
-
-  .hero-actions .btn--primary {
-    grid-column: 1 / -1;
-  }
-
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
-  }
-
-  .stat {
-    padding: 13px 14px;
-  }
-
   /* Une seule colonne de cartes : tous les boutons restent visibles. */
   .grid {
     grid-template-columns: 1fr;
@@ -675,36 +547,14 @@
   .dialog-foot .btn {
     flex: 1;
   }
-
-  .sort-select {
-    max-width: none;
-    flex: 1;
-  }
-
-  /* La barre collante du marché ne passe jamais à la ligne. */
-  .sticky-bar {
-    flex-wrap: nowrap;
-  }
-
-  .sticky-bar .btn {
-    flex-shrink: 0;
-  }
 }
 
 @media (max-width: 480px) {
-  .stat strong {
-    font-size: 19px;
-  }
-
   .product-name {
     font-size: 14.5px;
   }
 
   .product-price {
     font-size: 13px;
-  }
-
-  .sticky-bar small {
-    display: none;
   }
 }

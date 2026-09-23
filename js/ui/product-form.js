@@ -6,7 +6,7 @@ import { esc, toNumber } from '../core/utils.js'
 import { compressPhoto, readableSize } from '../core/photo.js'
 import { icon } from './icons.js'
 import { CATEGORIES, CATEGORY_VALUES, PRIORITIES, UNITS, colorHex, defaultUnitFor, displayName, knownSuppliers } from '../data/model.js'
-import { colorFromText, colorNames } from '../data/colors.js'
+import { colorFromText, colorList } from '../data/colors.js'
 import { addProduct, getProducts, updateProduct } from '../data/store.js'
 import { toast } from '../core/feedback.js'
 
@@ -86,16 +86,25 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
               <div class="field">
                 <label for="product-color">Couleur / finition</label>
                 <div class="color-line">
-                  <input class="input" id="product-color" data-field="color" autocomplete="off" list="color-options"
+                  <input class="input" id="product-color" data-field="color" autocomplete="off"
                          placeholder="Ex. rose bébé, bleu roi, ivoire" value="${esc(product?.color || '')}">
                   <input class="color-box" data-rgb-picker type="color" value="${esc(pickerHex)}"
                          aria-label="Couleur de finition" title="Choisir une couleur">
                 </div>
-                <datalist id="color-options">
-                  ${colorNames().map((label) => `<option value="${esc(label)}"></option>`).join('')}
-                </datalist>
                 <div class="color-preview" data-role="color-preview" tabindex="0" role="button"
                      aria-label="Aperçu de la couleur" title="Aperçu — cliquez pour changer"></div>
+                <div class="color-hint">Suggestions — touchez une couleur pour la sélectionner :</div>
+                <div class="color-swatches" data-role="color-swatches" aria-label="Couleurs suggérées">
+                  ${colorList()
+                    .map(
+                      ({ label, hex }) => `
+                    <button type="button" data-color-swatch="${esc(label)}" style="--sw:${hex}" title="${esc(label)}">
+                      <span class="swatch" style="background:${hex}"></span>
+                      <span class="swatch-name">${esc(label)}</span>
+                    </button>`,
+                    )
+                    .join('')}
+                </div>
               </div>
             </div>
             <div class="range-row">
@@ -222,6 +231,13 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
   field('color')?.addEventListener('input', () => {
     const found = colorFromText(field('color')?.value)
     if (found) paintColor(found)
+  })
+  /* Palette de suggestions : un toucher remplit le libellé, la boîte et l'aperçu. */
+  dialog.querySelectorAll('[data-color-swatch]').forEach((button) => {
+    button.addEventListener('click', () => {
+      field('color').value = button.dataset.colorSwatch
+      paintColor(button.style.getPropertyValue('--sw'))
+    })
   })
   colorPreview?.addEventListener('click', () => picker?.click())
   colorPreview?.addEventListener('keydown', (event) => {
