@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { storage } from '../core/storage.js'
+import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
 import { STATUS, normalizeList, normalizeProduct } from './model.js'
@@ -13,6 +14,7 @@ import { mergeProducts } from './backup.js'
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
 const CONFIG_KEY = 'purchase-gros-github-v1'
 const PREFS_KEY = 'purchase-gros-prefs-v1'
+const DIRTY_KEY = 'purchase-gros-dirty-v1'
 const POLL_MS = 6000
 
 export const DEFAULT_PREFS = {
@@ -31,7 +33,7 @@ let state = {
   message: '',
   lastSyncAt: null,
   pending: false,
-  dirty: false,
+  dirty: storage.get(DIRTY_KEY) === true,
 }
 let sha = null
 let pollTimer = null
@@ -148,6 +150,7 @@ export function saveConfig(input) {
   else storage.remove(CONFIG_KEY)
   sha = null
   state.dirty = false
+  storage.remove(DIRTY_KEY)
   state.message = ''
   emit()
   return load()
@@ -159,6 +162,8 @@ export function clearConfig() {
   sha = null
   state.status = 'config'
   state.message = ''
+  state.dirty = false
+  storage.remove(DIRTY_KEY)
   emit()
   return state
 }
@@ -288,6 +293,7 @@ export async function push({ force = false } = {}) {
   if (result.ok) {
     sha = result.sha
     state.dirty = false
+    storage.remove(DIRTY_KEY)
     state.status = 'live'
     state.message = ''
     state.lastSyncAt = Date.now()
@@ -295,7 +301,9 @@ export async function push({ force = false } = {}) {
     state.status = result.status === 'config' ? 'config' : 'offline'
     state.message = result.message || ''
     state.dirty = true
+    storage.set(DIRTY_KEY, true)
     persistLocal()
+    toast(result.message || 'Synchronisation impossible.', { type: 'error' })
   }
   emit()
   return result
@@ -329,9 +337,12 @@ export function stopPolling() {
 /* Mutations                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Marque l'état comme modifié, persiste localement puis pousse. */
+/** Marque l'état comme modifié, persiste localement puis pousse.
+ *  Le drapeau « modifications non poussées » est persistant : un rafraîchissement
+ *  ou un redémarrage ne peut jamais écraser la liste locale par la distante. */
 function touch({ broadcast = true } = {}) {
   state.dirty = true
+  storage.set(DIRTY_KEY, true)
   persistLocal()
   if (broadcast) emit()
 }

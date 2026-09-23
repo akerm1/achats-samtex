@@ -84,6 +84,16 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   il pré-remplit propriétaire/dépôt/branche (depuis `sync-defaults.json`) ; il ne reste qu'à coller
   le jeton et Enregistrer.
 
+### Version 6.3.3 — pas de perte de données
+
+- **Les modifications locales non synchronisées ne sont plus perdues** : si l'envoi vers GitHub
+  échoue (jeton refusé, hors ligne…), le marqueur est conservé d'un rafraîchissement à l'autre —
+  l'application garde votre liste locale et réessaie de la publier, au lieu d'écraser la liste par
+  ce que contient GitHub.
+- **Erreur visible** : un message tel que « Jeton refusé par GitHub » ou « GitHub 404 » s'affiche
+  dès qu'une synchronisation ne passe pas (GitHub 404 = le dépôt n'est pas dans la « Repository
+  access » du jeton).
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
