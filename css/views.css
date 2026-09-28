@@ -248,6 +248,19 @@
   gap: 5px;
   padding: 12px 14px 10px;
   flex: 1;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background-color 0.18s var(--ease);
+}
+
+.product-body:hover,
+.product-body:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.product-body:active {
+  background: var(--surface-3);
 }
 
 .product-name {

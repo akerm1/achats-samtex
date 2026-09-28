@@ -56,9 +56,11 @@ export function renderProductCard(item) {
         ${icon('trash', 14)}
       </button>`
   return `
-    <article class="product ${PRIORITY_CLASS[item.priority] || ''} ${item.isBought ? 'is-bought' : ''}">
+    <article class="product ${PRIORITY_CLASS[item.priority] || ''} ${item.isBought ? 'is-bought' : ''}" data-id="${esc(item.id)}">
       ${photoBlock(item)}
-      <div class="product-body">
+      <div class="product-body" data-role="card-body" tabindex="0" role="button"
+           aria-label="Voir les détails de ${esc(name)}"
+           title="Cliquez pour voir les détails de ${esc(name)}">
         <strong class="product-name">${esc(name)}</strong>
         <p class="product-line">${metaBits.join('<span class="separator">·</span>')}</p>
         ${item.supplier ? `<p class="product-line">${icon('store', 12)} ${esc(item.supplier)}</p>` : ''}

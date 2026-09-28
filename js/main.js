@@ -212,16 +212,39 @@ const ACTIONS = {
 function initActions() {
   document.addEventListener('click', (event) => {
     const node = event.target.closest('[data-action]')
-    if (!node) return
-    const handler = ACTIONS[node.dataset.action]
-    if (!handler) return
-    event.preventDefault()
-    try {
-      handler(node)
-    } catch (error) {
-      console.error(error)
-      toast(error.message || 'Action impossible.', { type: 'error' })
+    if (node) {
+      const handler = ACTIONS[node.dataset.action]
+      if (handler) {
+        event.preventDefault()
+        try {
+          handler(node)
+        } catch (error) {
+          console.error(error)
+          toast(error.message || 'Action impossible.', { type: 'error' })
+        }
+        return
+      }
     }
+    /* Cliquer sur le corps d'une carte ouvre la fiche produit (tous les détails). */
+    const card = event.target.closest('[data-role="card-body"]')
+    if (card) {
+      const article = card.closest('[data-id]')
+      const id = article?.dataset.id
+      const product = id ? productById(id) : null
+      if (product) openProductForm(product)
+    }
+  })
+  /* Clavier : Entrée / Espace sur une carte ouvre la fiche. */
+  document.addEventListener('keydown', (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    if (isTyping(event.target)) return
+    const card = event.target.closest('[data-role="card-body"]')
+    if (!card) return
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    const article = card.closest('[data-id]')
+    const product = productById(article?.dataset.id)
+    if (product) openProductForm(product)
   })
 }
 
