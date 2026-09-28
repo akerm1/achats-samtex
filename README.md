@@ -281,6 +281,24 @@ Une seule chose à coller, une fois par appareil, et ensuite : lecture **et**
 
 ### Mise en service du lien privé (5 minutes, une fois)
 
+**Méthode rapide — un seul script** (Node.js 18 ou plus requis ; c'est tout).
+
+```powershell
+cd "C:\chemin\vers\le\dossier\worker"
+.\setup.ps1
+```
+
+Le script enchaîne : connexion Cloudflare (une page s'ouvre, cliquez **Autoriser**),
+création du namespace KV `LIST`, génération d'une clé secrète de 32 caractères,
+envoi de la clé comme secret, déploiement du Worker, **vérification que le lien
+répond**, puis affichage du lien privé à coller dans l'application. Il est
+réexécutable sans danger : la clé est relue dans `worker/LIEN-PRIVE.txt`, donc
+relancer le script ne casse jamais un appareil déjà configuré. Ce fichier est
+ignoré par Git — le lien est un secret, il ne doit jamais être versionné.
+
+Si vous préférez la console Cloudflare, ou si PowerShell refuse d'exécuter le
+script (`UnauthorizedAccessException`), les étapes manuelles sont :
+
 1. Créez un compte gratuit sur **dashboard.cloudflare.com**.
 2. **Workers & Pages → Create → Worker**, nommez-le (ex. `liste-achats`) puis *Deploy*.
 3. *Edit code* → collez le contenu de **`worker/share-list-worker.mjs`** → *Deploy*.
@@ -327,6 +345,8 @@ sync-defaults.json          valeurs par défaut pour le bouton « Configurer aut
 sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
 worker/
   share-list-worker.mjs     code du Cloudflare Worker du lien privé (à coller dans le dashboard)
+  wrangler.toml             configuration de déploiement (namespace KV, Workers.dev)
+  setup.ps1                 mise en service en un seul lancement (connexion, KV, secret, déploiement)
 css/
   tokens.css                variables de design (palette sombre moderne, thème clair optionnel)
   base.css                  réinitialisation, typographie, utilitaires

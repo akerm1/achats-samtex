@@ -14,3 +14,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Worker « lien privé » : configuration locale et surtout le lien lui-même,
+# qui est un secret. Ne doit jamais être commité.
+worker/LIEN-PRIVE.txt
+worker/.wrangler/
+worker/node_modules/

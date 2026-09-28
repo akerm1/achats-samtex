@@ -1,0 +1,25 @@
+# Worker du « lien privé » — configuration de déploiement Cloudflare
+#
+# Tout est crée automatiquement par `setup.ps1` (à lancer une fois) :
+#   .\setup.ps1
+#
+# Le script connexion, crée le namespace KV, génère la clé secrète,
+# la publie comme secret, déploie le Worker et affiche le lien privé.
+# Il réinscrit ensuite l'identifiant du namespace ici (c'est un identifiant
+# public, pas un secret).
+
+name = "liste-achats"
+main = "share-list-worker.mjs"
+compatibility_date = "2026-09-28"
+
+# Adresse publique Workers : https://liste-achats.<votre-sous-domaine>.workers.dev
+workers_dev = true
+
+# Liaison nommée LIST : c'est elle que le Worker lit (env.LIST).
+# L'identifiant est rempli par setup.ps1.
+[[kv_namespaces]]
+binding = "LIST"
+id = "COLLE-LE-IDENTIFIANT-ICI"
+
+# Secret LIST_KEY : le chemin du lien privé. Jamais écrit dans ce fichier,
+# uniquement via `wrangler secret put` (voir setup.ps1).
