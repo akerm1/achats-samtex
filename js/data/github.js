@@ -30,6 +30,26 @@ export function canWrite(config) {
   return Boolean(config?.token) && !config?.tokenRejected
 }
 
+/** Dépôt public annoncé par l'application (racine du dépôt servi). */
+export const DEFAULTS_FILE = new URL('../../sync-defaults.json', import.meta.url)
+
+/**
+ * Dépôt public par défaut, en lecture seule : c'est ce qui permet à un
+ * appareil neuf d'ouvrir le lien GitHub et de voir immédiatement la liste
+ * partagée, sans jeton et sans configuration.
+ * @returns {Promise<{token:string, owner:string, repo:string, branch:string}|null>}
+ */
+export async function fetchDefaultConfig() {
+  try {
+    const response = await fetch(DEFAULTS_FILE, { cache: 'no-store' })
+    if (!response.ok) return null
+    const data = await response.json()
+    return normalizeConfig({ owner: data?.owner, repo: data?.repo, branch: data?.branch })
+  } catch {
+    return null
+  }
+}
+
 function apiHeaders(config) {
   const headers = { Accept: 'application/vnd.github+json' }
   if (canWrite(config)) headers.Authorization = `token ${config.token}`

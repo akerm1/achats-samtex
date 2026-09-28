@@ -105,7 +105,7 @@ function githubBlock() {
           avec la permission <strong>Contents : Read and write</strong> sur ce seul dépôt.
           ${
             readOnly
-              ? '<br /><span class="form-message is-ok">Lecture seule active : vos modifications restent sur cet appareil tant qu\'un jeton valide n\'est pas enregistré.</span>'
+              ? '<br /><span class="form-message is-ok">Lecture seule active : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil tant qu\'un jeton valide n\'est pas enregistré.</span>'
               : ''
           }
         </p>

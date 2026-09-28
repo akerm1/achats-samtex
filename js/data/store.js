@@ -16,7 +16,7 @@ import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
 import { STATUS, normalizeList, normalizeProduct } from './model.js'
-import { canWrite, fetchRemoteList, putRemoteList, normalizeConfig, READ_ONLY_MESSAGE } from './github.js'
+import { canWrite, fetchDefaultConfig, fetchRemoteList, putRemoteList, normalizeConfig, READ_ONLY_MESSAGE } from './github.js'
 import { mergeProducts } from './backup.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
@@ -24,6 +24,8 @@ const PRODUCTS_KEY = 'purchase-gros-list-v2'
 const CONFIG_KEY = 'purchase-gros-github-v1'
 const PREFS_KEY = 'purchase-gros-prefs-v1'
 const DIRTY_KEY = 'purchase-gros-dirty-v1'
+/* L'utilisateur a demandé à rester hors GitHub : on ne reconnecte pas. */
+const OPTOUT_KEY = 'purchase-gros-github-optout-v1'
 
 export const DEFAULT_PREFS = {
   filter: 'todo',
@@ -130,6 +132,9 @@ export function getState() {
     /* Un dépôt public se lit sans jeton : seule l'écriture en exige un. */
     readOnly: Boolean(config) && !canWrite(config),
     hasToken: Boolean(config?.token),
+    /* Modifications que GitHub ne peut pas recevoir : l'utilisateur doit le
+       savoir, sinon deux appareils affichent deux listes différentes. */
+    unpublished: state.dirty && Boolean(config) && !canWrite(config),
     statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
   }
@@ -201,6 +206,8 @@ export function saveConfig(input) {
   config = normalizeConfig(input)
   if (config) storage.set(CONFIG_KEY, config)
   else storage.remove(CONFIG_KEY)
+  /* Configuration choisie à la main : elle prime sur le dépôt par défaut. */
+  storage.remove(OPTOUT_KEY)
   sha = null
   state.dirty = false
   storage.remove(DIRTY_KEY)
@@ -222,6 +229,8 @@ export function setSyncMessage(message = '', kind = '') {
 export function clearConfig() {
   config = null
   storage.remove(CONFIG_KEY)
+  /* Déconnexion volontaire : on ne doit pas se reconnecter tout seul ensuite. */
+  storage.set(OPTOUT_KEY, true)
   sha = null
   state.status = 'local'
   state.message = ''
@@ -296,6 +305,17 @@ export async function load() {
   state.loaded = false
   emit()
 
+  /* Appareil neuf : on tente le dépôt public par défaut, en lecture seule.
+     C'est ce qui fait qu'ouvrir le lien GitHub dans un navigateur affiche
+     la même liste que l'application installée. */
+  if (!config && storage.get(OPTOUT_KEY) !== true) {
+    if (await connectDefault()) {
+      state.loaded = true
+      emit()
+      return getState()
+    }
+  }
+
   if (!config) {
     loadLocal()
     state.status = 'local'
@@ -310,6 +330,29 @@ export async function load() {
   state.loaded = true
   emit()
   return getState()
+}
+
+/**
+ * Connexion silencieuse au dépôt public par défaut. Sans jeton, donc en lecture
+ * seule : si le dépôt est inaccessible, on renonce sans message d'erreur pour
+ * qu'un appareil neuf ne se croie pas en panne.
+ */
+async function connectDefault() {
+  const defaults = await fetchDefaultConfig()
+  if (!defaults) return false
+  const remote = await fetchRemoteList(defaults)
+  if (!remote.ok) return false
+
+  config = defaults
+  sha = remote.sha
+  products = normalizeList(remote.list || [])
+  persistLocal()
+  if (applyRemoteSettings(remote.settings)) storage.set(PREFS_KEY, prefs)
+  state.status = 'ready'
+  state.lastSyncAt = Date.now()
+  state.message = READ_ONLY_MESSAGE
+  state.messageKind = 'ok'
+  return true
 }
 
 /**

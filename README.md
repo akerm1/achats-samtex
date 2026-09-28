@@ -205,6 +205,38 @@ Désormais :
 > Le jeton ne quitte jamais l'appareil : il est stocké dans le `localStorage` et envoyé
 > uniquement aux appels de l'API GitHub vers votre dépôt.
 
+### Version 7.2 — ouvrir le lien GitHub montre enfin la bonne liste
+
+**Constat.** Ouvrir `https://akerm1.github.io/achats-samtex/` dans un navigateur
+n'affichait pas les mêmes produits que l'application du téléphone. Deux raisons,
+toutes deux comprises dans cette version :
+
+1. **Aucun navigateur neuf ne se connectait.** La configuration GitHub vit dans le
+   `localStorage`, donc par navigateur et par profil. Sur un poste neuf, aucune
+   configuration n'existait et l'application **ne tentait même pas** de lire GitHub :
+   elle affichait une liste locale vide, marquée « Local seul ».
+2. **Des modifications non publiées passaient inaperçues.** En lecture seule, l'ajout
+   d'un produit reste sur l'appareil. Sans avertissement, l'application installée et
+   le sitemontraient deux listes différentes, sans explication.
+
+**Ce qui change**
+
+- **Connexion automatique en lecture seule.** Au premier lancement, l'application lit
+  `sync-defaults.json` (le dépôt public annoncé par l'application) et affiche
+  directement la liste publiée — sans jeton, sans configuration, sans clic. Un simple
+  rafraîchissement la relit. Le réglage partagé (thème, tri, filtres) est appliqué
+  lui aussi.
+- **Aucun message d'erreur sur un appareil neuf** : si le dépôt est inaccessible,
+  l'application reste en mode local, silencieuse, au lieu d'afficher une panne.
+- **« Modifications non publiées »** : un bandeau orange apparaît dès qu'une
+  modification existe sur l'appareil alors que GitHub ne peut pas la recevoir
+  (« Lecture seule : un jeton GitHub valide est nécessaire pour publier »). Les
+  Réglages affichent un badge « Lecture seule » et le champ du jeton reste libre.
+- **Déconnexion respectée** : le bouton « Déconnecter » inscrit un refus durable,
+  l'application ne se reconnecte plus toute seule. Une configuration saisie à la main
+  annule ce refus.
+- Deux requêtes suffisent au premier lancement (défauts + lecture), sans jeton.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
