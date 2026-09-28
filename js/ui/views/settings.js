@@ -308,14 +308,15 @@ function updateBlock() {
 function aboutBlock() {
   const persistent = storage.isPersistent()
   const state = getState()
-  const { bytes = 0, photos = 0, photoBytes = 0 } = state.usage || {}
+  const { bytes = 0, photos = 0, photoBytes = 0, separated = false } = state.usage || {}
   const total = state.products?.length || 0
   const full = Boolean(state.storageFull)
-  /* Les navigateurs tiennent autour de 5 à 10 Mo par origine. On ne prétend
-     pas connaître le plafond exact : on montre l'occupation réelle, et on
-     prévient franchement quand l'écriture est déjà refusée. */
-  const ceiling = full ? 0 : Math.round(80 - (bytes / (10 * 1024 * 1024)) * 100)
-  const photoShare = bytes ? Math.round((photoBytes / bytes) * 100) : 0
+  const hasPhotos = photos > 0
+  /* Les navigateurs tiennent autour de 5 à 10 Mo d'origine. Le texte seul
+     n'en approche jamais la moitié, donc la marge affichée reste indicative ;
+     ce qui compte, c'est que l'écriture ne soit plus refusée en silence. */
+  const ceiling = full ? 0 : Math.max(0, Math.round(80 - (bytes / (10 * 1024 * 1024)) * 100))
+  const photoShare = separated && bytes ? Math.round((photoBytes / bytes) * 100) : 0
   return `
     ${
       full
@@ -335,8 +336,16 @@ function aboutBlock() {
         </p>
         <p data-role="storage-usage">
           ${total} produit${total > 1 ? 's' : ''} · ${photos} photo${photos > 1 ? 's' : ''}
-          ${photos ? ` (${Math.round(photoShare)} % du poids)` : ''} · ${readableBytes(bytes)} sur cet appareil
-          ${full ? '' : ` · environ ${Math.max(0, ceiling)} % de la marge typique`}
+          ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
+        </p>
+        <p data-role="storage-detail">
+          ${
+            separated
+              ? `Liste : ${readableBytes(bytes)}${hasPhotos ? ` · photos : ${readableBytes(photoBytes)} stockées à part, hors de la limite du navigateur.` : ''}`
+              : `Liste : ${readableBytes(bytes)} sur cet appareil${hasPhotos ? `, photos comprises.` : '.'} ${
+                  full ? '' : `Environ ${ceiling} % de marge restante.`
+                }`
+          }
         </p>
       </div>
       <div class="setting-side">

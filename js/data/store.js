@@ -33,6 +33,7 @@ import {
   READ_ONLY_MESSAGE,
 } from './sync.js'
 import { mergeProducts } from './backup.js'
+import * as photoStore from './photo-store.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
@@ -162,11 +163,15 @@ export function getState() {
        croit avoir enregistré alors que la liste disparaîtra au rechargement. */
     storageProblem,
     storageFull: storage.isFull(),
+    photosSeparated,
     usage,
   }
 }
 
 export const isStorageFull = () => storageProblem === 'quota'
+
+/** Vrai quand les photos sont stockées à part (donc hors du quota du JSON). */
+export const arePhotosSeparated = () => photosSeparated
 
 export const getProducts = () => products
 export const isLoaded = () => state.loaded
@@ -276,12 +281,41 @@ export function clearConfig() {
 /* Stockage local                                                      */
 /* ------------------------------------------------------------------ */
 
-function loadLocal() {
+/**
+ * Charge la liste locale et réattache les photos.
+ *
+ * Le JSON local ne contient plus les photos : elles sont dans IndexedDB,
+ * rattachées par `id`. On les remet dans `product.photo` parce que tout le
+ * reste de l'application — rendu, envoi distant, fusion, export — lit ce
+ * champ. Si IndexedDB est indisponible, le JSON garde les photos en ligne
+ * (voir `persistLocal`), donc cette étape ne perd rien.
+ */
+async function loadLocal() {
   /* Pas de démonstration : une liste vide reste vide, le partage GitHub
      (ou l'ajout manuel) reste la seule source de données — ainsi chaque
      appareil affiche exactement la même chose. */
   products = normalizeList(storage.get(PRODUCTS_KEY, null))
-  persistLocal()
+  /* La base est testée au chargement, pas à la première photo : si elle est
+     inaccessible, on garde les photos dans le JSON, comme avant. */
+  await photoStore.ensureReady()
+  await attachPhotos(products)
+  await queuePersist()
+}
+
+/** Réinjecte les photos stockées à part dans les produits correspondants. */
+async function attachPhotos(list) {
+  if (!photoStore.isAvailable()) return list
+  /* Une base qu'on n'arrive pas à ouvrir ne doit pas faire perdre les photos
+     déjà présentes dans le JSON : on ne touche à rien dans ce cas. */
+  if (!(await photoStore.ensureReady())) return list
+  const photos = await photoStore.readAll()
+  if (!photos.size) return list
+  for (const product of list) {
+    /* Une photo déjà présente vient soit d'une migration, soit d'un envoi
+       distant : elle fait foi, on n'écrase pas avec une version plus vieille. */
+    if (product?.id && !product.photo) product.photo = photos.get(product.id) || ''
+  }
+  return list
 }
 
 /**
@@ -297,24 +331,82 @@ let usage = { bytes: 0, photos: 0, photoBytes: 0 }
 /** Refus d'écriture local en cours, à montrer tant qu'il n'est pas résolu. */
 let storageProblem = ''
 
-function persistLocal() {
+/** Les photos vivent à part ; cette bascule le dit pour les réglages. */
+let photosSeparated = false
+
+/**
+ * Les écritures locales sont sérialisées.
+ *
+ * `persistLocal()` est désormais asynchrone (IndexedDB), alors que `touch()`
+ * reste synchrone pour ne pas ralentir chaque frappe. Deux modifications
+ * rapides lanceraient donc deux écritures concurrentes, qui pourraient se
+ * terminer dans le désordre et laisser une liste périmée sur le disque. On les
+ * enchaîne : la seconde attend la première, et l'état final est toujours le
+ * dernier demandé.
+ */
+let writeChain = Promise.resolve(true)
+
+function queuePersist() {
+  const run = () => persistLocal()
+  writeChain = writeChain.then(run, run)
+  return writeChain
+}
+
+/**
+ * Enregistre la liste locale, photos mises à part.
+ *
+ * Le JSON local ne porte plus que du texte, quelques kilo-octets : il ne peut
+ * donc plus signaler un quota à cause des photos. Les photos vont dans
+ * IndexedDB, par `id`. Le format d'échange, lui, est inchangé : le document
+ * publié contient toujours les photos en base64.
+ *
+ * Si IndexedDB refuse (mode privé, quota disque), on ne perd rien : on
+ * réécrit le JSON complet, photos comprises, et on remonte l'échec pour que
+ * l'utilisateur le sache. C'est exactement le repli d'avant.
+ */
+async function persistLocal() {
+  const separate = photoStore.isAvailable()
+  const stripped = separate ? products.map((product) => ({ ...product, photo: '' })) : products
+
   let text = '[]'
   try {
-    text = JSON.stringify(products)
+    text = JSON.stringify(stripped)
   } catch {
     /* Circularité improbable, mais on n'écrit pas une chaîne cassée. */
   }
-  usage = measureUsage(products, text)
-  if (storage.setRaw(PRODUCTS_KEY, products, text)) {
-    if (storageProblem) {
-      /* Une écriture qui passe réarme l'affichage : le problème est résolu. */
-      storageProblem = ''
-      state.message = ''
-      state.messageKind = ''
+  usage = measureUsage(products, text, separate)
+
+  /* Les deux écritures sont jugées ensemble : l'une des deux peut échouer
+     alors que l'autre passe. Ici le JSON est du texte, donc cette étape ne
+     peut plus tomber sur un quota de photos ; l'ordre compte quand même,
+     parce qu'un succès isolé ne doit pas effacer l'échec de l'autre. */
+  const photoError = separate ? await writePhotos(products) : ''
+
+  /* Si les photos n'ont pas pu être mises à part, on les remet dans le JSON :
+     c'est le seul endroit où elles survivront. Le repli d'avant, donc. */
+  const jsonPayload = separate && photoError ? products : stripped
+  let jsonText = text
+  if (jsonPayload !== stripped) {
+    try {
+      jsonText = JSON.stringify(jsonPayload)
+    } catch {
+      jsonText = text
     }
+  }
+  const jsonOk = storage.setRaw(PRODUCTS_KEY, jsonPayload, jsonText)
+
+  if (jsonOk) {
+    photosSeparated = separate && !photoError
+  }
+  const reason = photoError || (jsonOk ? '' : storage.failureReason())
+  if (!reason) {
+    /* Tout est passé : l'éventuelle alerte précédente n'a plus lieu d'être. */
+    storageProblem = ''
+    state.message = ''
+    state.messageKind = ''
     return true
   }
-  const reason = storage.failureReason()
+
   storageProblem = reason
   if (reason === 'quota') {
     state.message = 'Stockage du navigateur plein : les photos ne sont plus enregistrées sur cet appareil. Exportez une sauvegarde JSON, puis retirez des photos. Votre liste est encore affichée, mais elle disparaîtra à la fermeture.'
@@ -324,8 +416,23 @@ function persistLocal() {
   return false
 }
 
+/**
+ * Écrit les photos dans IndexedDB et supprime celles des produits retirés.
+ * @returns {string} la raison de l'échec, ou une chaîne vide si tout est passé.
+ */
+async function writePhotos(list) {
+  const withPhotos = list.filter((product) => product?.photo)
+  const results = await Promise.all(withPhotos.map((product) => photoStore.put(product.id, product.photo)))
+
+  /* Les photos des produits disparus ne doivent pas rester pour toujours. */
+  await photoStore.prune(list.map((product) => product?.id).filter(Boolean))
+
+  if (results.every((ok) => ok)) return ''
+  return photoStore.failureReason() || 'unavailable'
+}
+
 /** Poids total, nombre de photos et part occupée par les photos. */
-function measureUsage(list, text) {
+function measureUsage(list, text, separate) {
   let photos = 0
   let photoBytes = 0
   for (const product of list) {
@@ -335,7 +442,9 @@ function measureUsage(list, text) {
       photoBytes += photo.length
     }
   }
-  return { bytes: text.length, photos, photoBytes }
+  /* Quand les photos sont à part, le JSON local ne les compte plus : on
+     annonce le poids réellement stocké, pas celui d'un document composite. */
+  return { bytes: text.length, photos, photoBytes, separated: Boolean(separate) }
 }
 
 
@@ -383,7 +492,9 @@ async function syncWithRemote() {
   let changed = false
   if (JSON.stringify(normalized) !== JSON.stringify(products)) {
     products = normalized
-    persistLocal()
+    /* Attend l'écriture : `load()` se termine sur cette valeur, et une
+       lecture locale périmée repartirait au prochain rafraîchissement. */
+    await queuePersist()
     changed = true
   }
   if (applyRemoteSettings(remote.settings)) changed = true
@@ -416,7 +527,7 @@ export async function load() {
   }
 
   if (!config) {
-    loadLocal()
+    await loadLocal()
     state.status = 'local'
     state.loaded = true
     emit()
@@ -427,7 +538,7 @@ export async function load() {
      n'existe pas en mémoire au moment du « lien encore vide », et un appareil
      qui se connecte pour la première fois afficherait une liste vide au lieu
      de publier la sienne. C'est aussi le repli si la lecture échoue. */
-  loadLocal()
+  await loadLocal()
   const result = await refresh()
   state.loaded = true
   emit()
@@ -448,7 +559,7 @@ async function connectDefault() {
   config = defaults
   sha = remote.sha
   products = normalizeList(remote.list || [])
-  persistLocal()
+  await queuePersist()
   if (applyRemoteSettings(remote.settings)) storage.set(PREFS_KEY, prefs)
   state.status = 'ready'
   state.lastSyncAt = Date.now()
@@ -464,7 +575,7 @@ async function connectDefault() {
  */
 export async function refresh() {
   if (!config) {
-    persistLocal()
+    await queuePersist()
     return { ok: true, status: 'local' }
   }
   if (state.pending) return { ok: true, status: state.status }
@@ -487,14 +598,28 @@ export async function refresh() {
 /** Publie la liste (GitHub ou lien privé si configuré, sinon stockage local). */
 export async function push({ force = false } = {}) {
   if (!config) {
-    persistLocal()
+    /* Attend l'écriture avant d'annoncer « rien à pousser » : sans cela un
+       rafraîchissement immédiat repartirait d'un disque encore ancien. */
+    await queuePersist()
     state.dirty = false
     emit()
     return { ok: true, status: 'local' }
   }
   if (state.pending && !force) return { ok: true, status: state.status }
 
+  /* Le document publié est construit depuis `products`, en mémoire. La base
+     locale doit être à jour avant l'envoi : sinon une publication qui suit un
+     rechargement partirait d'un JSON encore sans les photos de la session.
+     Le verrou est posé avant l'attente, sinon deux publications rapprochées
+     passeraient toutes deux le test ci-dessus et enverraient en double. */
   state.pending = true
+  try {
+    await queuePersist()
+  } catch (error) {
+    state.pending = false
+    console.error('Écriture locale impossible avant publication :', error)
+  }
+
   state.status = 'saving'
   emit()
 
@@ -504,26 +629,32 @@ export async function push({ force = false } = {}) {
   if (result.ok) {
     sha = result.sha
     if (typeof result.rev === 'number') remoteRev = Math.max(remoteRev, result.rev)
-    /* Une fusion de conflit propose la liste retenue : on l'adopte pour que
-       l'écran et le distant affichent exactement la même chose. */
     if (Array.isArray(result.list)) {
+      /* Une fusion propose la liste retenue : on l'adopte pour que l'écran et
+         le distant affichent exactement la même chose. */
       const merged = normalizeList(result.list)
       if (JSON.stringify(merged) !== JSON.stringify(products)) {
         products = merged
-        persistLocal()
+        await queuePersist()
       }
     }
     state.dirty = false
     storage.remove(DIRTY_KEY)
     state.status = 'ready'
-    state.message = ''
-    state.messageKind = ''
+    /* Une synchronisation réussie ne doit pas effacer une alerte de stockage :
+       le message distant est valide, mais les photos peuvent rester en échec
+       d'écriture locale. On ne remet le message à zéro que si rien ne cloche
+       de ce côté. */
+    if (!storageProblem) {
+      state.message = ''
+      state.messageKind = ''
+    }
     state.lastSyncAt = Date.now()
   } else {
     if (result.tokenRejected) markTokenRejected()
     state.dirty = true
     storage.set(DIRTY_KEY, true)
-    persistLocal()
+    await queuePersist()
     applyFailure(result)
   }
   emit()
@@ -582,7 +713,10 @@ export async function importFromGithub() {
 function touch({ broadcast = true } = {}) {
   state.dirty = true
   storage.set(DIRTY_KEY, true)
-  persistLocal()
+  /* Volontairement sans `await` : `touch()` est synchrone, sinon chaque
+     frappe attendrait IndexedDB. L'écriture est sérialisée par `queuePersist`,
+     donc elle aboutit quand même, et l'ordre est respecté. */
+  queuePersist()
   if (broadcast) emit()
 }
 
@@ -652,6 +786,9 @@ export function deleteProduct(id) {
   if (index < 0) return null
   const product = products[index]
   products = products.filter((item) => item.id !== id)
+  /* La photo part avec le produit, sinon elle resterait sur le disque pour
+     toujours. L'annulation la réécrira si l'utilisateur revient en arrière. */
+  if (photoStore.isAvailable()) photoStore.remove([id])
   touch()
   push()
   return { product, index }
@@ -674,6 +811,8 @@ export function clearBought() {
   const removed = products.filter((item) => item.status === STATUS.BOUGHT)
   if (!removed.length) return []
   products = products.filter((item) => item.status !== STATUS.BOUGHT)
+  /* Les photos des produits achetés partants sont libérées ici aussi. */
+  if (photoStore.isAvailable()) photoStore.remove(removed.map((item) => item.id))
   touch()
   push()
   return removed
@@ -690,6 +829,7 @@ export function restoreMany(list = []) {
 
 export function clearAll() {
   products = []
+  if (photoStore.isAvailable()) photoStore.clear()
   touch()
   push()
   return true
