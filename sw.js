@@ -5,12 +5,20 @@
 /*  - aucun cache de code (donc aucun mélange de versions possible)    */
 /*  - garde le mode hors-ligne, avec un repli explicite et limited      */
 /*                                                                     */
+/* Nuance importante, et source de bien des versions fantômes :        */
+/* ne pas mettre en cache ne suffit pas. `fetch(request)` consulte     */
+/* encore le cache HTTP du navigateur, et GitHub Pages répond           */
+/* `Cache-Control: max-age=600`. Un téléphone pouvait donc servir       */
+/* l'ancien `worker.js` pendant dix minutes, même après un             */
+/* rechargement « propre ». Le code et les données passent donc par      */
+/* `no-store` : la promesse « jamais de cache » est enfin tenue.        */
+/*                                                                     */
 /* La mise à jour de l'application ne passe pas par ici : elle est     */
 /* pilotée par `version.json` et le bouton des Réglages (voir           */
 /* `js/core/update.js`).                                                */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v7.3.2'
+const VERSION = 'mes-achats-v7.3.3'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
 const FALLBACK_URLS = ['./', 'index.html', 'css/tokens.css', 'css/base.css', 'css/layout.css', 'css/components.css', 'css/views.css', 'js/main.js']
@@ -42,10 +50,13 @@ self.addEventListener('message', (event) => {
  * Réseau d'abord, repli sur le cache si — et seulement si — le réseau
  * échoue. Rien n'est mis en cache quand le réseau répond : un fichier
  * périmé ne peut donc plus être resservi.
+ *
+ * `fresh` court-circuite en plus le cache HTTP du navigateur, que
+ * `fetch(request)` consulte par défaut. Réservé au code et aux données.
  */
-async function networkFirst(request, { cache = false } = {}) {
+async function networkFirst(request, { cache = false, fresh = false } = {}) {
   try {
-    return await fetch(request)
+    return fresh ? await fetch(request, { cache: 'no-store' }) : await fetch(request)
   } catch (error) {
     if (!cache) throw error
     const store = await caches.open(VERSION)
@@ -73,7 +84,8 @@ async function offlinePage() {
 
 async function handleNavigation(request) {
   try {
-    return await fetch(request)
+    /* `no-store` : l'ecran affiche doit refleter la version publiee. */
+    return await fetch(request, { cache: 'no-store' })
   } catch {
     const store = await caches.open(VERSION)
     const cached = await store.match(request, { ignoreSearch: true })
@@ -100,6 +112,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  /* Code et données : jamais de cache. */
-  event.respondWith(networkFirst(request))
+  /* Code et données : jamais de cache — et pas même celui du navigateur,
+     qui resservait sinon le fichier périmé pendant dix minutes. */
+  event.respondWith(networkFirst(request, { fresh: true }))
 })
