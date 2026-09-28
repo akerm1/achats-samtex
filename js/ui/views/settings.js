@@ -385,6 +385,28 @@ function readDraft() {
   pick('#setting-endpoint', 'endpoint')
 }
 
+/**
+ * Le `draft` doit suivre la saisie, sinon un bouton peut valider une valeur
+ * vieille de plusieurs secondes — c'est-à-dire une valeur absente. Un seul
+ * écouteur sur le formulaire suffit : il couvre frappe, collage et
+ * corrections, sans dupliquer la liste des champs.
+ */
+function watchDraft() {
+  const form = host?.querySelector('#share-form')
+  if (!form) return
+  const fields = {
+    '#setting-token': 'token',
+    '#setting-owner': 'owner',
+    '#setting-repo': 'repo',
+    '#setting-branch': 'branch',
+    '#setting-endpoint': 'endpoint',
+  }
+  form.addEventListener('input', (event) => {
+    const key = fields[event.target?.id ? `#${event.target.id}` : '']
+    if (key) draft[key] = event.target.value
+  })
+}
+
 /** Configuration affichée dans l'onglet courant, telle que saisie. */
 function currentConfig() {
   if (shareTab === 'worker') return { provider: 'worker', endpoint: draft.endpoint }
@@ -396,9 +418,13 @@ function currentConfig() {
   }
 }
 
-async function handleTest() {
-  const config = normalizeConfig(currentConfig())
-  if (!config) {
+  async function handleTest() {
+    /* Sans cette lecture, `draft` est encore vide : le bouton « Tester » ne
+       lisait jamais le champ, et un lien parfaitement collé était rejeté
+       comme « incomplet ». */
+    readDraft()
+    const config = normalizeConfig(currentConfig())
+    if (!config) {
     setSyncMessage(
       shareTab === 'worker'
         ? 'Lien privé incomplet ou modifié. Collez la ligne entière du fichier worker\LIEN-PRIVE.txt, sans guillemets ni espace : le clavier du téléphone peut ajouter une majuscule ou couper le texte.'
@@ -521,6 +547,8 @@ function bind() {
 
   host.querySelector('#share-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
+    /* Idem : « Enregistrer » ne lisait pas les champs non plus. */
+    readDraft()
     const config = normalizeConfig(currentConfig())
     if (!config) {
       setSyncMessage(
@@ -555,6 +583,10 @@ function bind() {
     host.querySelector('[data-role="import-file"]')?.click(),
   )
   host.querySelector('[data-role="import-file"]')?.addEventListener('change', handleImport)
+
+  /* Le `draft` suit la frappe : sans cela, « Tester » et « Enregistrer »
+     lisaient une valeur absente. */
+  watchDraft()
 }
 
 /** Ce qui, hors message, impose un vrai redessin de la vue. */
