@@ -103,8 +103,13 @@ export async function checkForUpdate() {
 /** Vide le cache du service worker : plus aucun fichier périmé en mémoire. */
 async function clearCaches() {
   if (!('caches' in window)) return
-  const keys = await caches.keys()
-  await Promise.all(keys.map((key) => caches.delete(key)))
+  try {
+    const keys = await caches.keys()
+    await Promise.all(keys.map((key) => caches.delete(key)))
+  } catch (error) {
+    /* Un cache recalcitrant ne doit pas empecher le rechargement. */
+    console.warn('Cache non vide :', error)
+  }
 }
 
 /** Force la revalidation de la coquille hors-ligne et sa prise de possession. */
@@ -114,6 +119,9 @@ async function refreshServiceWorker() {
     const registration = await navigator.serviceWorker.getRegistration()
     if (!registration) return
     await registration.update()
+    /* La nouvelle version s'installe en arriere-plan : « waiting » n'existe
+       pas forcement tout de suite. On lui laisse une seconde, puis on insiste. */
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' })
   } catch (error) {
     console.warn('Service worker non revalidé :', error)
@@ -132,13 +140,22 @@ export async function installUpdate() {
   emit()
   /* Si la page ne se recharge pas (navigation bloquée), on ne laisse pas le
      bouton désactivé pour toujours. */
-  setTimeout(() => {
+  const garde = setTimeout(() => {
     state.installing = false
     emit()
   }, 15000)
-  await clearCaches()
-  await refreshServiceWorker()
-  const url = new URL(window.location.href)
-  url.searchParams.set('v', `${published || 'manuel'}-${Date.now()}`)
-  window.location.replace(url.toString())
+  /* Le rechargement est le seul point qui compte : il a donc lieu quoi qu'il
+     arrive. Avant, une erreur pendant le vidage du cache suffisait a tout
+     annuler, et l'application semblait figee sans rien indiquer. */
+  try {
+    await clearCaches()
+    await refreshServiceWorker()
+  } catch (error) {
+    console.warn('Mise a jour partielle :', error)
+  } finally {
+    clearTimeout(garde)
+    const url = new URL(window.location.href)
+    url.searchParams.set('v', `${published || 'manuel'}-${Date.now()}`)
+    window.location.replace(url.toString())
+  }
 }
