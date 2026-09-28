@@ -149,11 +149,18 @@ Write-Host 'Un lien privé remplace le jeton GitHub : ni jeton, ni expiration.'
 
 # --- 1. Connexion ---------------------------------------------------------
 Step 1 'Connexion à Cloudflare'
-Write-Host "Une page va s'ouvrir dans votre navigateur : cliquez « Autoriser »."
-$login = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('login'))
-if ($login.ExitCode -ne 0) {
-  Write-Host $login.Output
-  Stop_With 'Connexion Cloudflare refusée ou annulée.'
+# « whoami » échoue si la session n'est pas valide : inutile dans ce cas
+# d'ouvrir le navigateur, et le script reste donc rejouable sans clic.
+$whoami = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('whoami'))
+if ($whoami.ExitCode -eq 0) {
+  Write-Host '    Session Cloudflare déjà valide, reconnexion inutile.' -ForegroundColor DarkGray
+} else {
+  Write-Host "Une page va s'ouvrir dans votre navigateur : cliquez « Autoriser »."
+  $login = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('login'))
+  if ($login.ExitCode -ne 0) {
+    Write-Host $login.Output
+    Stop_With 'Connexion Cloudflare refusée ou annulée.'
+  }
 }
 
 # --- 2. Namespace KV ------------------------------------------------------

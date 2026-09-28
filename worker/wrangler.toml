@@ -19,7 +19,7 @@ workers_dev = true
 # L'identifiant est rempli par setup.ps1.
 [[kv_namespaces]]
 binding = "LIST"
-id = "COLLE-LE-IDENTIFIANT-ICI"
+id = "5eda21ff1f0c43bc83d2919ff7c988be"
 
 # Secret LIST_KEY : le chemin du lien privé. Jamais écrit dans ce fichier,
 # uniquement via `wrangler secret put` (voir setup.ps1).
