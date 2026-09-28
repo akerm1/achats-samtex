@@ -91,13 +91,30 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   l'application garde votre liste locale et réessaie de la publier, au lieu d'écraser la liste par
   ce que contient GitHub.
 - **Erreur visible** : un message tel que « Jeton refusé par GitHub » ou « GitHub 404 » s'affiche
-  dès qu'une synchronisation ne passe pas (GitHub 404 = le dépôt n'est pas dans la « Repository
-  access » du jeton).
+  dès qu'une synchronisation ne passe pas (voir 6.3.5 : GitHub répond 404 à un dépôt privé hors
+  « Repository access », ce message est donc détecté séparément).
 
 ### Version 6.3.4 — mise à jour forcée
 
 - Bascule du service worker pour forcer l'application installée à détecter la nouvelle version
   (bandeau vert « Recharger » en haut de l'écran).
+
+### Version 6.3.5 — l'erreur GitHub est enfin visible
+
+- **Plus de faux succès** : « Synchroniser » et « Enregistrer » n'affichent plus
+  « Liste enregistrée localement » ou « Liste connectée à GitHub » quand le jeton est refusé —
+  l'attente est réelle et le résultat affiché est le résultat obtenu.
+- **Erreur visible partout, téléphone compris** : bandeau rouge « Synchronisation impossible »
+  avec le message exact et un bouton « Corriger », pastille rouge, ligne d'état rouge dans
+  Réglages (6.3.3 ne l'affichait qu'en gris, et seulement dans l'infobulle de la pastille —
+  impossible à lire au doigt), plus une notification automatique par erreur, sans répéter à
+  chaque scrutation de 6 secondes.
+- **Dépôt invisible distingué du fichier absent** : un 404 est suivi d'une vérification du dépôt
+  lui-même. « Fichier pas encore créé » n'est plus confondu avec « dépôt introuvable ou
+  inaccessible pour ce jeton ».
+- **Limite de requêtes distincte** : un 403 « quota » n'est plus rapporté comme un jeton refusé.
+- **Liste vide** : si la connexion échoue, la carte renvoie vers les réglages au lieu d'annoncer
+  une liste « partagée via GitHub ».
 
 ## Écrans & fonctionnalités
 

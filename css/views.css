@@ -80,6 +80,22 @@
   flex: 0 0 auto;
 }
 
+.setup-card--error {
+  border-color: var(--red-soft);
+  background:
+    radial-gradient(420px 180px at 100% 0%, var(--red-soft), transparent 70%),
+    var(--surface);
+}
+
+.setup-card--error .setup-mark {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.setup-card--error .setup-copy strong {
+  color: var(--red);
+}
+
 @media (max-width: 720px) {
   .setup-card {
     flex-wrap: wrap;

@@ -31,13 +31,16 @@ let state = {
   loaded: false,
   status: config ? 'syncing' : 'config',
   message: '',
+  messageKind: '',
   lastSyncAt: null,
   pending: false,
   dirty: storage.get(DIRTY_KEY) === true,
 }
 let sha = null
 let pollTimer = null
+let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
+const NOTIFY_COOLDOWN_MS = 8000
 
 /* ------------------------------------------------------------------ */
 /* Abonnement / émission                                               */
@@ -62,12 +65,26 @@ function emit() {
 /* Lecture de l'état                                                   */
 /* ------------------------------------------------------------------ */
 
-export function statusLabel(status) {
+export function statusLabel(status, messageKind = '') {
   if (status === 'live') return 'En direct'
-  if (status === 'config') return 'Local seul'
+  if (status === 'config') return messageKind === 'error' ? 'GitHub' : 'Local seul'
   if (status === 'syncing') return 'Connexion…'
   if (status === 'pending') return 'Envoi…'
   return 'Hors ligne'
+}
+
+/** Record d'un échec (message + genre) puis notification, sans répéter à chaque scrutation. */
+function reportFailure(result) {
+  state.message = result.message || 'Synchronisation impossible.'
+  state.messageKind = 'error'
+  notify(state.message)
+}
+
+function notify(message) {
+  const now = Date.now()
+  if (lastNotified.message === message && now - lastNotified.at < NOTIFY_COOLDOWN_MS) return
+  lastNotified = { message, at: now }
+  toast(message, { type: 'error', duration: 7000 })
 }
 
 export function getState() {
@@ -77,7 +94,7 @@ export function getState() {
     config,
     prefs,
     isConfigured: Boolean(config),
-    statusLabel: statusLabel(state.status),
+    statusLabel: statusLabel(state.status, state.messageKind),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
   }
 }
@@ -152,8 +169,18 @@ export function saveConfig(input) {
   state.dirty = false
   storage.remove(DIRTY_KEY)
   state.message = ''
+  state.messageKind = ''
+  lastNotified = { message: '', at: 0 }
   emit()
   return load()
+}
+
+/* Message manuel de la ligne d'état (« Tester la connexion », pré-remplissage…). */
+export function setSyncMessage(message = '', kind = '') {
+  state.message = message
+  state.messageKind = kind
+  emit()
+  return state
 }
 
 export function clearConfig() {
@@ -162,8 +189,10 @@ export function clearConfig() {
   sha = null
   state.status = 'config'
   state.message = ''
+  state.messageKind = ''
   state.dirty = false
   storage.remove(DIRTY_KEY)
+  lastNotified = { message: '', at: 0 }
   emit()
   return state
 }
@@ -207,7 +236,7 @@ export async function load() {
   if (!result.ok) {
     loadLocal()
     state.status = result.status === 'config' ? 'config' : 'offline'
-    state.message = result.message || ''
+    reportFailure(result)
   }
   state.loaded = true
   state.lastSyncAt = Date.now()
@@ -242,6 +271,7 @@ async function syncWithRemote() {
   if (settings) emit()
   state.status = 'live'
   state.message = ''
+  state.messageKind = ''
   state.lastSyncAt = Date.now()
   return { ok: true, status: 'live' }
 }
@@ -252,10 +282,11 @@ export async function loadFromRemote() {
   const remote = await fetchRemoteList(config)
   if (!remote.ok) {
     state.status = remote.status === 'config' ? 'config' : 'offline'
-    state.message = remote.message || ''
+    reportFailure(remote)
   } else {
     state.status = 'live'
     state.message = ''
+    state.messageKind = ''
     state.lastSyncAt = Date.now()
     if (remote.list !== null && !state.dirty) {
       const normalized = normalizeList(remote.list)
@@ -296,14 +327,14 @@ export async function push({ force = false } = {}) {
     storage.remove(DIRTY_KEY)
     state.status = 'live'
     state.message = ''
+    state.messageKind = ''
     state.lastSyncAt = Date.now()
   } else {
     state.status = result.status === 'config' ? 'config' : 'offline'
-    state.message = result.message || ''
     state.dirty = true
     storage.set(DIRTY_KEY, true)
     persistLocal()
-    toast(result.message || 'Synchronisation impossible.', { type: 'error' })
+    reportFailure(result)
   }
   emit()
   return result

@@ -166,6 +166,12 @@
   color: var(--ink-2);
 }
 
+.sync-pill.is-error {
+  color: var(--red);
+  border-color: var(--red-soft);
+  background: var(--red-soft);
+}
+
 .sync-pill small {
   color: var(--muted);
   font-size: 10px;

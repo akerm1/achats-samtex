@@ -113,8 +113,23 @@ function results() {
       title = 'Aucun produit coché'
       message = 'Les articles que vous cochez après achat apparaîtront ici.'
     }
-    const intro = !getState().isConfigured
+    const { isConfigured, message: syncMessage, messageKind } = getState()
+    const syncFailed = isConfigured && messageKind === 'error'
+    /* Si la connexion échoue, la phrase « partagée via GitHub » serait fausse :
+       on montre la cause et le chemin de réparation. */
+    if (syncFailed && !needle) message = syncMessage
+    const intro = syncFailed
       ? `
+      <div class="setup-card setup-card--error" data-role="setup">
+        <span class="setup-mark">${icon('alert', 18)}</span>
+        <div class="setup-copy">
+          <strong>La liste GitHub n'est pas à jour</strong>
+          <p>${esc(syncMessage)}</p>
+        </div>
+        <button type="button" class="btn btn--primary btn--sm" data-action="go-settings">${icon('sliders', 13)} Corriger la connexion</button>
+      </div>`
+      : !isConfigured
+        ? `
       <div class="setup-card" data-role="setup">
         <span class="setup-mark">${icon('link', 18)}</span>
         <div class="setup-copy">
@@ -124,7 +139,7 @@ function results() {
         </div>
         <button type="button" class="btn btn--primary btn--sm" data-action="go-settings">${icon('sliders', 13)} Ouvrir les réglages</button>
       </div>`
-      : ''
+        : ''
     return `
       ${intro}
       <div class="empty">

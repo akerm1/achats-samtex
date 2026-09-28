@@ -37,8 +37,45 @@ function encodeBase64(text) {
   return btoa(binary)
 }
 
+function repoUrl(config) {
+  return `${API}/repos/${config.owner}/${config.repo}`
+}
+
 function contentsUrl(config) {
-  return `${API}/repos/${config.owner}/${config.repo}/contents/${DATA_PATH}`
+  return `${repoUrl(config)}/contents/${DATA_PATH}`
+}
+
+/** GitHub répond 403 « quota » quand le jeton (ou l'IP) a dépassé la limite. */
+function isRateLimited(response) {
+  return response.headers.get('x-ratelimit-remaining') === '0'
+}
+
+/** Traduit un statut HTTP en message compréhensible pour l'utilisateur. */
+function failureMessage(response) {
+  const status = response.status
+  if (status === 401) return 'Jeton refusé par GitHub'
+  if (status === 429 || (status === 403 && isRateLimited(response))) {
+    return 'Limite de requêtes GitHub atteinte — réessayez dans quelques minutes.'
+  }
+  if (status === 403) {
+    return 'Jeton refusé par GitHub — activez « Contents: Read and write » sur ce dépôt.'
+  }
+  return `GitHub ${status} ${response.statusText || ''}`.trim()
+}
+
+/**
+ * Un 404 sur le fichier ne suffit pas à conclure : il peut signifier « fichier
+ * absent » (dépot accessible) comme « dépôt invisible pour ce jeton » — GitHub
+ * répond 404 à un dépôt privé non autorisé, ou à un nom mal orthographié.
+ * @returns {Promise<boolean|null>} `null` si GitHub est injoignable.
+ */
+async function repoReachable(config) {
+  try {
+    const response = await fetch(repoUrl(config), { headers: apiHeaders(config.token), cache: 'no-store' })
+    return response.status !== 404
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -52,12 +89,33 @@ export async function fetchRemoteList(config) {
   try {
     response = await fetch(url, { headers: apiHeaders(config.token), cache: 'no-store' })
   } catch (error) {
-    return { ok: false, list: null, sha: null, status: 'offline', message: String(error?.message || error) }
+    return {
+      ok: false,
+      list: null,
+      sha: null,
+      status: 'offline',
+      message: `Impossible de joindre GitHub (${String(error?.message || error)})`,
+    }
   }
 
-  if (response.status === 404) return { ok: true, list: null, sha: null, status: 'live' }
-  if (response.status === 401 || response.status === 403) {
-    return { ok: false, list: null, sha: null, status: 'config', message: 'Jeton refusé par GitHub' }
+  if (response.status === 404) {
+    const reachable = await repoReachable(config)
+    if (reachable === false) {
+      return {
+        ok: false,
+        list: null,
+        sha: null,
+        status: 'config',
+        message: `Dépôt « ${config.owner}/${config.repo} » introuvable ou inaccessible — vérifiez le nom et l'accès du jeton.`,
+      }
+    }
+    if (reachable === null) {
+      return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
+    }
+    return { ok: true, list: null, sha: null, status: 'live' }
+  }
+  if (response.status === 401 || response.status === 403 || response.status === 429) {
+    return { ok: false, list: null, sha: null, status: 'config', message: failureMessage(response) }
   }
   if (!response.ok) {
     return {
@@ -120,7 +178,12 @@ export async function putRemoteList(config, list, sha, settings) {
   try {
     response = await send(sha)
   } catch (error) {
-    return { ok: false, sha, status: 'offline', message: String(error?.message || error) }
+    return {
+      ok: false,
+      sha,
+      status: 'offline',
+      message: `Impossible de joindre GitHub (${String(error?.message || error)})`,
+    }
   }
 
   if (response.ok) {
@@ -128,8 +191,8 @@ export async function putRemoteList(config, list, sha, settings) {
     return { ok: true, sha: data.content?.sha || sha, status: 'live' }
   }
 
-  if (response.status === 401 || response.status === 403) {
-    return { ok: false, sha, status: 'config', message: 'Jeton refusé par GitHub' }
+  if (response.status === 401 || response.status === 403 || response.status === 429) {
+    return { ok: false, sha, status: 'config', message: failureMessage(response) }
   }
 
   /* Fichier ou branche absent : on retente sans SHA. */
@@ -139,14 +202,33 @@ export async function putRemoteList(config, list, sha, settings) {
       const data = await retry.json()
       return { ok: true, sha: data.content?.sha || null, status: 'live' }
     }
-    return { ok: false, sha, status: 'error', message: `GitHub ${retry.status} ${retry.statusText || ''}`.trim() }
+    if (retry.status === 401 || retry.status === 403 || retry.status === 429) {
+      return { ok: false, sha, status: 'config', message: failureMessage(retry) }
+    }
+    if (retry.status === 404) {
+      const reachable = await repoReachable(config)
+      if (reachable === false) {
+        return {
+          ok: false,
+          sha,
+          status: 'config',
+          message: `Dépôt « ${config.owner}/${config.repo} » introuvable ou inaccessible — vérifiez le nom et l'accès du jeton.`,
+        }
+      }
+    }
+    return { ok: false, sha, status: 'error', message: failureMessage(retry) }
   }
 
   /* Conflit d'écriture : on relit la version fraîche puis on retente. */
   if (response.status === 409 || response.status === 422) {
     const fresh = await fetchRemoteList(config)
     if (!fresh.ok || fresh.list === null) {
-      return { ok: false, sha, status: 'error', message: 'products.json introuvable sur GitHub' }
+      return {
+        ok: false,
+        sha,
+        status: fresh.status === 'config' ? 'config' : 'error',
+        message: fresh.message || 'products.json introuvable sur GitHub',
+      }
     }
     const retry = await send(fresh.sha)
     if (retry.ok) {
@@ -165,7 +247,7 @@ export async function putRemoteList(config, list, sha, settings) {
     ok: false,
     sha,
     status: 'error',
-    message: `GitHub ${response.status} ${response.statusText || ''}`.trim(),
+    message: failureMessage(response),
   }
 }
 
@@ -176,15 +258,24 @@ export async function testConnection(config) {
   try {
     response = await fetch(`${contentsUrl(config)}?ref=${encodeURIComponent(config.branch)}`, {
       headers: apiHeaders(config.token),
+      cache: 'no-store',
     })
   } catch {
     return { ok: false, message: 'Impossible de joindre GitHub — vérifiez votre connexion internet.' }
   }
   if (response.ok) return { ok: true, message: `Connexion réussie à « ${config.owner}/${config.repo} ».` }
-  if (response.status === 404) return { ok: true, message: `${DATA_PATH} sera créé à la première modification.` }
-  if (response.status === 401) return { ok: false, message: 'Jeton invalide ou expiré.' }
-  if (response.status === 403) {
-    return { ok: false, message: 'Jeton trop limité — activez « Contents: Read and write ».' }
+  if (response.status === 404) {
+    const reachable = await repoReachable(config)
+    if (reachable === false) {
+      return {
+        ok: false,
+        message: `Dépôt « ${config.owner}/${config.repo} » introuvable ou inaccessible — vérifiez le nom et l'accès du jeton.`,
+      }
+    }
+    if (reachable === null) {
+      return { ok: false, message: 'Impossible de joindre GitHub — vérifiez votre connexion internet.' }
+    }
+    return { ok: true, message: `${DATA_PATH} sera créé à la première modification.` }
   }
-  return { ok: false, message: `Erreur ${response.status} — vérifiez le jeton et les noms du dépôt.` }
+  return { ok: false, message: failureMessage(response) }
 }

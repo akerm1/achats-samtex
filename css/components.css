@@ -520,6 +520,15 @@
   border-color: var(--teal-soft);
 }
 
+.banner--error {
+  background: var(--red-soft);
+  border-color: var(--red-soft);
+}
+
+.banner--error .banner-text strong {
+  color: var(--red);
+}
+
 .banner-mark {
   display: grid;
   place-items: center;

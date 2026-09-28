@@ -9,26 +9,26 @@ import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
 import { testConnection } from '../../data/github.js'
 import {
-  clearAll,
-  clearConfig,
   getConfig,
   getLastSyncAt,
-  getSyncMessage,
   getProducts,
   getState,
   importProducts,
   isLoaded,
   saveConfig,
   setPrefs,
-  syncNow,
+  setSyncMessage,
 } from '../../data/store.js'
 import { isInstalled } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.4'
+export const APP_VERSION = '6.3.5'
 
 let host = null
+/* Empreinte de ce qui est affiché : évite de redessiner (et donc d'effacer
+   une saisie en cours) quand seul le message de connexion a changé. */
+let signature = null
 
 const STATUS_CLASS = {
   live: 'badge--teal',
@@ -61,8 +61,7 @@ function themeBlock() {
 
 function githubBlock() {
   const config = getConfig()
-  const { status } = getState()
-  const message = getSyncMessage()
+  const { status, message, messageKind } = getState()
   const lastSyncAt = getLastSyncAt()
   return `
     <div class="setting-block" style="display:block">
@@ -101,9 +100,7 @@ function githubBlock() {
           avec la permission <strong>Contents : Read and write</strong> sur ce seul dépôt.
         </p>
         <div class="u-row u-wrap">
-          <span class="form-message" data-role="github-status">${
-            message ? esc(message) : ''
-          }</span>
+          <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
           <button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>
           <button type="button" class="btn btn--ghost btn--sm" data-action="test-github">${icon('link', 13)} Tester la connexion</button>
           <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
@@ -119,7 +116,7 @@ function githubBlock() {
       <div class="kv" style="margin-top:16px">
         <div class="kv-item">
           <small>État</small>
-          <strong><span class="badge ${STATUS_CLASS[status] || ''}">${esc(getState().statusLabel)}</span></strong>
+          <strong><span class="badge ${STATUS_CLASS[status] || ''}" data-role="github-state">${esc(getState().statusLabel)}</span></strong>
         </div>
         <div class="kv-item">
           <small>Dernière synchro</small>
@@ -214,11 +211,20 @@ function aboutBlock() {
     </div>`
 }
 
-function setStatus(text, kind = '') {
-  const node = host?.querySelector('[data-role="github-status"]')
-  if (!node) return
-  node.textContent = text || ''
-  node.className = `form-message${kind ? ` is-${kind}` : ''}`
+/** Met à jour la ligne d'état et le badge sans redessiner la vue entière. */
+function paintStatus() {
+  if (!host) return
+  const { message, messageKind, status, statusLabel } = getState()
+  const line = host.querySelector('[data-role="github-status"]')
+  if (line) {
+    line.textContent = message || ''
+    line.className = `form-message${messageKind ? ` is-${messageKind}` : ''}`
+  }
+  const badge = host.querySelector('[data-role="github-state"]')
+  if (badge) {
+    badge.className = `badge ${STATUS_CLASS[status] || ''}`
+    badge.textContent = statusLabel
+  }
 }
 
 function template() {
@@ -244,12 +250,12 @@ async function handleTest() {
   const repo = host.querySelector('#setting-repo')?.value.trim() || ''
   const branch = host.querySelector('#setting-branch')?.value.trim() || 'main'
   if (!token || !owner || !repo) {
-    setStatus('Renseignez le jeton, le propriétaire et le nom du dépôt.', 'error')
+    setSyncMessage('Renseignez le jeton, le propriétaire et le nom du dépôt.', 'error')
     return
   }
-  setStatus('Connexion en cours…')
+  setSyncMessage('Connexion en cours…')
   const result = await testConnection({ token, owner, repo, branch })
-  setStatus(result.message, result.ok ? 'ok' : 'error')
+  setSyncMessage(result.message, result.ok ? 'ok' : 'error')
 }
 
 /** Valeurs de repli si `sync-defaults.json` est indisponible (hors-ligne…). */
@@ -258,7 +264,7 @@ let syncDefaults = null
 
 /** Pré-remplit automatiquement propriétaire / dépôt / branche. */
 async function handleAutoConfig() {
-  setStatus('Préparation de la configuration…')
+  setSyncMessage('Préparation de la configuration…')
   if (!syncDefaults) {
     try {
       const response = await fetch('./sync-defaults.json', { cache: 'no-cache' })
@@ -272,7 +278,7 @@ async function handleAutoConfig() {
   host.querySelector('#setting-repo').value = d.repo || ''
   host.querySelector('#setting-branch').value = d.branch || 'main'
   const hasToken = Boolean(host.querySelector('#setting-token')?.value.trim())
-  setStatus(
+  setSyncMessage(
     hasToken
       ? `Pré-rempli : ${d.owner}/${d.repo} — cliquez Enregistrer.`
       : `Pré-rempli : ${d.owner}/${d.repo} — collez votre jeton puis Enregistrer.`,
@@ -316,18 +322,21 @@ function bind() {
     })
   })
 
-  host.querySelector('#github-form')?.addEventListener('submit', (event) => {
+  host.querySelector('#github-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     const token = $('#setting-token', host)?.value.trim() || ''
     const owner = $('#setting-owner', host)?.value.trim() || ''
     const repo = $('#setting-repo', host)?.value.trim() || ''
     const branch = $('#setting-branch', host)?.value.trim() || 'main'
     if (!token || !owner || !repo) {
-      setStatus('Renseignez au minimum le jeton, le propriétaire et le nom du dépôt.', 'error')
+      setSyncMessage('Renseignez au minimum le jeton, le propriétaire et le nom du dépôt.', 'error')
       return
     }
-    saveConfig({ token, owner, repo, branch })
-    toast('Liste connectée à GitHub — synchronisation en cours.', { type: 'ok' })
+    const state = await saveConfig({ token, owner, repo, branch })
+    /* En cas d'échec, le store a déjà affiché et notifié le message exact. */
+    if (state.messageKind === 'error') return
+    setSyncMessage(`Connecté à ${owner}/${repo}.`, 'ok')
+    toast('Liste connectée à GitHub.', { type: 'ok' })
   })
 
   host.querySelector('[data-action="test-github"]')?.addEventListener('click', handleTest)
@@ -338,8 +347,25 @@ function bind() {
   host.querySelector('[data-role="import-file"]')?.addEventListener('change', handleImport)
 }
 
+/** Ce qui, hors message, impose un vrai redessin de la vue. */
+function dataSignature() {
+  const state = getState()
+  return JSON.stringify([
+    state.loaded,
+    state.status,
+    state.lastSyncAt,
+    state.products.length,
+    state.isConfigured,
+    state.config?.owner || '',
+    state.config?.repo || '',
+    state.config?.branch || '',
+    state.config?.token || '',
+  ])
+}
+
 function paint() {
   host.innerHTML = isLoaded() ? template() : loadingBlock()
+  signature = dataSignature()
   bind()
 }
 
@@ -350,11 +376,14 @@ export const settingsView = {
   icon: 'sliders',
   mount(element) {
     host = element
+    signature = null
     paint()
   },
   update() {
     if (!host) return
     /* Les champs GitHub ne doivent jamais être écrasés pendant la saisie. */
+    paintStatus()
+    if (dataSignature() === signature) return
     if (deferWhileEditing(host, paint)) return
     paint()
   },

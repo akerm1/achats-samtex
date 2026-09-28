@@ -13,8 +13,8 @@ import {
   clearConfig,
   deleteProduct,
   getProducts,
-  getStatus,
-  getSyncMessage,
+  getState,
+  loadFromRemote,
   replaceAll,
   restoreMany,
   restoreProduct,
@@ -29,6 +29,7 @@ import {
   applyUpdate,
   canPromptInstall,
   dismissInstall,
+  dismissSyncError,
   hideOfflineNotice,
   promptInstall,
   renderChrome,
@@ -184,10 +185,12 @@ const ACTIONS = {
   'share-list': () => shareList(),
   'go-settings': () => navigate('reglages'),
   'sync-now': async () => {
-    await syncNow()
-    const status = getStatus()
-    toast(status === 'config' ? 'Liste enregistrée localement.' : getSyncMessage() || 'Synchronisation terminée.', {
-      type: status === 'offline' ? 'error' : 'ok',
+    const result = await syncNow()
+    /* Les échecs sont déjà annoncés par le store (toast d'erreur) : on ne
+       double pas l'information, on ne confirme que ce qui a fonctionné. */
+    if (!result.ok) return
+    toast(result.status === 'config' ? 'Liste enregistrée localement.' : 'Liste synchronisée avec GitHub.', {
+      type: 'ok',
     })
   },
   'disconnect-github': () => handleDisconnect(),
@@ -203,6 +206,7 @@ const ACTIONS = {
   'install-app': () => (canPromptInstall() ? promptInstall() : showInstallHelp()),
   'hide-install': () => dismissInstall(),
   'hide-offline': () => hideOfflineNotice(),
+  'hide-sync-error': () => dismissSyncError(),
 }
 
 function initActions() {
@@ -289,11 +293,13 @@ function initInstallFlow() {
     dismissInstall()
     /* Après installation, on force une synchronisation immédiate. */
     syncNow().then((result) => {
+      if (!result.ok) return
+      const { status } = getState()
       toast(
-        result.ok && getStatus() !== 'config'
-          ? 'Application installée — liste synchronisée.'
-          : 'Application installée — connectez GitHub dans Réglages pour tout partager.',
-        { type: result.ok && getStatus() !== 'config' ? 'ok' : 'info' },
+        status === 'config'
+          ? 'Application installée — connectez GitHub dans Réglages pour tout partager.'
+          : 'Application installée — liste synchronisée.',
+        { type: status === 'config' ? 'info' : 'ok' },
       )
     })
   })

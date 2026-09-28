@@ -16,6 +16,7 @@ const shell = {
   installEvent: null,
   updateAvailable: false,
   offlineReady: false,
+  syncErrorDismissed: null,
 }
 
 /* Navigation ------------------------------------------------------- */
@@ -70,9 +71,10 @@ const PILL_CLASSES = {
 export function renderSyncPill() {
   const pill = $('#sync-pill')
   if (!pill) return
-  const { status, isConfigured, lastSyncAt, message } = getState()
-  pill.className = `sync-pill ${PILL_CLASSES[status] || 'is-config'}`
-  pill.innerHTML = `<span>${esc(statusLabel(status))}</span>${
+  const { status, isConfigured, lastSyncAt, message, messageKind } = getState()
+  const failed = messageKind === 'error'
+  pill.className = `sync-pill ${PILL_CLASSES[status] || 'is-config'}${failed ? ' is-error' : ''}`
+  pill.innerHTML = `<span>${esc(statusLabel(status, messageKind))}</span>${
     lastSyncAt ? `<small>${formatRelative(lastSyncAt)}</small>` : ''
   }`
   pill.title = [
@@ -210,7 +212,20 @@ export function renderBanners() {
   const region = $('#banners')
   if (!region) return
   const { installHidden } = getPrefs()
+  const { isConfigured, message, messageKind } = getState()
   const html = []
+
+  /* Un refus de jeton (ou un dépôt inaccessible) doit être visible sans
+     survol de la souris : la pastille devient un point sur les téléphones. */
+  if (isConfigured && messageKind === 'error' && message && message !== shell.syncErrorDismissed) {
+    html.push(`
+      <aside class="banner banner--error">
+        <span class="banner-mark">${icon('alert', 15)}</span>
+        <div class="banner-text"><strong>Synchronisation impossible</strong><span>${esc(message)}</span></div>
+        <a class="btn btn--ghost btn--sm" href="#/reglages">Corriger</a>
+        <button type="button" class="icon-btn icon-btn--plain" data-action="hide-sync-error" aria-label="Masquer">${icon('x', 14)}</button>
+      </aside>`)
+  }
 
   if (shell.updateAvailable) {
     html.push(`
@@ -243,6 +258,12 @@ export function renderBanners() {
 
 export function hideOfflineNotice() {
   shell.offlineReady = false
+  renderBanners()
+}
+
+/** Masque le bandeau d'erreur ; il réapparaîtra si le message change. */
+export function dismissSyncError() {
+  shell.syncErrorDismissed = getState().message || ''
   renderBanners()
 }
 
