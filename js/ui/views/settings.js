@@ -2,7 +2,7 @@
 /* Vue Réglages — thème, partage entre appareils, données, à propos    */
 /* ------------------------------------------------------------------ */
 
-import { $, esc, formatRelative } from '../../core/utils.js'
+import { $, esc, formatRelative, readableBytes } from '../../core/utils.js'
 import { THEMES, getThemePreference } from '../../core/theme.js'
 import { storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
@@ -307,7 +307,25 @@ function updateBlock() {
 
 function aboutBlock() {
   const persistent = storage.isPersistent()
+  const state = getState()
+  const { bytes = 0, photos = 0, photoBytes = 0 } = state.usage || {}
+  const total = state.products?.length || 0
+  const full = Boolean(state.storageFull)
+  /* Les navigateurs tiennent autour de 5 à 10 Mo par origine. On ne prétend
+     pas connaître le plafond exact : on montre l'occupation réelle, et on
+     prévient franchement quand l'écriture est déjà refusée. */
+  const ceiling = full ? 0 : Math.round(80 - (bytes / (10 * 1024 * 1024)) * 100)
+  const photoShare = bytes ? Math.round((photoBytes / bytes) * 100) : 0
   return `
+    ${
+      full
+        ? `<div class="form-message is-error" data-role="storage-warning" style="margin-bottom:12px">
+             <strong>Stockage du navigateur plein.</strong> Vos photos ne sont plus enregistrées sur cet appareil :
+             la liste s'affiche encore, mais elle sera perdue à la fermeture.
+             Exportez une sauvegarde JSON, puis retirez des photos.
+           </div>`
+        : ''
+    }
     <div class="setting-block">
       <div class="setting-copy">
         <strong>Application</strong>
@@ -315,11 +333,16 @@ function aboutBlock() {
           Version <strong>${APP_VERSION}</strong> · PWA statique, sans dépendance ni build.
           ${isInstalled() ? 'Installée sur cet appareil.' : 'Ouvrez-la dans le navigateur du téléphone pour l’installer.'}
         </p>
+        <p data-role="storage-usage">
+          ${total} produit${total > 1 ? 's' : ''} · ${photos} photo${photos > 1 ? 's' : ''}
+          ${photos ? ` (${Math.round(photoShare)} % du poids)` : ''} · ${readableBytes(bytes)} sur cet appareil
+          ${full ? '' : ` · environ ${Math.max(0, ceiling)} % de la marge typique`}
+        </p>
       </div>
       <div class="setting-side">
         <span class="badge ${isInstalled() ? 'badge--teal' : ''}">${isInstalled() ? 'Installée' : 'Navigateur'}</span>
-        <span class="badge ${persistent ? 'badge--teal' : 'badge--orange'}">
-          ${persistent ? 'Stockage local actif' : 'Stockage limité'}
+        <span class="badge ${full ? 'badge--orange' : persistent ? 'badge--teal' : 'badge--orange'}">
+          ${full ? 'Stockage plein' : persistent ? 'Stockage local actif' : 'Stockage limité'}
         </span>
       </div>
     </div>
@@ -609,6 +632,11 @@ function dataSignature() {
     state.config?.branch || '',
     state.config?.token || '',
     state.config?.endpoint || '',
+    /* Le poids affiché et l'avertissement de quota doivent suivre les
+       enregistrements, pas seulement le nombre de produits. */
+    state.storageProblem || '',
+    state.usage?.bytes || 0,
+    state.usage?.photos || 0,
   ])
 }
 

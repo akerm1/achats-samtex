@@ -7,7 +7,7 @@ import { compressPhoto, readableSize } from '../core/photo.js'
 import { icon } from './icons.js'
 import { CATEGORIES, CATEGORY_VALUES, PRIORITIES, UNITS, colorHex, defaultUnitFor, displayName, knownSuppliers } from '../data/model.js'
 import { colorFromText, colorList } from '../data/colors.js'
-import { addProduct, getProducts, updateProduct } from '../data/store.js'
+import { addProduct, getProducts, updateProduct, isStorageFull } from '../data/store.js'
 import { toast } from '../core/feedback.js'
 
 let current = null
@@ -343,6 +343,15 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    /* Une fois le quota atteint, accepter une photo reviendrait à la perdre
+       en silence à la fermeture. On le dit avant, pas après. */
+    if (isStorageFull()) {
+      setMessage(
+        'Stockage du navigateur plein : une photo de plus ne serait pas enregistrée et disparaîtrait à la fermeture. Enregistrez le produit sans photo, ou exportez une sauvegarde JSON puis retirez des photos.',
+        'error',
+      )
+      return
+    }
     busy = true
     submitButton.disabled = true
     setMessage('Préparation de la photo…')

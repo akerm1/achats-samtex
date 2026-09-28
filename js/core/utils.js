@@ -189,3 +189,11 @@ export function slug(value) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 }
+
+/** Poids lisible, pour un nombre d'octets (ou de caractères) deja mesure. */
+export function readableBytes(value) {
+  const bytes = Number(value) || 0
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} Ko`
+  return `${Math.max(0, Math.round(bytes))} o`
+}

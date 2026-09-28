@@ -158,8 +158,15 @@ export function getState() {
     unpublished: state.dirty && Boolean(config) && !canWrite(config),
     statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
+    /* L'écriture locale a échoué : l'utilisateur doit l'apprendre, sinon il
+       croit avoir enregistré alors que la liste disparaîtra au rechargement. */
+    storageProblem,
+    storageFull: storage.isFull(),
+    usage,
   }
 }
+
+export const isStorageFull = () => storageProblem === 'quota'
 
 export const getProducts = () => products
 export const isLoaded = () => state.loaded
@@ -277,9 +284,60 @@ function loadLocal() {
   persistLocal()
 }
 
+/**
+ * La liste locale, et sa taille réelle.
+ *
+ * Les photos sont des chaînes base64 intégrées au produit : c'est de loin la
+ * source principale de poids, et c'est la raison pour laquelle le navigateur
+ * peut refuser l'écriture. On mesure donc à chaque enregistrement plutôt que
+ * de le deviner, pour pouvoir prévenir avant la perte.
+ */
+let usage = { bytes: 0, photos: 0, photoBytes: 0 }
+
+/** Refus d'écriture local en cours, à montrer tant qu'il n'est pas résolu. */
+let storageProblem = ''
+
 function persistLocal() {
-  storage.set(PRODUCTS_KEY, products)
+  let text = '[]'
+  try {
+    text = JSON.stringify(products)
+  } catch {
+    /* Circularité improbable, mais on n'écrit pas une chaîne cassée. */
+  }
+  usage = measureUsage(products, text)
+  if (storage.setRaw(PRODUCTS_KEY, products, text)) {
+    if (storageProblem) {
+      /* Une écriture qui passe réarme l'affichage : le problème est résolu. */
+      storageProblem = ''
+      state.message = ''
+      state.messageKind = ''
+    }
+    return true
+  }
+  const reason = storage.failureReason()
+  storageProblem = reason
+  if (reason === 'quota') {
+    state.message = 'Stockage du navigateur plein : les photos ne sont plus enregistrées sur cet appareil. Exportez une sauvegarde JSON, puis retirez des photos. Votre liste est encore affichée, mais elle disparaîtra à la fermeture.'
+    state.messageKind = 'error'
+    notify(state.message)
+  }
+  return false
 }
+
+/** Poids total, nombre de photos et part occupée par les photos. */
+function measureUsage(list, text) {
+  let photos = 0
+  let photoBytes = 0
+  for (const product of list) {
+    const photo = product?.photo
+    if (typeof photo === 'string' && photo) {
+      photos += 1
+      photoBytes += photo.length
+    }
+  }
+  return { bytes: text.length, photos, photoBytes }
+}
+
 
 /* ------------------------------------------------------------------ */
 /* Chargement & synchronisation                                        */
