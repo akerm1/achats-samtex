@@ -257,8 +257,8 @@ Une seule chose à coller, une fois par appareil, et ensuite : lecture **et**
 **Ce qui change**
 
 - **Deux emplacements au choix** dans Réglages → Partage entre appareils, par onglets :
-  *GitHub* (inchangé) ou *Lien privé (sans jeton)*. Rien n'est cassé, on peut
-  revenir en arrière à tout moment.
+  *GitHub* (lecture seule, dépôt public) ou *Lien privé* (lecture et écriture, sans jeton).
+  Rien n'est cassé, on peut revenir en arrière à tout moment.
 - **Plus de « Lecture seule »** avec un lien privé : le badge affiche
   *Lecture + écriture*, et le bandeau « Modifications non publiées » disparaît.
 - **Migration en un clic** : « Importer depuis GitHub » recopie la liste déjà

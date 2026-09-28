@@ -225,3 +225,126 @@ export function colorList() {
     .map(([label, hex]) => ({ label, hex }))
     .sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }))
 }
+
+/* ------------------------------------------------------------------ */
+/* Conversions — partagées par la roue chromatique et la recherche      */
+/* ------------------------------------------------------------------ */
+
+/** `#rgb` ou `#rrggbb` → `{ r, g, b }`, ou `null` si illisible. */
+export function hexToRgb(value) {
+  let clean = String(value || '').trim().replace('#', '')
+  if (clean.length === 3) clean = clean.replace(/./g, (c) => c + c)
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return null
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  }
+}
+
+/** `{ r, g, b }` → `#rrggbb`. Les entrées sont bornées à 0-255. */
+export function rgbToHex({ r, g, b } = {}) {
+  const part = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0))).toString(16).padStart(2, '0')
+  return `#${part(r)}${part(g)}${part(b)}`
+}
+
+/** `{ h: 0-360, s: 0-1, l: 0-1 }` → `#rrggbb`. */
+export function hslToHex({ h, s, l } = {}) {
+  const hue = (((Number(h) || 0) % 360) + 360) % 360
+  const sat = Math.max(0, Math.min(1, Number(s) || 0))
+  const light = Math.max(0, Math.min(1, Number(l) || 0))
+  /* Sans saturation, la couleur est un gris : la formule standard donnerait 0. */
+  if (!sat) return rgbToHex({ r: light * 255, g: light * 255, b: light * 255 })
+  const q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat
+  const p = 2 * light - q
+  const channel = (t) => {
+    let value = t
+    if (value < 0) value += 1
+    if (value > 1) value -= 1
+    if (value < 1 / 6) return p + (q - p) * 6 * value
+    if (value < 1 / 2) return q
+    if (value < 2 / 3) return p + (q - p) * (2 / 3 - value) * 6
+    return p
+  }
+  const hk = hue / 360
+  return rgbToHex({
+    r: channel(hk + 1 / 3) * 255,
+    g: channel(hk) * 255,
+    b: channel(hk - 1 / 3) * 255,
+  })
+}
+
+/**
+ * Suggestions pendant la frappe.
+ *
+ * Le tri place d'abord les libellés qui *commencent* par ce qui est tapé :
+ * « bleu » doit proposer « bleu » et « bleu marine » avant « bleu canard »,
+ * et surtout avant n'importe quelle couleur contenant « bleu ».
+ * @returns {Array<{label:string,hex:string}>} au plus `limit` résultats.
+ */
+export function searchColors(text, limit = 8) {
+  const needle = normalize(text)
+  if (!needle) return []
+  const starts = []
+  const words = []
+  const inside = []
+  for (const [label, hex] of Object.entries(FRENCH_COLORS)) {
+    const key = normalize(label)
+    if (key === needle) starts.unshift({ label, hex })
+    else if (key.startsWith(needle)) starts.push({ label, hex })
+    /* « rose bébé » pour « bébé » : un mot entier, pas un bout de mot. */
+    else if (key.split(' ').some((word) => word.startsWith(needle))) words.push({ label, hex })
+    else if (key.includes(needle)) inside.push({ label, hex })
+  }
+  const byLabel = (a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' })
+  return [...starts.sort(byLabel), ...words.sort(byLabel), ...inside.sort(byLabel)].slice(0, limit)
+}
+
+/**
+ * Couleur de la table la plus proche d'une teinte choisie à la roue.
+ *
+ * Sert à nommer une couleur que personne n'a écrite dans la table : l'utilisateur
+ * fait glisser la boule, on lui propose quand même un libellé connu, ce qui
+ * garde les fiches cohérentes d'un appareil à l'autre.
+ *
+ * La distance est calculée en HSL : deux teintes proches en HSL le sont aussi
+ * à l'œil, alors qu'une distance RGB naïve déclare « bleu marine » plus proche
+ * de « noir » que de « bleu roi ».
+ */
+export function nearestColor(hex) {
+  const target = hexToRgb(hex)
+  if (!target) return null
+  const from = rgbToHsl(target)
+  let best = null
+  let bestScore = Infinity
+  for (const [label, value] of Object.entries(FRENCH_COLORS)) {
+    const to = rgbToHsl(hexToRgb(value))
+    /* Hue n'a de sens que si la couleur n'est pas grise. */
+    const dh = from.s < 0.08 || to.s < 0.08 ? 0 : Math.abs(from.h - to.h)
+    const dhShort = Math.min(dh, 360 - dh)
+    const score = (dhShort / 180) ** 2 * 1.6 + (from.s - to.s) ** 2 + (from.l - to.l) ** 2 * 1.2
+    if (score < bestScore) {
+      bestScore = score
+      best = { label, hex: value }
+    }
+  }
+  return best
+}
+
+/** `{ h: 0-360, s: 0-1, l: 0-1 }` depuis une couleur RGB. */
+export function rgbToHsl({ r, g, b } = {}) {
+  const red = (Number(r) || 0) / 255
+  const green = (Number(g) || 0) / 255
+  const blue = (Number(b) || 0) / 255
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const delta = max - min
+  const l = (max + min) / 2
+  if (!delta) return { h: 0, s: 0, l }
+  const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min)
+  let h
+  if (max === red) h = ((green - blue) / delta + (green < blue ? 6 : 0)) * 60
+  else if (max === green) h = ((blue - red) / delta + 2) * 60
+  else h = ((red - green) / delta + 4) * 60
+  return { h, s, l }
+}

@@ -160,9 +160,10 @@ export function getState() {
     statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
     /* L'écriture locale a échoué : l'utilisateur doit l'apprendre, sinon il
-       croit avoir enregistré alors que la liste disparaîtra au rechargement. */
+       croit avoir enregistré alors que la liste disparaîtra au rechargement.
+       Le quota est signalé par `storageProblem` (localStorage ou IndexedDB). */
     storageProblem,
-    storageFull: storage.isFull(),
+    storageFull: storageProblem === 'quota',
     photosSeparated,
     usage,
   }

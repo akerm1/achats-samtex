@@ -69,8 +69,8 @@ let shareTab = null
 let draft = {}
 
 const SHARE_TABS = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'worker', label: 'Lien privé (sans jeton)' },
+  { value: 'github', label: 'GitHub (lecture seule)' },
+  { value: 'worker', label: 'Lien privé' },
 ]
 
 function tabValue(config) {
@@ -82,11 +82,6 @@ function tabValue(config) {
 function githubFields(config) {
   return `
       <div class="settings-grid">
-        <div class="field">
-          <label for="setting-token">Jeton d'accès GitHub</label>
-          <input class="input" id="setting-token" type="password" autocomplete="off"
-                 placeholder="ghp_… ou github_pat_…" value="${esc(draft.token ?? config?.token ?? '')}">
-        </div>
         <div class="field">
           <label for="setting-owner">Propriétaire du dépôt</label>
           <input class="input" id="setting-owner" autocomplete="off" placeholder="votre-nom-github" value="${esc(draft.owner ?? config?.owner ?? '')}">
@@ -101,10 +96,9 @@ function githubFields(config) {
         </div>
       </div>
       <p class="field-hint">
-        <strong>Le jeton n'est pas obligatoire pour lire la liste</strong> : un dépôt public
-        s'ouvre sans jeton. Il sert uniquement à <em>publier</em> vos modifications sur GitHub.
-        Un jeton refusé ou expiré ne casse plus la lecture : l'application repasse en lecture
-        seule et vous dit quoi faire.
+        Cette méthode lit un dépôt <strong>public</strong>, sans jeton : l'application peut
+        afficher la liste, mais <em>pas</em> y publier vos modifications. Pour écrire, utilisez
+        l'onglet <strong>Lien privé</strong>, qui lit et écrit sans mot de passe.
         ${
           readOnlyNote(config)
             ? `<br /><span class="form-message is-ok">${readOnlyNote(config)}</span>`
@@ -134,8 +128,8 @@ function workerFields(config) {
 
 /** Note de lecture seule, uniquement pertinente pour GitHub. */
 function readOnlyNote(config) {
-  if (!config || config.provider === 'worker' || config.token) return ''
-  return "Lecture seule : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil tant qu'un jeton valide n'est pas enregistré."
+  if (!config || config.provider === 'worker') return ''
+  return "Lecture seule : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil. Pour les partager, utilisez un lien privé."
 }
 
 function shareBlock() {
@@ -410,7 +404,6 @@ function readDraft() {
     const field = host?.querySelector(selector)
     if (field) draft[key] = field.value
   }
-  pick('#setting-token', 'token')
   pick('#setting-owner', 'owner')
   pick('#setting-repo', 'repo')
   pick('#setting-branch', 'branch')
@@ -427,7 +420,6 @@ function watchDraft() {
   const form = host?.querySelector('#share-form')
   if (!form) return
   const fields = {
-    '#setting-token': 'token',
     '#setting-owner': 'owner',
     '#setting-repo': 'repo',
     '#setting-branch': 'branch',
@@ -442,8 +434,11 @@ function watchDraft() {
 /** Configuration affichée dans l'onglet courant, telle que saisie. */
 function currentConfig() {
   if (shareTab === 'worker') return { provider: 'worker', endpoint: draft.endpoint }
+  /* GitHub n'est désormais plus qu'un accès en lecture : on ne saisit plus de
+     jeton. Un ancien jeton éventuellement enregistré reste utilisé s'il est
+     encore là, pour ne pas casser une lecture déjà en place. */
   return {
-    token: draft.token,
+    token: getConfig()?.token || '',
     owner: draft.owner,
     repo: draft.repo,
     branch: draft.branch || 'main',
@@ -498,13 +493,7 @@ async function handleAutoConfig() {
   host.querySelector('#setting-repo').value = d.repo || ''
   host.querySelector('#setting-branch').value = d.branch || 'main'
   readDraft()
-  const hasToken = Boolean(draft.token)
-  setSyncMessage(
-    hasToken
-      ? `Pré-rempli : ${d.owner}/${d.repo} — cliquez Enregistrer.`
-      : `Pré-rempli : ${d.owner}/${d.repo} — collez votre jeton puis Enregistrer.`,
-    'ok',
-  )
+  setSyncMessage(`Pré-rempli : ${d.owner}/${d.repo} — cliquez Enregistrer.`, 'ok')
 }
 
 async function handleImport(event) {
@@ -639,7 +628,6 @@ function dataSignature() {
     state.config?.owner || '',
     state.config?.repo || '',
     state.config?.branch || '',
-    state.config?.token || '',
     state.config?.endpoint || '',
     /* Le poids affiché et l'avertissement de quota doivent suivre les
        enregistrements, pas seulement le nombre de produits. */

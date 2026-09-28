@@ -6,7 +6,14 @@ import { esc, toNumber } from '../core/utils.js'
 import { compressPhoto, readableSize } from '../core/photo.js'
 import { icon } from './icons.js'
 import { CATEGORIES, CATEGORY_VALUES, PRIORITIES, UNITS, colorHex, defaultUnitFor, displayName, knownSuppliers } from '../data/model.js'
-import { colorFromText, colorList } from '../data/colors.js'
+import {
+  colorFromText,
+  hexToRgb,
+  hslToHex,
+  nearestColor,
+  rgbToHsl,
+  searchColors,
+} from '../data/colors.js'
 import { addProduct, getProducts, updateProduct, isStorageFull } from '../data/store.js'
 import { toast } from '../core/feedback.js'
 
@@ -86,23 +93,17 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
                 <label for="product-color">Couleur / finition</label>
                 <div class="color-line">
                   <input class="input" id="product-color" data-field="color" autocomplete="off"
-                         placeholder="Ex. rose bébé, bleu roi, ivoire" value="${esc(product?.color || '')}">
-                  <button type="button" class="color-box" data-role="color-picker" aria-label="Choisir une couleur"
-                          title="Choisir une couleur dans la table"></button>
+                         role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="color-suggest"
+                         placeholder="Commencez à taper : bleu, rose, ivoire…" value="${esc(product?.color || '')}">
+                  <button type="button" class="color-box" data-role="color-picker" aria-label="Choisir une couleur à la roue"
+                          title="Choisir une couleur à la roue"></button>
                 </div>
                 <div class="color-preview" data-role="color-preview" tabindex="0" role="button"
-                     aria-label="Aperçu de la couleur" title="Aperçu — cliquez pour changer"></div>
-                <div class="color-hint">Suggestions — touchez une couleur pour la sélectionner :</div>
-                <div class="color-swatches" data-role="color-swatches" aria-label="Couleurs suggérées">
-                  ${colorList()
-                    .map(
-                      ({ label, hex }) => `
-                    <button type="button" data-color-swatch="${esc(label)}" style="--sw:${hex}" title="${esc(label)}">
-                      <span class="swatch" style="background:${hex}"></span>
-                      <span class="swatch-name">${esc(label)}</span>
-                    </button>`,
-                    )
-                    .join('')}
+                     aria-label="Aperçu de la couleur" title="Aperçu — cliquez pour ouvrir la roue"></div>
+                <div class="color-suggest" id="color-suggest" data-role="color-suggest" role="listbox"
+                     aria-label="Couleurs suggérées" hidden></div>
+                <div class="color-hint" data-role="color-hint">
+                  Tapez un nom de couleur, ou touchez la grande pastille pour la choisir à la roue.
                 </div>
               </div>
             </div>
@@ -204,21 +205,13 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
     })
   })
 
-  /* Couleur : boîte à côté du nom + grande boîte d'aperçu en dessous.
-     Les deux ouvrent la table de couleurs — identique sur téléphone et PC. */
+  /* Couleur : saisie suggestive + roue chromatique. */
   const colorBox = dialog.querySelector('[data-role="color-picker"]')
   const colorPreview = dialog.querySelector('[data-role="color-preview"]')
+  const suggestBox = dialog.querySelector('[data-role="color-suggest"]')
+  const colorInput = field('color')
   let currentHex = hex || null
 
-  const hexToRgb = (value) => {
-    const clean = String(value || '').replace('#', '')
-    if (clean.length !== 6) return null
-    return {
-      r: parseInt(clean.slice(0, 2), 16),
-      g: parseInt(clean.slice(2, 4), 16),
-      b: parseInt(clean.slice(4, 6), 16),
-    }
-  }
   const paintColor = (value) => {
     currentHex = value || null
     if (colorPreview) {
@@ -230,56 +223,139 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
       colorBox.classList.toggle('is-empty', !value)
     }
   }
-  /* Saisie du libellé de couleur : la table française remplit boîte + aperçu. */
-  field('color')?.addEventListener('input', () => {
-    const found = colorFromText(field('color')?.value)
-    if (found) paintColor(found)
-  })
 
-  /* Table de couleurs : fenêtre partagée (PC et téléphone). */
-  const colorListSorted = () =>
-    [...colorList()].sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }))
-  const colorTableHtml = (needle = '') => {
-    const matches = needle
-      ? colorListSorted().filter(
-          ({ label, hex }) => label.includes(needle) || hex.replace('#', '').includes(needle),
-        )
-      : colorListSorted()
-    return matches
+  /* --- Suggestions pendant la frappe ------------------------------- */
+  let suggestIndex = -1
+  let suggestItems = []
+
+  const closeSuggest = () => {
+    suggestBox.hidden = true
+    suggestBox.innerHTML = ''
+    suggestIndex = -1
+    suggestItems = []
+    colorInput?.setAttribute('aria-expanded', 'false')
+  }
+
+  const applyColor = (label, value) => {
+    if (colorInput) colorInput.value = label ?? ''
+    paintColor(value)
+    closeSuggest()
+  }
+
+  const openSuggest = (needle) => {
+    const found = searchColors(needle, 8)
+    suggestItems = found
+    suggestIndex = -1
+    if (!found.length) {
+      closeSuggest()
+      return
+    }
+    suggestBox.innerHTML = found
       .map(
-        ({ label, hex }) => `
-      <button type="button" class="color-cell ${hex === currentHex ? 'is-selected' : ''}"
-              data-color-cell="${esc(label)}" data-hex="${hex}" title="${esc(label)}">
-        <span class="color-cell-dot" style="background:${hex}"></span>
-        <span>${esc(label)}</span>
+        ({ label: name, hex }, index) => `
+      <button type="button" class="color-suggest-item" data-suggest-index="${index}"
+              data-suggest-label="${esc(name)}" data-suggest-hex="${hex}" role="option" aria-selected="false">
+        <span class="swatch" style="background:${hex}"></span>
+        <span class="color-suggest-name">${esc(name)}</span>
       </button>`,
       )
       .join('')
+    suggestBox.hidden = false
+    colorInput?.setAttribute('aria-expanded', 'true')
   }
 
-  const openColorTable = () => {
-    const table = document.createElement('dialog')
-    table.className = 'dialog dialog--sm color-table-dialog'
-    table.innerHTML = `
+  const moveSuggest = (delta) => {
+    if (suggestBox.hidden || !suggestItems.length) return
+    const next = (suggestIndex + delta + suggestItems.length) % suggestItems.length
+    suggestIndex = next
+    suggestBox.querySelectorAll('[data-suggest-index]').forEach((node, index) => {
+      const active = index === next
+      node.classList.toggle('is-active', active)
+      node.setAttribute('aria-selected', active ? 'true' : 'false')
+      if (active) node.scrollIntoView({ block: 'nearest' })
+    })
+  }
+
+  const takeSuggest = (index) => {
+    const item = suggestItems[index]
+    if (item) applyColor(item.label, item.hex)
+  }
+
+  colorInput?.addEventListener('input', () => {
+    const text = colorInput.value
+    /* La couleur suit la frappe quand le libellé est reconnu : c'est le
+       comportement le plus utile, mais on n'impose rien à l'utilisateur. */
+    const found = colorFromText(text)
+    if (found) paintColor(found)
+    else if (!text.trim()) paintColor(null)
+    if (text.trim().length >= 1) openSuggest(text)
+    else closeSuggest()
+  })
+
+  colorInput?.addEventListener('keydown', (event) => {
+    if (suggestBox.hidden) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveSuggest(1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveSuggest(-1)
+    } else if (event.key === 'Enter' && suggestIndex >= 0) {
+      event.preventDefault()
+      takeSuggest(suggestIndex)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      closeSuggest()
+    }
+  })
+
+  colorInput?.addEventListener('blur', () => {
+    /* Le clic sur une suggestion passe par ce blur : on attend le prochain tour
+       de boucle, sinon le clic n'atteindrait jamais l'élément suggéré. */
+    setTimeout(() => {
+      if (!suggestBox.contains(document.activeElement)) closeSuggest()
+    }, 120)
+  })
+
+  suggestBox?.addEventListener('mousedown', (event) => event.preventDefault())
+  suggestBox?.addEventListener('click', (event) => {
+    const node = event.target.closest('[data-suggest-index]')
+    if (node) takeSuggest(Number(node.dataset.suggestIndex))
+  })
+
+  /* --- Roue chromatique -------------------------------------------- */
+  /* Un disque de teintes ; la boule se déplace au doigt, à la souris ou aux
+     flèches du clavier. Le centre est le gris, le bord la couleur pure : c'est
+     la roue HSL, donc ce qu'on cherche est exactement ce qu'on voit. */
+  const openColorWheel = () => {
+    const wheel = document.createElement('dialog')
+    wheel.className = 'dialog dialog--sm color-wheel-dialog'
+    const start = currentHex || '#3d9958'
+    wheel.innerHTML = `
       <form method="dialog">
         <div class="dialog-body u-stack">
           <div class="panel-head" style="margin-bottom:0">
             <div>
               <h2>${icon('palette', 16)} Choisir une couleur</h2>
-              <p>Touchez la teinte qui correspond, ou affinez avec une couleur personnalisée.</p>
+              <p>Déplacez la boule jusqu'à la teinte voulue, ou utilisez les flèches.</p>
             </div>
             <button type="button" class="icon-btn" data-close aria-label="Fermer">${icon('x', 15)}</button>
           </div>
-          <label class="input-wrap" for="color-table-search">
-            ${icon('search', 14)}
-            <input id="color-table-search" type="search" autocomplete="off" placeholder="Rechercher (rose, bleu, ivoire…)" aria-label="Rechercher une couleur">
-          </label>
-          <div class="color-custom">
-            <input class="color-box" data-custom type="color" value="${esc(currentHex || '#808080')}"
-                   aria-label="Couleur personnalisée" title="Couleur personnalisée">
-            <span class="u-muted">Couleur personnalisée — choisissez dans le sélecteur, puis touchez OK.</span>
+          <div class="color-wheel-stage">
+            <div class="color-wheel" data-role="wheel" tabindex="0" role="application"
+                 aria-label="Roue des couleurs. Flèches pour se déplacer, Origine du clavier pour choisir."
+                 style="--hue:${esc(start)}">
+              <div class="color-wheel-ball" data-role="ball"></div>
+            </div>
+            <div class="color-wheel-side">
+              <div class="color-wheel-swatch" data-role="wheel-swatch" style="background:${esc(start)}"></div>
+              <output class="color-wheel-readout" data-role="wheel-readout">${esc(start)}</output>
+              <div class="color-wheel-name" data-role="wheel-name"></div>
+            </div>
           </div>
-          <div class="color-table" data-role="color-table">${colorTableHtml()}</div>
+          <label class="field-hint" for="wheel-lightness">Clarté</label>
+          <input class="range" id="wheel-lightness" type="range" min="4" max="100" step="1"
+                 data-role="wheel-light" aria-label="Clarté de la couleur">
         </div>
         <div class="dialog-foot">
           <button type="button" class="btn btn--ghost" data-clear>${icon('trash', 13)} Effacer</button>
@@ -287,54 +363,136 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
           <button type="submit" class="btn btn--primary">OK</button>
         </div>
       </form>`
-    table.addEventListener('close', () => table.remove())
+    wheel.addEventListener('close', () => wheel.remove())
 
-    const apply = (label, hex) => {
-      if (hex) {
-        field('color').value = label
-        paintColor(hex)
-      } else {
-        field('color').value = ''
-        paintColor(null)
-      }
-      table.close()
+    const disk = wheel.querySelector('[data-role="wheel"]')
+    const ball = wheel.querySelector('[data-role="ball"]')
+    const swatch = wheel.querySelector('[data-role="wheel-swatch"]')
+    const readout = wheel.querySelector('[data-role="wheel-readout"]')
+    const nameBox = wheel.querySelector('[data-role="wheel-name"]')
+    const lightInput = wheel.querySelector('[data-role="wheel-light"]')
+
+    const hsl = rgbToHsl(hexToRgb(start) || { r: 61, g: 153, b: 88 })
+    const state = { h: hsl.h, s: Math.max(hsl.s, 0.6), l: hsl.l }
+
+    /* La teinte affichée ne dépend que de h et l : la boule se place sur le
+       disque, la clarté vient du curseur. */
+    const render = () => {
+      const hex = hslToHex({ h: state.h, s: state.s, l: state.l })
+      const angle = (state.h - 90) * (Math.PI / 180)
+      const radius = state.s * 50
+      ball.style.left = `${50 + Math.cos(angle) * radius}%`
+      ball.style.top = `${50 + Math.sin(angle) * radius}%`
+      ball.style.background = hex
+      swatch.style.background = hex
+      readout.textContent = hex
+      lightInput.value = String(Math.round(state.l * 100))
+      /* Un nom connu pour la teinte choisie : la fiche reste lisible sur les
+         deux appareils, même quand la couleur sort de la table. */
+      const near = nearestColor(hex)
+      nameBox.textContent = near ? near.label : ''
+      return hex
     }
 
-    const search = table.querySelector('#color-table-search')
-    const grid = table.querySelector('[data-role="color-table"]')
-    search?.addEventListener('input', () => {
-      grid.innerHTML = colorTableHtml(search.value.trim().toLowerCase())
-    })
-    grid?.addEventListener('click', (event) => {
-      const cell = event.target.closest('[data-color-cell]')
-      if (cell) apply(cell.dataset.colorCell, cell.dataset.hex)
-    })
-    const custom = table.querySelector('[data-custom]')
-    custom?.addEventListener('change', () => apply(custom.value, custom.value))
-    table.querySelector('[data-clear]')?.addEventListener('click', () => apply('', null))
-    table.querySelector('[data-close]')?.addEventListener('click', () => table.close())
+    const pickFrom = (event) => {
+      const box = disk.getBoundingClientRect()
+      const dx = (event.clientX - box.left) / box.width - 0.5
+      const dy = (event.clientY - box.top) / box.height - 0.5
+      const distance = Math.min(1, Math.hypot(dx, dy) * 2)
+      state.s = distance
+      if (distance > 0.02) {
+        const deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90
+        state.h = (deg + 360) % 360
+      }
+      render()
+      refreshChosen()
+    }
 
-    document.body.appendChild(table)
-    table.showModal()
-    requestAnimationFrame(() => search?.focus())
+    /* `chosen` suit chaque interaction (boule, clarté, clavier) : sans cela,
+       le bouton OK validait la teinte affichée au premier rendu, et un déplacement
+       de la boule n'était pas pris en compte. */
+    let chosen = render()
+    const refreshChosen = () => { chosen = render() }
+
+    let dragging = false
+    disk.addEventListener('pointerdown', (event) => {
+      dragging = true
+      disk.setPointerCapture?.(event.pointerId)
+      disk.focus()
+      pickFrom(event)
+      event.preventDefault()
+    })
+    disk.addEventListener('pointermove', (event) => {
+      if (dragging) pickFrom(event)
+    })
+    const stopDrag = (event) => {
+      if (!dragging) return
+      dragging = false
+      disk.releasePointerCapture?.(event.pointerId)
+    }
+    disk.addEventListener('pointerup', stopDrag)
+    disk.addEventListener('pointercancel', stopDrag)
+
+    /* Clavier : la roue doit rester utilisable sans souris. Origine = centre
+       (gris), car on ne peut pas être « à la bonne distance » du centre. */
+    disk.addEventListener('keydown', (event) => {
+      const step = event.shiftKey ? 10 : 2
+      const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+      if (!keys.includes(event.key)) return
+      event.preventDefault()
+      if (event.key === 'ArrowLeft') state.h = (state.h - step + 360) % 360
+      else if (event.key === 'ArrowRight') state.h = (state.h + step) % 360
+      else if (event.key === 'ArrowUp') state.s = Math.min(1, state.s + step / 100)
+      else if (event.key === 'ArrowDown') state.s = Math.max(0, state.s - step / 100)
+      else if (event.key === 'Home') state.s = 0
+      else if (event.key === 'End') state.s = 1
+      render()
+      refreshChosen()
+    })
+
+    lightInput?.addEventListener('input', () => {
+      state.l = Number(lightInput.value) / 100
+      render()
+      refreshChosen()
+    })
+
+    /* OK valide la teinte affichée ; le nom proche n'est qu'une aide, on ne
+       l'impose pas — l'utilisateur peut préférer un autre libellé. */
+    wheel.querySelector('form')?.addEventListener('submit', (event) => {
+      event.preventDefault()
+      applyColor(colorInput?.value || '', chosen)
+      wheel.close()
+    })
+    /* Une touche sur le nom propose la teinte comme un choix nommé. */
+    nameBox?.addEventListener('click', () => {
+      if (nameBox.textContent) {
+        applyColor(nameBox.textContent, chosen)
+        wheel.close()
+      }
+    })
+    wheel.querySelector('[data-clear]')?.addEventListener('click', () => {
+      applyColor('', null)
+      wheel.close()
+    })
+    wheel.querySelector('[data-close]')?.addEventListener('click', () => wheel.close())
+
+    document.body.appendChild(wheel)
+    wheel.showModal()
+    requestAnimationFrame(() => disk.focus())
   }
 
-  colorBox?.addEventListener('click', openColorTable)
-  colorPreview?.addEventListener('click', openColorTable)
+  colorBox?.addEventListener('click', openColorWheel)
+  colorPreview?.addEventListener('click', openColorWheel)
   colorPreview?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      openColorTable()
+      openColorWheel()
     }
   })
-
-  /* Palette de suggestions sous le champ : un toucher remplit libellé + couleur. */
-  dialog.querySelectorAll('[data-color-swatch]').forEach((button) => {
-    button.addEventListener('click', () => {
-      field('color').value = button.dataset.colorSwatch
-      paintColor(button.style.getPropertyValue('--sw'))
-    })
+  colorInput?.addEventListener('focus', () => {
+    if (colorInput.value.trim()) openSuggest(colorInput.value)
   })
+
   paintColor(hex)
 
   const pick = (kind) => dialog.querySelector(`[data-input="${kind}"]`)?.click()
