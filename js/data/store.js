@@ -1,5 +1,10 @@
 /* ------------------------------------------------------------------ */
-/* Store — état global, synchronisation GitHub, actions métier         */
+/* Store — état global, synchronisation, actions métier                 */
+/*                                                                     */
+/* Deux fournisseurs de partage, une seule mécanique :                 */
+/*   - `github` : `products.json` (jeton facultatif, lecture seule      */
+/*     possible sans jeton sur un dépôt public) ;                      */
+/*   - `worker` : un lien privé Cloudflare, sans jeton ni expiration.  */
 /*                                                                     */
 /* Mécanisme de synchronisation, volontairement simple :                */
 /*   - aucune scrutation en arrière-plan, aucun état « en direct » ;   */
@@ -7,8 +12,8 @@
 /*     de la page, un clic sur la pastille ou le bouton « Actualiser »; */
 /*   - les modifications locales sont poussées immédiatement, et        */
 /*     republiées au prochain rafraîchissement si l'envoi a échoué ;     */
-/*   - les jetons en échec restent affichés (bandeau, pastille,         */
-/*     Réglages) au lieu d'être le résultat d'une scrutation silencieuse.*/
+/*   - les échecs restent affichés (bandeau, pastille, Réglages) au      */
+/*     lieu d'être le résultat d'une scrutation silencieuse.            */
 /* ------------------------------------------------------------------ */
 
 import { storage } from '../core/storage.js'
@@ -16,11 +21,23 @@ import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
 import { STATUS, normalizeList, normalizeProduct } from './model.js'
-import { canWrite, fetchDefaultConfig, fetchRemoteList, putRemoteList, normalizeConfig, READ_ONLY_MESSAGE } from './github.js'
+import {
+  PROVIDER_GITHUB,
+  PROVIDER_WORKER,
+  canWrite,
+  fetchDefaultConfig,
+  fetchRemoteList,
+  normalizeConfig,
+  providerOf,
+  putRemoteList,
+  READ_ONLY_MESSAGE,
+} from './sync.js'
 import { mergeProducts } from './backup.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
+/* Le nom de la clé est historique : elle contient aujourd'hui la config
+   GitHub *ou* le lien privé, pour ne pas perdre les appareils existants. */
 const CONFIG_KEY = 'purchase-gros-github-v1'
 const PREFS_KEY = 'purchase-gros-prefs-v1'
 const DIRTY_KEY = 'purchase-gros-dirty-v1'
@@ -47,6 +64,8 @@ let state = {
   dirty: storage.get(DIRTY_KEY) === true,
 }
 let sha = null
+/* Révision numérique du dernier document connu (lien privé uniquement). */
+let remoteRev = 0
 let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
 const NOTIFY_COOLDOWN_MS = 8000
@@ -102,6 +121,7 @@ function applyFailure(result) {
  * côté sans rien casser : un dépôt public reste lisible en anonyme.
  */
 function markTokenRejected() {
+  if (providerOf(config) !== PROVIDER_GITHUB) return false
   if (!config || !config.token || config.tokenRejected) return false
   config = { ...config, tokenRejected: true }
   storage.set(CONFIG_KEY, config)
@@ -128,12 +148,13 @@ export function getState() {
     products,
     config,
     prefs,
+    provider: providerOf(config),
     isConfigured: Boolean(config),
     /* Un dépôt public se lit sans jeton : seule l'écriture en exige un. */
     readOnly: Boolean(config) && !canWrite(config),
     hasToken: Boolean(config?.token),
-    /* Modifications que GitHub ne peut pas recevoir : l'utilisateur doit le
-       savoir, sinon deux appareils affichent deux listes différentes. */
+    /* Modifications que le distant ne peut pas recevoir : l'utilisateur doit
+       le savoir, sinon deux appareils affichent deux listes différentes. */
     unpublished: state.dirty && Boolean(config) && !canWrite(config),
     statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
@@ -199,7 +220,7 @@ export function setPrefs(patch = {}) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Configuration GitHub                                                */
+/* Configuration de partage                                             */
 /* ------------------------------------------------------------------ */
 
 export function saveConfig(input) {
@@ -209,6 +230,7 @@ export function saveConfig(input) {
   /* Configuration choisie à la main : elle prime sur le dépôt par défaut. */
   storage.remove(OPTOUT_KEY)
   sha = null
+  remoteRev = 0
   state.dirty = false
   storage.remove(DIRTY_KEY)
   state.message = ''
@@ -232,6 +254,7 @@ export function clearConfig() {
   /* Déconnexion volontaire : on ne doit pas se reconnecter tout seul ensuite. */
   storage.set(OPTOUT_KEY, true)
   sha = null
+  remoteRev = 0
   state.status = 'local'
   state.message = ''
   state.messageKind = ''
@@ -263,6 +286,18 @@ function persistLocal() {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Le KV de Cloudflare est cohérent à terme : une lecture peut rendre un
+ * document plus ancien que celui qu'on a déjà publié. Écraser la liste
+ * locale avec une révision inférieure perdrait des produits — on ignore
+ * donc ces lectures, exactement comme GitHub avec un SHA périmé.
+ */
+function isStaleRead(remote) {
+  if (typeof remote?.rev !== 'number') return false
+  if (remote.rev <= 0) return false
+  return remoteRev > 0 && remote.rev < remoteRev
+}
+
+/**
  * Point d'entrée unique de la lecture distante : appelé au démarrage
  * (donc à chaque rafraîchissement de la page) et par `refresh()`.
  * Les modifications locales non poussées gagnent, sinon la version
@@ -271,9 +306,15 @@ function persistLocal() {
 async function syncWithRemote() {
   const remote = await fetchRemoteList(config)
   if (!remote.ok) return { ok: false, status: remote.status, message: remote.message }
+  if (isStaleRead(remote)) {
+    /* Lecture arrivée après coup : on garde l'état local, déjà à jour. */
+    if (typeof remote.rev === 'number') remoteRev = Math.max(remoteRev, remote.rev)
+    return markReady(false)
+  }
+  if (typeof remote.rev === 'number') remoteRev = Math.max(remoteRev, remote.rev)
 
   if (remote.list === null) {
-    /* Le fichier n'existe pas encore sur GitHub : on publie la liste locale. */
+    /* Aucun document publié pour l'instant : on publie la liste locale. */
     if (state.dirty || products.length) return push({ force: true })
     return markReady()
   }
@@ -382,7 +423,7 @@ export async function refresh() {
   return result
 }
 
-/** Publie la liste (GitHub si configuré, sinon stockage local). */
+/** Publie la liste (GitHub ou lien privé si configuré, sinon stockage local). */
 export async function push({ force = false } = {}) {
   if (!config) {
     persistLocal()
@@ -401,6 +442,16 @@ export async function push({ force = false } = {}) {
 
   if (result.ok) {
     sha = result.sha
+    if (typeof result.rev === 'number') remoteRev = Math.max(remoteRev, result.rev)
+    /* Une fusion de conflit propose la liste retenue : on l'adopte pour que
+       l'écran et le distant affichent exactement la même chose. */
+    if (Array.isArray(result.list)) {
+      const merged = normalizeList(result.list)
+      if (JSON.stringify(merged) !== JSON.stringify(products)) {
+        products = merged
+        persistLocal()
+      }
+    }
     state.dirty = false
     storage.remove(DIRTY_KEY)
     state.status = 'ready'
@@ -416,6 +467,48 @@ export async function push({ force = false } = {}) {
   }
   emit()
   return result
+}
+
+/* ------------------------------------------------------------------ */
+/* Migration GitHub -> lien privé                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Copie la liste publiée sur GitHub vers le lien privé.
+ * Le dépôt étant public, cette lecture se fait sans jeton : la migration
+ * tient en un clic, sans rien configurer par ailleurs.
+ * @returns {Promise<{ok:boolean, message:string, count?:number}>}
+ */
+export async function importFromGithub() {
+  if (providerOf(config) !== PROVIDER_WORKER) {
+    return { ok: false, message: "Sélectionnez d'abord « Lien privé » puis collez votre lien." }
+  }
+  const defaults = await fetchDefaultConfig()
+  if (!defaults) {
+    return { ok: false, message: 'Dépôt GitHub par défaut introuvable (sync-defaults.json).' }
+  }
+  const remote = await fetchRemoteList(defaults)
+  if (!remote.ok) return { ok: false, message: remote.message || 'Liste GitHub illisible.' }
+  if (remote.list === null) {
+    return { ok: false, message: 'Aucune liste publiée sur GitHub à copier pour l\'instant.' }
+  }
+
+  const list = normalizeList(remote.list || [])
+  const result = await putRemoteList(config, list, null, remote.settings)
+  if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
+
+  sha = result.sha
+  if (typeof result.rev === 'number') remoteRev = Math.max(remoteRev, result.rev)
+  products = list
+  persistLocal()
+  state.dirty = false
+  storage.remove(DIRTY_KEY)
+  state.status = 'ready'
+  state.lastSyncAt = Date.now()
+  state.message = `${list.length} produit(s) copiés depuis GitHub.`
+  state.messageKind = 'ok'
+  emit()
+  return { ok: true, count: list.length, message: state.message }
 }
 
 /* ------------------------------------------------------------------ */

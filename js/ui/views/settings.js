@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/* Vue Réglages — thème, synchronisation GitHub, données, à propos     */
+/* Vue Réglages — thème, partage entre appareils, données, à propos    */
 /* ------------------------------------------------------------------ */
 
 import { $, esc, formatRelative } from '../../core/utils.js'
@@ -7,12 +7,13 @@ import { THEMES, getThemePreference } from '../../core/theme.js'
 import { storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
-import { testConnection } from '../../data/github.js'
+import { LINK_PLACEHOLDER, normalizeConfig, testConnection } from '../../data/sync.js'
 import {
   getConfig,
   getLastSyncAt,
   getProducts,
   getState,
+  importFromGithub,
   importProducts,
   isLoaded,
   saveConfig,
@@ -62,57 +63,123 @@ function themeBlock() {
     </div>`
 }
 
-function githubBlock() {
+/* Onglet d'édition affiché (le plus souvent celui de la config enregistrée). */
+let shareTab = null
+/* Saisies en cours, conservées d'un onglet à l'autre et d'un redessin à l'autre. */
+let draft = {}
+
+const SHARE_TABS = [
+  { value: 'github', label: 'GitHub' },
+  { value: 'worker', label: 'Lien privé (sans jeton)' },
+]
+
+function tabValue(config) {
+  if (shareTab) return shareTab
+  shareTab = config?.provider === 'worker' ? 'worker' : 'github'
+  return shareTab
+}
+
+function githubFields(config) {
+  return `
+      <div class="settings-grid">
+        <div class="field">
+          <label for="setting-token">Jeton d'accès GitHub</label>
+          <input class="input" id="setting-token" type="password" autocomplete="off"
+                 placeholder="ghp_… ou github_pat_…" value="${esc(draft.token ?? config?.token ?? '')}">
+        </div>
+        <div class="field">
+          <label for="setting-owner">Propriétaire du dépôt</label>
+          <input class="input" id="setting-owner" autocomplete="off" placeholder="votre-nom-github" value="${esc(draft.owner ?? config?.owner ?? '')}">
+        </div>
+        <div class="field">
+          <label for="setting-repo">Nom du dépôt</label>
+          <input class="input" id="setting-repo" autocomplete="off" placeholder="achats-test" value="${esc(draft.repo ?? config?.repo ?? '')}">
+        </div>
+        <div class="field">
+          <label for="setting-branch">Branche</label>
+          <input class="input" id="setting-branch" autocomplete="off" placeholder="main" value="${esc(draft.branch ?? config?.branch ?? 'main')}">
+        </div>
+      </div>
+      <p class="field-hint">
+        <strong>Le jeton n'est pas obligatoire pour lire la liste</strong> : un dépôt public
+        s'ouvre sans jeton. Il sert uniquement à <em>publier</em> vos modifications sur GitHub.
+        Un jeton refusé ou expiré ne casse plus la lecture : l'application repasse en lecture
+        seule et vous dit quoi faire.
+        ${
+          readOnlyNote(config)
+            ? `<br /><span class="form-message is-ok">${readOnlyNote(config)}</span>`
+            : ''
+        }
+      </p>`
+}
+
+function workerFields(config) {
+  return `
+      <div class="field">
+        <label for="setting-endpoint">Votre lien privé</label>
+        <input class="input" id="setting-endpoint" autocomplete="off" spellcheck="false"
+               placeholder="${esc(LINK_PLACEHOLDER)}" value="${esc(draft.endpoint ?? config?.endpoint ?? '')}">
+      </div>
+      <p class="field-hint">
+        Un lien privé est une adresse qui contient elle-même votre clé, par exemple
+        <code>https://liste-achats.mon-sous-domaine.workers.dev/x7k2…</code>. Il n'y a <strong>ni jeton,
+        ni expiration, ni droit à cocher</strong> : vous collez le lien une fois par appareil et vous
+        pouvez lire comme écrire partout.
+        <br />        Ce lien <em>est</em> votre mot de passe : ne le publiez pas et ne le collez pas dans un
+        chat. Le réglage du Worker est expliqué dans le <code>README.md</code> du dépôt de
+        l'application.
+      </p>`
+}
+
+/** Note de lecture seule, uniquement pertinente pour GitHub. */
+function readOnlyNote(config) {
+  if (!config || config.provider === 'worker' || config.token) return ''
+  return "Lecture seule : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil tant qu'un jeton valide n'est pas enregistré."
+}
+
+function shareBlock() {
   const config = getConfig()
   const { status, message, messageKind, readOnly } = getState()
   const lastSyncAt = getLastSyncAt()
+  const tab = tabValue(config)
+  const isWorker = tab === 'worker'
   return `
     <div class="setting-block" style="display:block">
       <div class="setting-copy" style="max-width:none">
-        <strong>Partage entre appareils (GitHub)</strong>
+        <strong>Partage entre appareils</strong>
         <p>
-          La liste est enregistrée dans <code>products.json</code> sur votre dépôt GitHub. Tous les appareils qui ouvrent
-          la même page se synchronisent automatiquement toutes les 6 secondes. Le thème, le tri et les filtres sont
-          également partagés.
-          ${config ? `Connecté à <strong>${esc(config.owner)}/${esc(config.repo)}</strong> (branche ${esc(config.branch)}).` : 'Aucun dépôt connecté : la liste reste locale.'}
+          Choisissez où la liste est enregistrée. Les deux options affichent la même liste sur tous vos
+          appareils : au rafraîchissement de la page, ou d'un clic sur « Synchroniser » — jamais tout seuls
+          en arrière-plan. Le thème, le tri et les filtres sont partagés.
+          ${
+            config?.provider === 'worker'
+              ? `Connecté à votre <strong>lien privé</strong>.`
+              : config?.owner
+                ? `Connecté à <strong>${esc(config.owner)}/${esc(config.repo)}</strong> (branche ${esc(config.branch)}).`
+                : "Aucun partage connecté : la liste reste sur cet appareil."
+          }
         </p>
       </div>
 
-      <form id="github-form" class="u-stack" style="margin-top:16px">
-        <div class="settings-grid">
-          <div class="field">
-            <label for="setting-token">Jeton d'accès GitHub</label>
-            <input class="input" id="setting-token" type="password" autocomplete="off"
-                   placeholder="ghp_… ou github_pat_…" value="${esc(config?.token || '')}">
-          </div>
-          <div class="field">
-            <label for="setting-owner">Propriétaire du dépôt</label>
-            <input class="input" id="setting-owner" autocomplete="off" placeholder="votre-nom-github" value="${esc(config?.owner || '')}">
-          </div>
-          <div class="field">
-            <label for="setting-repo">Nom du dépôt</label>
-            <input class="input" id="setting-repo" autocomplete="off" placeholder="purchase-gros" value="${esc(config?.repo || '')}">
-          </div>
-          <div class="field">
-            <label for="setting-branch">Branche</label>
-            <input class="input" id="setting-branch" autocomplete="off" placeholder="main" value="${esc(config?.branch || 'main')}">
-          </div>
-        </div>
-        <p class="field-hint">
-          <strong>Le jeton n'est pas obligatoire pour lire la liste</strong> : un dépôt public
-          s'ouvre sans jeton. Il sert uniquement à <em>publier</em> vos modifications sur GitHub.
-          Créez-en un « fine-grained » sur GitHub → Settings → Developer settings → Personal access tokens,
-          avec la permission <strong>Contents : Read and write</strong> sur ce seul dépôt.
-          ${
-            readOnly
-              ? '<br /><span class="form-message is-ok">Lecture seule active : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil tant qu\'un jeton valide n\'est pas enregistré.</span>'
-              : ''
-          }
-        </p>
+      <div class="segmented" role="group" aria-label="Emplacement de la liste" style="margin-top:16px">
+        ${SHARE_TABS.map(
+          (item) => `
+            <button type="button" data-share-tab="${item.value}" class="${item.value === tab ? 'is-active' : ''}">
+              ${item.label}
+            </button>`,
+        ).join('')}
+      </div>
+
+      <form id="share-form" class="u-stack" style="margin-top:16px">
+        ${isWorker ? workerFields(config) : githubFields(config)}
         <div class="u-row u-wrap">
           <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
-          <button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>
-          <button type="button" class="btn btn--ghost btn--sm" data-action="test-github">${icon('link', 13)} Tester la connexion</button>
+          ${
+            isWorker
+              ? `<button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>`
+              : `<button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>`
+          }
+          <button type="button" class="btn btn--ghost btn--sm" data-action="test-share">${icon('link', 13)} Tester la connexion</button>
           <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
           ${
             config
@@ -137,7 +204,7 @@ function githubBlock() {
           <strong>${getProducts().length}</strong>
         </div>
         <div class="kv-item">
-          <small>Accès GitHub</small>
+          <small>${config?.provider === 'worker' ? 'Lien privé' : 'Accès GitHub'}</small>
           <strong><span class="badge ${readOnly ? 'badge--orange' : 'badge--teal'}" data-role="github-access">${
             readOnly ? 'Lecture seule' : 'Lecture + écriture'
           }</span></strong>
@@ -294,24 +361,62 @@ function template() {
       </div>
 
       <div class="panel">${themeBlock()}</div>
-      <div class="panel">${githubBlock()}</div>
+      <div class="panel">${shareBlock()}</div>
       <div class="panel">${dataBlock()}${dangerBlock()}</div>
       <div class="panel">${installBlock()}${updateBlock()}${aboutBlock()}</div>
     </section>`
 }
 
+/**
+ * Saisies en cours, à conserver avant tout redessin (changement d'onglet).
+ * Seuls les champs présents dans le DOM sont relus : passer de GitHub au
+ * lien privé ne doit pas effacer ce qui est tapé dans l'autre onglet.
+ */
+function readDraft() {
+  const pick = (selector, key) => {
+    const field = host?.querySelector(selector)
+    if (field) draft[key] = field.value
+  }
+  pick('#setting-token', 'token')
+  pick('#setting-owner', 'owner')
+  pick('#setting-repo', 'repo')
+  pick('#setting-branch', 'branch')
+  pick('#setting-endpoint', 'endpoint')
+}
+
+/** Configuration affichée dans l'onglet courant, telle que saisie. */
+function currentConfig() {
+  if (shareTab === 'worker') return { provider: 'worker', endpoint: draft.endpoint }
+  return {
+    token: draft.token,
+    owner: draft.owner,
+    repo: draft.repo,
+    branch: draft.branch || 'main',
+  }
+}
+
 async function handleTest() {
-  const token = host.querySelector('#setting-token')?.value.trim() || ''
-  const owner = host.querySelector('#setting-owner')?.value.trim() || ''
-  const repo = host.querySelector('#setting-repo')?.value.trim() || ''
-  const branch = host.querySelector('#setting-branch')?.value.trim() || 'main'
-  if (!owner || !repo) {
-    setSyncMessage('Renseignez le propriétaire et le nom du dépôt.', 'error')
+  const config = normalizeConfig(currentConfig())
+  if (!config) {
+    setSyncMessage(
+      shareTab === 'worker'
+        ? 'Collez le lien privé complet (https://…workers.dev/clé).'
+        : 'Renseignez le propriétaire et le nom du dépôt.',
+      'error',
+    )
     return
   }
   setSyncMessage('Connexion en cours…')
-  const result = await testConnection({ token, owner, repo, branch })
+  const result = await testConnection(config)
   setSyncMessage(result.message, result.ok ? 'ok' : 'error')
+}
+
+/** Migration en un clic : la liste GitHub (publique) vers le lien privé. */
+async function handleImportFromGithub() {
+  setSyncMessage('Copie de la liste publiée sur GitHub…')
+  const result = await importFromGithub()
+  setSyncMessage(result.message, result.ok ? 'ok' : 'error')
+  if (result.ok) toast(`${result.count} produit(s) copiés vers le lien privé.`, { type: 'ok' })
 }
 
 /** Valeurs de repli si `sync-defaults.json` est indisponible (hors-ligne…). */
@@ -333,7 +438,8 @@ async function handleAutoConfig() {
   host.querySelector('#setting-owner').value = d.owner || ''
   host.querySelector('#setting-repo').value = d.repo || ''
   host.querySelector('#setting-branch').value = d.branch || 'main'
-  const hasToken = Boolean(host.querySelector('#setting-token')?.value.trim())
+  readDraft()
+  const hasToken = Boolean(draft.token)
   setSyncMessage(
     hasToken
       ? `Pré-rempli : ${d.owner}/${d.repo} — cliquez Enregistrer.`
@@ -403,30 +509,45 @@ function bind() {
     })
   })
 
-  host.querySelector('#github-form')?.addEventListener('submit', async (event) => {
+  /* Changement d'onglet : les saisies de part et d'autre sont conservées. */
+  host.querySelectorAll('[data-share-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      readDraft()
+      shareTab = button.dataset.shareTab
+      paint()
+    })
+  })
+
+  host.querySelector('#share-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
-    const token = $('#setting-token', host)?.value.trim() || ''
-    const owner = $('#setting-owner', host)?.value.trim() || ''
-    const repo = $('#setting-repo', host)?.value.trim() || ''
-    const branch = $('#setting-branch', host)?.value.trim() || 'main'
-    /* Le jeton est facultatif : il ne sert qu'à publier. */
-    if (!owner || !repo) {
-      setSyncMessage('Renseignez au minimum le propriétaire et le nom du dépôt.', 'error')
+    const config = normalizeConfig(currentConfig())
+    if (!config) {
+      setSyncMessage(
+        shareTab === 'worker'
+          ? 'Le lien privé doit ressembler à https://…workers.dev/une-clé.'
+          : 'Renseignez au minimum le propriétaire et le nom du dépôt.',
+        'error',
+      )
       return
     }
-    const state = await saveConfig({ token, owner, repo, branch })
+    draft = {}
+    const state = await saveConfig(config)
     /* En cas d'échec, le store a déjà affiché et notifié le message exact. */
     if (state.messageKind === 'error') return
     if (state.readOnly) {
-      setSyncMessage(state.message || `Lecture seule depuis ${owner}/${repo}.`, 'ok')
+      setSyncMessage(state.message || 'Lecture seule depuis la source connectée.', 'ok')
       toast('Dépôt public connecté en lecture seule.', { type: 'info' })
       return
     }
-    setSyncMessage(`Connecté à ${owner}/${repo}.`, 'ok')
-    toast('Liste connectée à GitHub.', { type: 'ok' })
+    setSyncMessage(
+      state.provider === 'worker' ? 'Connecté à votre lien privé.' : `Connecté à ${config.owner}/${config.repo}.`,
+      'ok',
+    )
+    toast(state.provider === 'worker' ? 'Liste connectée au lien privé.' : 'Liste connectée à GitHub.', { type: 'ok' })
   })
 
-  host.querySelector('[data-action="test-github"]')?.addEventListener('click', handleTest)
+  host.querySelector('[data-action="test-share"]')?.addEventListener('click', handleTest)
+  host.querySelector('[data-action="import-from-github"]')?.addEventListener('click', handleImportFromGithub)
   host.querySelector('[data-action="auto-config"]')?.addEventListener('click', handleAutoConfig)
   host.querySelector('[data-action="check-update"]')?.addEventListener('click', handleCheckUpdate)
   host.querySelector('[data-action="import-json"]')?.addEventListener('click', () =>
@@ -448,15 +569,21 @@ function dataSignature() {
     update.published,
     update.available,
     update.checking,
+    state.provider,
+    shareTab,
     state.config?.owner || '',
     state.config?.repo || '',
     state.config?.branch || '',
     state.config?.token || '',
+    state.config?.endpoint || '',
   ])
 }
 
 function paint() {
   host.innerHTML = isLoaded() ? template() : loadingBlock()
+  /* Les valeurs par défaut de l'onglet courant ne doivent pas écraser
+     une saisie en cours déjà mémorisée. */
+  if (host.querySelector('#share-form')) readDraft()
   signature = dataSignature()
   bind()
 }

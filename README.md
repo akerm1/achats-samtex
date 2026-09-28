@@ -13,7 +13,7 @@ aucune donnée de démonstration. PWA gratuite et sans build, hébergeable sur *
 2. [Nouveautés de la version 6](#nouveautés-de-la-version-6)
 3. [Écrans & fonctionnalités](#écrans--fonctionnalités)
 4. [Structure du projet](#structure-du-projet)
-5. [Synchronisation via GitHub](#synchronisation-via-github)
+5. [Synchronisation : GitHub ou lien privé](#synchronisation--github-ou-lien-privé)
 6. [Installer sur le téléphone](#installer-sur-le-téléphone)
 7. [Données](#données)
 8. [Raccourcis clavier](#raccourcis-clavier)
@@ -237,6 +237,69 @@ toutes deux comprises dans cette version :
   annule ce refus.
 - Deux requêtes suffisent au premier lancement (défauts + lecture), sans jeton.
 
+### Version 7.3 — le « lien privé » :fini les jetons GitHub
+
+**Pourquoi.** Un jeton GitHub, ça expire, ça se révoque, et il faut cocher
+« Contents : Read and write » sur le bon dépôt : quand l'écriture est refusée, on ne
+savait pas dire *pourquoi*. Cette version propose une autre méthode, sans jeton.
+
+**Ce que c'est.** Un petit **Cloudflare Worker** (gratuit) qui garde la liste dans
+son stockage KV. On n'accède à la liste que par une adresse secrète :
+
+```
+https://liste-achats.mon-sous-domaine.workers.dev/<clé de 32 caractères>
+```
+
+Pas de jeton, pas d'expiration, pas de permission à cocher, pas de quota GitHub.
+Une seule chose à coller, une fois par appareil, et ensuite : lecture **et**
+écriture partout, téléphone compris.
+
+**Ce qui change**
+
+- **Deux emplacements au choix** dans Réglages → Partage entre appareils, par onglets :
+  *GitHub* (inchangé) ou *Lien privé (sans jeton)*. Rien n'est cassé, on peut
+  revenir en arrière à tout moment.
+- **Plus de « Lecture seule »** avec un lien privé : le badge affiche
+  *Lecture + écriture*, et le bandeau « Modifications non publiées » disparaît.
+- **Migration en un clic** : « Importer depuis GitHub » recopie la liste déjà
+  publiée vers le lien privé. Le dépôt étant public, cette lecture se fait **sans
+  jeton** — vous ne perdez rien en changeant de méthode.
+- **L'application reste lisible sans configuration** : un appareil neuf continue de
+  se connecter au dépôt public par défaut, en lecture seule, exactement comme en 7.2.
+- Les deux méthodes partagent le même format de document, la même fusion en cas de
+  conflit et la même protection contre les écritures concurrentes.
+
+**À savoir avant de choisir cette méthode**
+
+- Le lien **est** le mot de passe : qui le possède peut modifier la liste. Ne le
+  publiez pas (ni dans un chat, ni dans une capture d'écran).
+- Changer la clé `LIST_KEY` invalide les liens déjà copiés sur vos autres appareils.
+- Le KV de Cloudflare est *cohérent à terme* : une lecture peut rendre une version
+  légèrement ancienne. L'application gère ce cas (révisionSuivie) et ne réécrit
+  jamais votre liste locale avec une version plus vieille que ce qu'elle a publié.
+- Offre gratuite : largement suffisant pour une liste, avec des limites de débit.
+
+### Mise en service du lien privé (5 minutes, une fois)
+
+1. Créez un compte gratuit sur **dashboard.cloudflare.com**.
+2. **Workers & Pages → Create → Worker**, nommez-le (ex. `liste-achats`) puis *Deploy*.
+3. *Edit code* → collez le contenu de **`worker/share-list-worker.mjs`** → *Deploy*.
+4. **Storage & Databases → KV → Create a namespace**, nommez-le `LIST`.
+5. Dans le Worker : **Settings → Bindings → Add** → variable `LIST`, type *KV Namespace*,
+   sélectionnez celui-ci.
+6. **Settings → Variables and Secrets → Add** → nom `LIST_KEY`, type **Secret**.
+   Générez une clé aléatoire de 32 caractères, par exemple dans PowerShell :
+
+   ```powershell
+   [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+   ```
+
+   puis *Deploy*.
+7. Votre lien privé = `https://liste-achats.<votre-sous-domaine>.workers.dev/<la clé>`.
+8. Dans l'application : **Réglages → Lien privé**, collez le lien →
+   **Tester la connexion** → **Enregistrer**. Puis **Importer depuis GitHub** pour
+   récupérer la liste existante.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
@@ -262,6 +325,8 @@ manifest.webmanifest        manifeste PWA (Ajouter, Liste)
 version.json                version publiée de l'application (repère des mises à jour)
 sync-defaults.json          valeurs par défaut pour le bouton « Configurer automatiquement »
 sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
+worker/
+  share-list-worker.mjs     code du Cloudflare Worker du lien privé (à coller dans le dashboard)
 css/
   tokens.css                variables de design (palette sombre moderne, thème clair optionnel)
   base.css                  réinitialisation, typographie, utilitaires
@@ -283,7 +348,9 @@ js/
     model.js                catégories, unités, priorités, couleurs RGB, normalisation, statistiques
     colors.js               ~160 noms de couleurs français (+ palette et détection automatique)
     github.js               client API GitHub (lecture, écriture, test, conflits)
-    store.js                état global, rafraîchissement GitHub, actions métier, préférences
+    worker.js               client du lien privé Cloudflare (lecture, écriture, fusion)
+    sync.js                 aiguillage GitHub / lien privé pour le store
+    store.js                état global, rafraîchissement, actions métier, préférences
     backup.js               export/import JSON et CSV, fusion
   ui/
     icons.js                icônes SVG inline
@@ -296,7 +363,7 @@ js/
 icons/                      icônes de l'application (PWA)
 ```
 
-## Synchronisation via GitHub
+## Synchronisation : GitHub ou lien privé
 
 La liste **et les réglages partagés** (thème, tri, filtres) sont stockés dans `products.json`
 à la racine d'un dépôt GitHub. Les appareils qui ouvrent la même page relisent ce fichier
@@ -316,11 +383,25 @@ synchronisation automatique en arrière-plan. Le réglage le plus récent gagne 
 5. **Tester la connexion** puis **Enregistrer**
 
 La configuration reste dans le navigateur (localStorage) : elle n'est envoyée qu'à GitHub.
-La **pastille** de la barre du haut indique l'état (En direct / Local seul / Hors ligne) et
+La **pastille** de la barre du haut indique l'état (À jour / Local seul / Hors ligne / Erreur) et
 la dernière synchronisation ; un clic déclenche une synchronisation manuelle.
 
 Règle de résolution de conflit : **les modifications locales non encore envoyées gagnent**,
 sinon la version distante remplace la liste locale.
+
+### Ou le lien privé (sans jeton) — recommandé
+
+Si les jetons GitHub vous fatiguent (expiration, permissions, « jeton refusé »), l'onglet
+**Lien privé (sans jeton)** de la même section **Réglages → Partage entre appareils** utilise
+un Cloudflare Worker à la place de GitHub.
+
+- Mise en service détaillée : section [Version 7.3](#version-73--le--lien-privé--fini-les-jetons-github).
+- Dans l'application : onglet **Lien privé (sans jeton)** → coller le lien → **Tester la
+  connexion** → **Enregistrer** → **Importer depuis GitHub** pour reprendre la liste existante.
+- Lecture **et** écriture, sans jeton ni expiration. Le lien lui-même est le secret.
+
+Les deux méthodes restent disponibles : basculer d'un onglet à l'autre ne perd rien, et le
+passage de l'une à l'autre se fait en un clic grâce à l'import.
 
 ## Installer sur le téléphone
 
