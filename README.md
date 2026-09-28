@@ -128,6 +128,16 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   le cache ne servant qu'en cas de coupure ; icônes et polices restent en cache d'abord.
 - Une version déjà téléchargée au démarrage est signalée sans attendre un nouveau téléchargement.
 
+### Version 6.3.7 — l'application se répare seule
+
+- **Prise de possession immédiate** : la nouvelle version du service worker s'active dès son
+  installation au lieu d'attendre la fermeture de tous les onglets. Avant, l'ancienne version
+  gardait le contrôle et continuait de servir ses fichiers périmés.
+- **Démarrage surveillé** (`index.html`, hors module) : si l'application ne démarre pas — modules
+  périmés, cache incohérent, déploiement interrompu — elle force la mise à jour du service worker
+  puis se recharge seule (deux tentatives maximum par session, garde-fou anti-boucle). C'est ce qui
+  rendait l'écran bloqué sur « Chargement de la liste… » impossible à résoudre depuis l'interface.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

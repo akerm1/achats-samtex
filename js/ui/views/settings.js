@@ -23,7 +23,7 @@ import { checkForUpdate, isInstalled, isUpdateAvailable } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.6'
+export const APP_VERSION = '6.3.7'
 
 let host = null
 /* Empreinte de ce qui est affiché : évite de redessiner (et donc d'effacer

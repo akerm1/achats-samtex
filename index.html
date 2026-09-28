@@ -84,6 +84,75 @@
       </p>
     </noscript>
 
+    <script>
+      /* Filet de sécurité, hors module : si l'application ne démarre pas — par
+         exemple un fichier périmé servi par un ancien service worker — on force
+         sa mise à jour puis on recharge, une seule fois par session. Sans cela,
+         l'écran resterait bloqué sur « Chargement de la liste… ». */
+      (function () {
+        var KEY = 'mes-achats-recovery'
+        var KEY_AT = 'mes-achats-recovery-at'
+        var LIMIT = 2
+        var tried = 0
+        try {
+          tried = Number(sessionStorage.getItem(KEY)) || 0
+        } catch (error) {
+          /* navigation privée : la tentative unique reste protégée par la durée */
+        }
+        if (tried >= LIMIT) return
+        if (Date.now() - Number(sessionStorage.getItem(KEY_AT) || 0) < 60000) return
+
+        function recover() {
+          tried += 1
+          try {
+            sessionStorage.setItem(KEY, String(tried))
+            sessionStorage.setItem(KEY_AT, String(Date.now()))
+          } catch (error) {
+            /* sans stockage, une seule tentative par chargement */
+          }
+          if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+            location.reload()
+            return
+          }
+          navigator.serviceWorker
+            .getRegistration()
+            .then(function (registration) {
+              if (!registration) {
+                location.reload()
+                return
+              }
+              registration.update()
+              if (!registration.waiting) {
+                location.reload()
+                return
+              }
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+              navigator.serviceWorker.addEventListener('controllerchange', function () {
+                location.reload()
+              })
+            })
+            .catch(function () {
+              location.reload()
+            })
+        }
+
+        window.addEventListener(
+          'error',
+          function () {
+            recover()
+          },
+          true,
+        )
+
+        /* Repli : si rien n'a été peint après 8 s, l'application n'a pas démarré. */
+        document.addEventListener('DOMContentLoaded', function () {
+          setTimeout(function () {
+            var view = document.getElementById('view')
+            if (view && /Chargement de la liste/.test(view.textContent)) recover()
+          }, 8000)
+        })
+      })()
+    </script>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

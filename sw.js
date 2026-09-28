@@ -1,12 +1,13 @@
 /* ------------------------------------------------------------------ */
-/* Service worker — coquille hors-ligne (v6.3.6)                       */
+/* Service worker — coquille hors-ligne (v6.3.7)                       */
 /*  - navigation : réseau d'abord, repli sur le cache                  */
 /*  - code (js/css) : réseau d'abord — jamais deux versions mélangées  */
 /*  - images et polices : cache d'abord                                */
 /*  - hors-ligne : repli sur le cache dans tous les cas               */
+/*  - nouvelle version : prise de possession immédiate                */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v6.3.6'
+const VERSION = 'mes-achats-v6.3.7'
 const CACHE = `${VERSION}-shell`
 const FONT_CACHE = `${VERSION}-fonts`
 
@@ -55,7 +56,11 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE)
       .then((cache) => cache.addAll(ASSETS))
-      .catch(() => undefined),
+      .catch(() => undefined)
+      /* Prise de possession immédiate : sans cela, la version précédente garde
+         le contrôle et sert ses fichiers périmés jusqu'à la fermeture de
+         l'onglet — l'application ne peut alors pas se mettre à jour elle-même. */
+      .then(() => self.skipWaiting()),
   )
 })
 
