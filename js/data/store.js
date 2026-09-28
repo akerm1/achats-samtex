@@ -365,9 +365,12 @@ export async function load() {
     return getState()
   }
 
+  /* La liste locale est chargée AVANT la lecture distante. Sans cela elle
+     n'existe pas en mémoire au moment du « lien encore vide », et un appareil
+     qui se connecte pour la première fois afficherait une liste vide au lieu
+     de publier la sienne. C'est aussi le repli si la lecture échoue. */
+  loadLocal()
   const result = await refresh()
-  /* Échec : la liste locale reste affichée, l'erreur est signalée. */
-  if (!result.ok) loadLocal()
   state.loaded = true
   emit()
   return getState()
