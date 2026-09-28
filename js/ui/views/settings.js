@@ -117,8 +117,9 @@ function workerFields(config) {
   return `
       <div class="field">
         <label for="setting-endpoint">Votre lien privé</label>
-        <input class="input" id="setting-endpoint" autocomplete="off" spellcheck="false"
-               placeholder="${esc(LINK_PLACEHOLDER)}" value="${esc(draft.endpoint ?? config?.endpoint ?? '')}">
+          <input class="input" id="setting-endpoint" autocomplete="off" spellcheck="false"
+                 autocapitalize="off" autocorrect="off" inputmode="url"
+                 placeholder="${esc(LINK_PLACEHOLDER)}" value="${esc(draft.endpoint ?? config?.endpoint ?? '')}">
       </div>
       <p class="field-hint">
         Un lien privé est une adresse qui contient elle-même votre clé, par exemple
@@ -400,7 +401,7 @@ async function handleTest() {
   if (!config) {
     setSyncMessage(
       shareTab === 'worker'
-        ? 'Collez le lien privé complet (https://…workers.dev/clé).'
+        ? 'Lien privé incomplet ou modifié. Collez la ligne entière du fichier worker\LIEN-PRIVE.txt, sans guillemets ni espace : le clavier du téléphone peut ajouter une majuscule ou couper le texte.'
         : 'Renseignez le propriétaire et le nom du dépôt.',
       'error',
     )

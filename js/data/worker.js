@@ -20,9 +20,18 @@ export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.worke
 
 export function normalizeConfig(input) {
   if (!input) return null
-  /* La clé vit dans le chemin : un lien sans chemin ne peut pas être privé. */
-  const endpoint = String(input.endpoint || '').trim().replace(/\/+$/, '')
+  /* Coller sur un téléphone abîme parfois le texte : espaces parasites,
+     guillemets, retour à la ligne au milieu, et surtout « Https » avec une
+     majuscule (autocapitalisation du clavier). On nettoie, et on ne touche
+     qu'au schéma : la clé est dans le chemin, donc sensible à la casse. */
+  let endpoint = String(input.endpoint || '')
+    .replace(/[\u201c\u201d\u2018\u2019"'\u00ab\u00bb`]/g, '')
+    .replace(/\s+/g, '')
+  endpoint = endpoint.replace(/^HTTPS:\/\//i, 'https://').replace(/\/+$/, '')
   if (!/^https:\/\/[^\s/?#]+\.[^\s/?#]+\/\S+$/.test(endpoint)) return null
+  /* Le texte d'exemple ne doit jamais être accepté : il passerait la forme
+     du lien puis échouerait en 404. */
+  if (endpoint.includes('votre-sous-domaine') || endpoint.includes('clé-secrète')) return null
   return { provider: 'worker', endpoint }
 }
 
