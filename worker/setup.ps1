@@ -29,7 +29,8 @@ $WRANGLER_VERSION = '3.114.17'
 $WRANGLER = @('--yes', "wrangler@$WRANGLER_VERSION")
 $CONFIG = 'wrangler.toml'
 $SECRET_FILE = 'LIEN-PRIVE.txt'
-$NAMESPACE_TITLE = 'liste-achats-LIST'
+$NAMESPACE_BINDING = 'LIST'
+$NAMESPACE_TITLE = "liste-achats-$NAMESPACE_BINDING"
 $ALPHABET = 'abcdefghijkmnopqrstuvwxyz23456789'
 
 function Step($number, $message) {
@@ -68,24 +69,78 @@ function Invoke-Native {
   $ErrorActionPreference = 'Continue'
   try {
     if ($PSBoundParameters.ContainsKey('StdInText')) {
-      $output = $StdInText | & $Exe @CmdArgs 2>&1 | Out-String
+      $brut = $StdInText | & $Exe @CmdArgs 2>&1 | Out-String
     } else {
-      $output = & $Exe @CmdArgs 2>&1 | Out-String
+      $brut = & $Exe @CmdArgs 2>&1 | Out-String
     }
     $code = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previous
   }
-  return [pscustomobject]@{ Output = $output; ExitCode = $code }
+
+  # Un avertissement sur stderr devient un enregistrement d'erreur que
+  # PowerShell rend très bavardement (« npx.cmd : … », « At … char:17 »,
+  # « CategoryInfo », « FullyQualifiedErrorId »). On retire ce habillage pour
+  # ne garder que le texte, sinon la sortie est à la fois illisible et
+  # impossible à analyser : le « [] » de « :String) [], RemoteException » passait
+  # même pour un tableau JSON valide et vide.
+  $gardees = @()
+  foreach ($ligne in ($brut -split "`r?`n")) {
+    if ($ligne -match '^\s*At\s+\S+:\d+\s+char:\d+') { continue }
+    if ($ligne -match '^\s*\+\s') { continue }
+    if ($ligne -match '^\s*CategoryInfo\s*:') { continue }
+    if ($ligne -match '^\s*FullyQualifiedErrorId\s*:') { continue }
+    $ligne = $ligne -replace '^[A-Za-z0-9_.-]+\.(cmd|exe|ps1)\s*:\s*', ''
+    $gardees += $ligne
+  }
+
+  return [pscustomobject]@{ Output = ($gardees -join [Environment]::NewLine); ExitCode = $code }
 }
 
-# Extrait un identifiant de namespace (32 caractères hexadécimaux) d'une sortie
-# Wrangler, qu'elle soit au format « id = "…" » ou dans un tableau.
-function Find-NamespaceId($text) {
-  $match = ([regex]::Match($text, 'id\s*=\s*"([0-9a-fA-F]{32})"')).Groups[1].Value
-  if ($match) { return $match }
-  $match = ([regex]::Match($text, '\b[0-9a-fA-F]{32}\b')).Value
-  return $match
+# Retrouve l'identifiant d'un namespace KV dans la liste du compte.
+#
+# On lit cet identifiant UNIQUEMENT dans la sortie de « kv namespace list », et
+# jamais dans celle de « kv namespace create » : cette dernière peut mentionner
+# l'identifiant de compte, qui est lui aussi 32 caractères hexadécimaux. Le
+# prendre au hasard revenait à écrire l'identifiant du compte dans
+# wrangler.toml, et Cloudflare refusait alors le déploiement avec
+# « KV namespace not found » (code 10041).
+function Get-KvNamespaceId($title) {
+  $listing = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('kv', 'namespace', 'list'))
+  if ($listing.ExitCode -ne 0) { return '' }
+
+  # Wrangler 3 répond du JSON : [ { "id": "…", "title": "…" } ].
+  # La sortie est mêlée aux avertissements de npx (« ▲ [WARNING] … »), dont le
+  # crochet opening ferait échouer l'analyse : on isole donc le premier crochet
+  # qui donne un JSON valide.
+  $texte = $listing.Output
+  for ($p = 0; $p -lt $texte.Length; $p++) {
+    if ($texte[$p] -ne '[') { continue }
+    $fin = $texte.IndexOf(']', $p)
+    if ($fin -lt 0) { break }
+    $json = $null
+    try {
+      $json = $texte.Substring($p, $fin - $p + 1) | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+      continue
+    }
+    foreach ($entry in @($json)) {
+      if ($entry.title -eq $title -and $entry.id) { return $entry.id }
+    }
+  }
+
+  # Repli pour un éventuel affichage tableau : l'identifiant peut se trouver
+  # sur la ligne voisine de celle qui porte le titre.
+  $lines = @($listing.Output -split "`r?`n")
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -notlike "*$title*") { continue }
+    foreach ($j in @(($i), ($i - 1), ($i + 1))) {
+      if ($j -lt 0 -or $j -ge $lines.Count) { continue }
+      $found = [regex]::Match($lines[$j], '\b[0-9a-fA-F]{32}\b')
+      if ($found.Success) { return $found.Value }
+    }
+  }
+  return ''
 }
 
 Write-Host ''
@@ -102,43 +157,33 @@ if ($login.ExitCode -ne 0) {
 }
 
 # --- 2. Namespace KV ------------------------------------------------------
-# Un namespace déjà créé lors d'une exécution interrompue doit être réutilisé,
+# Un namespace déjà créé lors d'une exécution interrompée doit être réutilisé,
 # pas dupliqué.
-$namespaceId = ''
-if (Test-Path -LiteralPath $CONFIG) {
-  $namespaceId = Find-NamespaceId (Read-File $CONFIG)
-}
-
+Step 2 "Namespace KV « $NAMESPACE_TITLE »"
+$namespaceId = Get-KvNamespaceId $NAMESPACE_TITLE
 if ($namespaceId) {
-  Step 2 "Namespace KV déjà configuré : $namespaceId"
+  Write-Host "    Namespace déjà présent, réutilisé : $namespaceId" -ForegroundColor DarkGray
 } else {
-  Step 2 "Recherche d'un namespace existant « $NAMESPACE_TITLE »"
-  $existing = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('kv', 'namespace', 'list'))
-  if ($existing.ExitCode -eq 0) {
-    foreach ($line in ($existing.Output -split "`r?`n")) {
-      if ($line -like "*$NAMESPACE_TITLE*") {
-        $namespaceId = Find-NamespaceId $line
-        if ($namespaceId) { break }
-      }
-    }
+  Write-Host '    Création du namespace…' -ForegroundColor DarkGray
+  $created = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('kv', 'namespace', 'create', $NAMESPACE_BINDING))
+  if ($created.ExitCode -ne 0) {
+    # Création refusée, souvent parce que le namespace existe déjà : on
+    # relit la liste, qui fait foi.
+    Write-Host $created.Output
   }
-
-  if ($namespaceId) {
-    Write-Host "    Namespace déjà présent, réutilisé : $namespaceId" -ForegroundColor DarkGray
-  } else {
-    Write-Host '    Création du namespace…' -ForegroundColor DarkGray
-    $created = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('kv', 'namespace', 'create', 'LIST'))
-    $namespaceId = Find-NamespaceId $created.Output
-    if (-not $namespaceId) {
-      Write-Host $created.Output
-      Stop_With "Impossible de lire l'identifiant du namespace. Collez le bloc [[kv_namespaces]] affiché ci-dessus dans $CONFIG, puis relancez."
-    }
-    Write-Host "    Namespace créé : $namespaceId" -ForegroundColor DarkGray
+  $namespaceId = ''
+  for ($essai = 1; $essai -le 5 -and -not $namespaceId; $essai++) {
+    if ($essai -gt 1) { Start-Sleep -Seconds 5 }
+    $namespaceId = Get-KvNamespaceId $NAMESPACE_TITLE
   }
-
-  $toml = (Read-File $CONFIG) -replace 'id\s*=\s*"[^"]*"', "id = `"$namespaceId`""
-  Write-Utf8NoBom $CONFIG $toml
+  if (-not $namespaceId) {
+    Stop_With "Namespace introuvable après création. Exécutez « npx wrangler kv namespace list » pour vérifier, puis relancez."
+  }
+  Write-Host "    Namespace créé : $namespaceId" -ForegroundColor DarkGray
 }
+
+$toml = (Read-File $CONFIG) -replace 'id\s*=\s*"[^"]*"', "id = `"$namespaceId`""
+Write-Utf8NoBom $CONFIG $toml
 
 # --- 3. Clé secrète -------------------------------------------------------
 # Réutilisée si le lien existe déjà : relancer le script ne doit jamais
@@ -166,6 +211,9 @@ $deploy = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('deploy'))
 $workerUrl = ([regex]::Match($deploy.Output, 'https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev')).Value
 if ($deploy.ExitCode -ne 0 -or -not $workerUrl) {
   Write-Host $deploy.Output
+  if ($deploy.Output -match '10041') {
+    Stop_With "Cloudflare refuse l'identifiant de namespace configuré. Relancez le script : il relira l'identifiant correct dans la liste du compte."
+  }
   Stop_With 'Déploiement non confirmé : aucune adresse workers.dev dans la sortie.'
 }
 
