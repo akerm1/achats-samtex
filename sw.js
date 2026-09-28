@@ -10,7 +10,7 @@
 /* `js/core/update.js`).                                                */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v7.0.0'
+const VERSION = 'mes-achats-v7.1.0'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
 const FALLBACK_URLS = ['./', 'index.html', 'css/tokens.css', 'css/base.css', 'css/layout.css', 'css/components.css', 'css/views.css', 'js/main.js']

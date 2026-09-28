@@ -64,7 +64,7 @@ function themeBlock() {
 
 function githubBlock() {
   const config = getConfig()
-  const { status, message, messageKind } = getState()
+  const { status, message, messageKind, readOnly } = getState()
   const lastSyncAt = getLastSyncAt()
   return `
     <div class="setting-block" style="display:block">
@@ -99,8 +99,15 @@ function githubBlock() {
           </div>
         </div>
         <p class="field-hint">
-          Créez un jeton « fine-grained » sur GitHub → Settings → Developer settings → Personal access tokens,
+          <strong>Le jeton n'est pas obligatoire pour lire la liste</strong> : un dépôt public
+          s'ouvre sans jeton. Il sert uniquement à <em>publier</em> vos modifications sur GitHub.
+          Créez-en un « fine-grained » sur GitHub → Settings → Developer settings → Personal access tokens,
           avec la permission <strong>Contents : Read and write</strong> sur ce seul dépôt.
+          ${
+            readOnly
+              ? '<br /><span class="form-message is-ok">Lecture seule active : vos modifications restent sur cet appareil tant qu\'un jeton valide n\'est pas enregistré.</span>'
+              : ''
+          }
         </p>
         <div class="u-row u-wrap">
           <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
@@ -128,6 +135,12 @@ function githubBlock() {
         <div class="kv-item">
           <small>Produits partagés</small>
           <strong>${getProducts().length}</strong>
+        </div>
+        <div class="kv-item">
+          <small>Accès GitHub</small>
+          <strong><span class="badge ${readOnly ? 'badge--orange' : 'badge--teal'}" data-role="github-access">${
+            readOnly ? 'Lecture seule' : 'Lecture + écriture'
+          }</span></strong>
         </div>
       </div>
     </div>`
@@ -292,8 +305,8 @@ async function handleTest() {
   const owner = host.querySelector('#setting-owner')?.value.trim() || ''
   const repo = host.querySelector('#setting-repo')?.value.trim() || ''
   const branch = host.querySelector('#setting-branch')?.value.trim() || 'main'
-  if (!token || !owner || !repo) {
-    setSyncMessage('Renseignez le jeton, le propriétaire et le nom du dépôt.', 'error')
+  if (!owner || !repo) {
+    setSyncMessage('Renseignez le propriétaire et le nom du dépôt.', 'error')
     return
   }
   setSyncMessage('Connexion en cours…')
@@ -396,13 +409,19 @@ function bind() {
     const owner = $('#setting-owner', host)?.value.trim() || ''
     const repo = $('#setting-repo', host)?.value.trim() || ''
     const branch = $('#setting-branch', host)?.value.trim() || 'main'
-    if (!token || !owner || !repo) {
-      setSyncMessage('Renseignez au minimum le jeton, le propriétaire et le nom du dépôt.', 'error')
+    /* Le jeton est facultatif : il ne sert qu'à publier. */
+    if (!owner || !repo) {
+      setSyncMessage('Renseignez au minimum le propriétaire et le nom du dépôt.', 'error')
       return
     }
     const state = await saveConfig({ token, owner, repo, branch })
     /* En cas d'échec, le store a déjà affiché et notifié le message exact. */
     if (state.messageKind === 'error') return
+    if (state.readOnly) {
+      setSyncMessage(state.message || `Lecture seule depuis ${owner}/${repo}.`, 'ok')
+      toast('Dépôt public connecté en lecture seule.', { type: 'info' })
+      return
+    }
     setSyncMessage(`Connecté à ${owner}/${repo}.`, 'ok')
     toast('Liste connectée à GitHub.', { type: 'ok' })
   })

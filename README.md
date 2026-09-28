@@ -180,6 +180,31 @@ l'application* affiche en permanence un bouton :
 Pour publier une version : modifier `version.json` **et** `APP_VERSION` dans
 `js/core/app.js` (le test de fumée vérifie que les deux concordent).
 
+### Version 7.1 — le jeton devient facultatif
+
+Le message « Jeton refusé par GitHub » bloquait une application qui n'en avait pas besoin :
+un dépôt **public** se lit très bien **sans jeton**. Le problème n'était pas le jeton, c'était
+l'application qui l'envoyait systématiquement — et GitHub répond `401 Bad credentials` dès
+qu'un jeton expiré accompagne la requête.
+
+Désormais :
+
+- **Lire ne demande aucun jeton.** Seul le propriétaire et le nom du dépôt sont requis dans
+  les Réglages. La pastille affiche « À jour » et la liste se recharge normalement.
+- **Un jeton expiré n'arrête plus rien.** Au premier `401`, l'application réessaie une fois en
+  anonyme ; si le dépôt est public, la lecture réussit et le jeton est mis de côté
+  définitivement (plus de boucle de `401`). Message affiché, non bloquant :
+  « Jeton refusé par GitHub — la liste est relue en anonyme ».
+- **Publier reste protégé.** Sans jeton valide, aucune requête d'écriture n'est envoyée : la
+  liste locale est conservée et l'erreur explique pourquoi (« Lecture seule : un jeton
+  GitHub valide est nécessaire pour publier vos modifications »). Les Réglages affichent un
+  badge « Lecture seule » et le champ du jeton reste libre pour le coller.
+- Les autres erreurs restent distinguées : quota de requêtes, réseau coupé, dépôt privé
+  inaccessible — aucun n'est traité comme un jeton refusé.
+
+> Le jeton ne quitte jamais l'appareil : il est stocké dans le `localStorage` et envoyé
+> uniquement aux appels de l'API GitHub vers votre dépôt.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

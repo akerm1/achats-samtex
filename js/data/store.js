@@ -16,7 +16,7 @@ import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
 import { STATUS, normalizeList, normalizeProduct } from './model.js'
-import { fetchRemoteList, putRemoteList, normalizeConfig } from './github.js'
+import { canWrite, fetchRemoteList, putRemoteList, normalizeConfig, READ_ONLY_MESSAGE } from './github.js'
 import { mergeProducts } from './backup.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
@@ -90,9 +90,27 @@ function reportFailure(result) {
 }
 
 function applyFailure(result) {
-  /* `offline` = réseau coupé ; `error` = jeton refusé, dépôt inaccessible… */
+  /* `offline` = réseau coupé ; `error` = dépôt inaccessible, écriture refusée… */
   state.status = result.status === 'offline' ? 'offline' : 'error'
   reportFailure(result)
+}
+
+/**
+ * GitHub a refusé le jeton (expiré, révoqué, mauvais droits). On le met de
+ * côté sans rien casser : un dépôt public reste lisible en anonyme.
+ */
+function markTokenRejected() {
+  if (!config || !config.token || config.tokenRejected) return false
+  config = { ...config, tokenRejected: true }
+  storage.set(CONFIG_KEY, config)
+  return true
+}
+
+/** Message non bloquant : la lecture fonctionne, l'écriture non. */
+function readOnlyNote() {
+  return config?.token
+    ? 'Jeton refusé par GitHub — la liste est relue en anonyme (dépôt public). Ajoutez un jeton valide pour publier vos modifications.'
+    : READ_ONLY_MESSAGE
 }
 
 function notify(message) {
@@ -109,6 +127,9 @@ export function getState() {
     config,
     prefs,
     isConfigured: Boolean(config),
+    /* Un dépôt public se lit sans jeton : seule l'écriture en exige un. */
+    readOnly: Boolean(config) && !canWrite(config),
+    hasToken: Boolean(config?.token),
     statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
   }
@@ -306,7 +327,14 @@ export async function refresh() {
   state.status = 'connecting'
   emit()
   const result = await syncWithRemote()
-  if (!result.ok) applyFailure(result)
+  if (result.tokenRejected) markTokenRejected()
+  if (!result.ok) {
+    applyFailure(result)
+  } else if (result.readOnly) {
+    /* Lecture réussie sans jeton : informational, pas une erreur. */
+    state.message = readOnlyNote()
+    state.messageKind = 'ok'
+  }
   emit()
   return result
 }
@@ -337,6 +365,7 @@ export async function push({ force = false } = {}) {
     state.messageKind = ''
     state.lastSyncAt = Date.now()
   } else {
+    if (result.tokenRejected) markTokenRejected()
     state.dirty = true
     storage.set(DIRTY_KEY, true)
     persistLocal()
