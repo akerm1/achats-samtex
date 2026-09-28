@@ -138,6 +138,48 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
   puis se recharge seule (deux tentatives maximum par session, garde-fou anti-boucle). C'est ce qui
   rendait l'écran bloqué sur « Chargement de la liste… » impossible à résoudre depuis l'interface.
 
+### Version 7.0 — tout le mécanisme refait
+
+La version 6 empilait des pièces : scrutation toutes les 6 secondes, cache du code,
+comparaison de fichiers pour détecter une mise à jour, bouton visible seulement
+parfois. La 7.0 remplace le tout par une règle unique.
+
+**1. Plus de « mode en direct ».** La scrutation automatique et l'actualisation au
+retour sur l'application ont disparu. La pastille affiche un état simple et exact :
+
+| État | Signification |
+|---|---|
+| `Local seul` | aucun compte GitHub connecté |
+| `Connexion…` | lecture de GitHub en cours |
+| `À jour` | la liste affichée vient de GitHub |
+| `Envoi…` | modifications en cours d'envoi |
+| `Hors ligne` | réseau coupé, la liste locale est affichée |
+| `Erreur` | jeton refusé, dépôt inaccessible… (le motif est affiché) |
+
+**2. Un rafraîchissement = une lecture de GitHub.** Recharger la page (F5, ou l'icône
+de l'application) relit la liste depuis GitHub. Un clic sur la pastille ou sur
+« Synchroniser » fait la même chose. Les modifications locales non poussées sont
+poussées en priorité, et le drapeau « non poussé » est conservé d'un lancement à
+l'autre : une coupure réseau ne peut plus faire perdre une modification.
+
+**3. Aucun fichier périmé servi.** Le service worker ne met plus le code en cache.
+Il ne sert qu'au repli hors-ligne (et pour l'écran d'attente). Conséquence directe :
+plus aucun mélange de versions — le blocage « n'exporte pas `dismissSyncError` »
+ne peut plus se produire.
+
+**4. Bouton de mise à jour toujours présent.** *Réglages → Mise à jour de
+l'application* affiche en permanence un bouton :
+
+1. **Rechercher une mise à jour** interroge `version.json` (le seul repère de
+   version, publié à la racine du dépôt) sans passer par un cache.
+2. Si une version plus récente existe, le bouton devient **Installer la mise à
+   jour 7.0.1** et attend le clic : rien ne s'installe tout seul.
+3. L'installation vide le cache, revalide la coquille hors-ligne et recharge la
+   page avec une empreinte dans l'URL.
+
+Pour publier une version : modifier `version.json` **et** `APP_VERSION` dans
+`js/core/app.js` (le test de fumée vérifie que les deux concordent).
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
@@ -160,8 +202,9 @@ les cartes, même sans valeur RGB enregistrée (voir `js/data/colors.js`).
 ```
 index.html                  coquille de l'application (barre, navigation, conteneurs)
 manifest.webmanifest        manifeste PWA (Ajouter, Liste)
+version.json                version publiée de l'application (repère des mises à jour)
 sync-defaults.json          valeurs par défaut pour le bouton « Configurer automatiquement »
-sw.js                       service worker : hors-ligne + cache des polices
+sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
 css/
   tokens.css                variables de design (palette sombre moderne, thème clair optionnel)
   base.css                  réinitialisation, typographie, utilitaires
@@ -177,11 +220,13 @@ js/
     theme.js                thème clair/sombre/système
     feedback.js             toasts et dialogues de confirmation
     photo.js                compression des photos côté navigateur
+    app.js                  version installée de l'application
+    update.js               lecture de version.json, recherche et installation des mises à jour
   data/
     model.js                catégories, unités, priorités, couleurs RGB, normalisation, statistiques
     colors.js               ~160 noms de couleurs français (+ palette et détection automatique)
     github.js               client API GitHub (lecture, écriture, test, conflits)
-    store.js                état global, synchronisation, actions métier, préférences
+    store.js                état global, rafraîchissement GitHub, actions métier, préférences
     backup.js               export/import JSON et CSV, fusion
   ui/
     icons.js                icônes SVG inline
@@ -197,8 +242,9 @@ icons/                      icônes de l'application (PWA)
 ## Synchronisation via GitHub
 
 La liste **et les réglages partagés** (thème, tri, filtres) sont stockés dans `products.json`
-à la racine d'un dépôt GitHub ; les appareils qui ouvrent la même page se synchronisent toutes
-les 6 secondes (et au retour sur l'onglet). Le réglage le plus récent gagne côté préférences.
+à la racine d'un dépôt GitHub. Les appareils qui ouvrent la même page relisent ce fichier
+**à chaque rafraîchissement de la page** (ou d'un clic sur la pastille) — il n'y a plus de
+synchronisation automatique en arrière-plan. Le réglage le plus récent gagne côté préférences.
 
 > Restent **locaux** (jamais envoyés sur GitHub) : le jeton d'accès et le drapeau d'installation PWA.
 

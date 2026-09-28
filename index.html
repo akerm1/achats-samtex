@@ -85,10 +85,11 @@
     </noscript>
 
     <script>
-      /* Filet de sécurité, hors module : si l'application ne démarre pas — par
-         exemple un fichier périmé servi par un ancien service worker — on force
-         sa mise à jour puis on recharge, une seule fois par session. Sans cela,
-         l'écran resterait bloqué sur « Chargement de la liste… ». */
+      /* Filet de sécurité, hors module. Le service worker sert désormais le
+         code « réseau d'abord » sans le mettre en cache : ce bloc ne sert donc
+         plus qu'à rattraper un démarrage cassé (cache HTTP du navigateur,
+         version.json absent) et à ne pas rester bloqué sur
+         « Chargement de la liste… ». */
       (function () {
         var KEY = 'mes-achats-recovery'
         var KEY_AT = 'mes-achats-recovery-at'
@@ -102,7 +103,7 @@
         if (tried >= LIMIT) return
         if (Date.now() - Number(sessionStorage.getItem(KEY_AT) || 0) < 60000) return
 
-        function recover() {
+        function reloadOnce() {
           tried += 1
           try {
             sessionStorage.setItem(KEY, String(tried))
@@ -110,30 +111,32 @@
           } catch (error) {
             /* sans stockage, une seule tentative par chargement */
           }
-          if (!('serviceWorker' in navigator) || !window.isSecureContext) {
-            location.reload()
+          var url = new URL(window.location.href)
+          url.searchParams.set('v', 'reload-' + tried)
+          window.location.replace(url.toString())
+        }
+
+        function recover() {
+          if (!navigator.serviceWorker || !window.isSecureContext) {
+            reloadOnce()
             return
           }
           navigator.serviceWorker
             .getRegistration()
             .then(function (registration) {
               if (!registration) {
-                location.reload()
+                reloadOnce()
                 return
               }
               registration.update()
               if (!registration.waiting) {
-                location.reload()
+                reloadOnce()
                 return
               }
               registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-              navigator.serviceWorker.addEventListener('controllerchange', function () {
-                location.reload()
-              })
+              navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
             })
-            .catch(function () {
-              location.reload()
-            })
+            .catch(reloadOnce)
         }
 
         window.addEventListener(

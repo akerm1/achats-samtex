@@ -19,11 +19,13 @@ import {
   setPrefs,
   setSyncMessage,
 } from '../../data/store.js'
-import { checkForUpdate, isInstalled, isUpdateAvailable } from '../shell.js'
+import { checkForUpdate, getUpdateState, installUpdate } from '../../core/update.js'
+import { APP_RELEASE, APP_VERSION } from '../../core/app.js'
+import { isInstalled } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.7'
+export { APP_VERSION }
 
 let host = null
 /* Empreinte de ce qui est affiché : évite de redessiner (et donc d'effacer
@@ -31,11 +33,12 @@ let host = null
 let signature = null
 
 const STATUS_CLASS = {
-  live: 'badge--teal',
-  config: '',
-  syncing: 'badge--blue',
-  pending: 'badge--blue',
+  ready: 'badge--teal',
+  local: '',
+  connecting: 'badge--blue',
+  saving: 'badge--blue',
   offline: 'badge--orange',
+  error: 'badge--orange',
 }
 
 function themeBlock() {
@@ -181,27 +184,41 @@ function installBlock() {
     </div>`
 }
 
+/**
+ * Bouton de mise à jour : toujours présent, jamais caché.
+ * Un clic cherche sur GitHub ; si une version plus récente existe, le bouton
+ * devient « Installer la mise à jour » et c'est le second clic qui installe.
+ */
 function updateBlock() {
-  /* Hors contexte sécurisé (fichier local, http), le service worker n'existe pas. */
-  if (!('serviceWorker' in navigator) || !window.isSecureContext) return ''
-  const pending = isUpdateAvailable()
+  const { current, published, available, checking, installing, offline } = getUpdateState()
+  const busy = checking || installing
+  const label = installing
+    ? 'Installation…'
+    : checking
+      ? 'Recherche…'
+      : available
+        ? `Installer la mise à jour ${esc(published)}`
+        : 'Rechercher une mise à jour'
   return `
     <div class="setting-block">
       <div class="setting-copy">
         <strong>Mise à jour de l'application</strong>
         <p>
-          Version installée <strong>${APP_VERSION}</strong>.
-          ${
-            pending
-              ? 'Une nouvelle version est téléchargée : le bouton ci-dessous l\'installe et recharge l\'application.'
-              : 'Le bouton recherche une nouvelle version publiée sur GitHub, puis l\'installe. ' +
-                'Les fichiers sont rechargés depuis GitHub à chaque ouverture : rien à installer manuellement.'
+          Version installée <strong>${current}</strong>${
+            published ? ` · version publiée <strong>${esc(published)}</strong>` : ''
           }
+          (${APP_RELEASE}).
+          ${
+            available
+              ? 'Nouvelle version disponible : cliquez pour l\'installer et recharger l\'application.'
+              : 'Cliquez pour interroger GitHub ; si une version plus récente est publiée, le bouton devient « Installer la mise à jour ».'
+          }
+          ${offline ? ' Vérification impossible hors ligne.' : ''}
         </p>
       </div>
       <div class="setting-side">
-        <button type="button" class="btn btn--${pending ? 'primary' : 'secondary'} btn--sm" data-action="check-update">
-          ${icon('refresh', 14)} ${pending ? 'Installer la mise à jour' : 'Rechercher une mise à jour'}
+        <button type="button" class="btn btn--${available ? 'primary' : 'secondary'} btn--sm" data-action="check-update" ${busy ? 'disabled' : ''}>
+          ${icon('refresh', 14)} ${label}
         </button>
       </div>
     </div>`
@@ -338,15 +355,28 @@ async function handleImport(event) {
   )
 }
 
-/** Recherche puis installe une nouvelle version de l'application. */
+/**
+ * Deux temps, volontairement : un clic cherche, un second clic installe.
+ * L'application ne se remplace jamais toute seule.
+ */
 async function handleCheckUpdate() {
+  const { available, published } = getUpdateState()
+  if (available) return installUpdate()
+
   setSyncMessage('Recherche d\'une mise à jour…')
   const result = await checkForUpdate()
-  if (result.available) {
-    setSyncMessage('Mise à jour installée — rechargement…', 'ok')
+  settingsView.update()
+
+  if (result.offline) {
+    setSyncMessage(result.error, 'error')
     return
   }
-  setSyncMessage('Déjà à jour — votre application est la plus récente.', 'ok')
+  if (result.available) {
+    setSyncMessage(`Version ${result.published} en ligne — cliquez sur « Installer la mise à jour ».`, 'ok')
+    toast(`Version ${result.published} disponible : le bouton est prêt.`, { type: 'ok' })
+    return
+  }
+  setSyncMessage(`Déjà à jour (version ${published || result.current}).`, 'ok')
   toast('Aucune mise à jour disponible.', { type: 'info' })
 }
 
@@ -389,13 +419,16 @@ function bind() {
 /** Ce qui, hors message, impose un vrai redessin de la vue. */
 function dataSignature() {
   const state = getState()
+  const update = getUpdateState()
   return JSON.stringify([
     state.loaded,
     state.status,
     state.lastSyncAt,
     state.products.length,
     state.isConfigured,
-    isUpdateAvailable(),
+    update.published,
+    update.available,
+    update.checking,
     state.config?.owner || '',
     state.config?.repo || '',
     state.config?.branch || '',

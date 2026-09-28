@@ -140,7 +140,7 @@
   flex: 0 0 auto;
 }
 
-.sync-pill.is-live {
+.sync-pill.is-ready {
   color: var(--teal);
   border-color: var(--teal-soft);
   background: var(--teal-soft);

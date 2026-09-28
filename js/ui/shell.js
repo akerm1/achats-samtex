@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { $, esc, formatRelative } from '../core/utils.js'
+import { isUpdateAvailable } from '../core/update.js'
 import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 
@@ -19,35 +20,8 @@ const shell = {
   syncErrorDismissed: null,
 }
 
-let registration = null
-
-/** Mémorise l'enregistrement du service worker (partagé avec les Réglages). */
-export function setRegistration(value) {
-  registration = value || null
-}
-
-/** `true` quand une version téléchargée attend d'être activée. */
-export function isUpdateAvailable() {
-  return shell.updateAvailable || Boolean(registration?.waiting)
-}
-
-/**
- * Cherche une nouvelle version puis l'active : le service worker est revalidé
- * auprès du serveur et, s'il a changé, il bascule avant rechargement.
- * @returns {Promise<{available:boolean}>}
- */
-export async function checkForUpdate() {
-  if (!registration) return { available: false }
-  try {
-    await registration.update()
-  } catch {
-    /* Hors-ligne : on ne peut rien vérifier, l'application reste utilisable. */
-    return { available: false }
-  }
-  if (!registration.waiting && !shell.updateAvailable) return { available: false }
-  applyUpdate()
-  return { available: true }
-}
+/** `true` quand la version publiée sur GitHub est plus récente que la nôtre. */
+export { isUpdateAvailable }
 
 /* Navigation ------------------------------------------------------- */
 
@@ -90,28 +64,30 @@ function renderNav() {
 
 /* Pastille de synchronisation ------------------------------------- */
 
+/* Six états, un style chacun : le statut porte déjà la couleur de l'erreur,
+   la pastille n'a plus besoin de deviner. */
 const PILL_CLASSES = {
-  live: 'is-live',
-  config: 'is-config',
-  syncing: 'is-syncing',
-  pending: 'is-syncing',
+  ready: 'is-ready',
+  connecting: 'is-syncing',
+  saving: 'is-syncing',
   offline: 'is-offline',
+  error: 'is-error',
+  local: 'is-config',
 }
 
 export function renderSyncPill() {
   const pill = $('#sync-pill')
   if (!pill) return
-  const { status, isConfigured, lastSyncAt, message, messageKind } = getState()
-  const failed = messageKind === 'error'
-  pill.className = `sync-pill ${PILL_CLASSES[status] || 'is-config'}${failed ? ' is-error' : ''}`
-  pill.innerHTML = `<span>${esc(statusLabel(status, messageKind))}</span>${
+  const { status, isConfigured, lastSyncAt, message } = getState()
+  pill.className = `sync-pill ${PILL_CLASSES[status] || 'is-config'}`
+  pill.innerHTML = `<span>${esc(statusLabel(status))}</span>${
     lastSyncAt ? `<small>${formatRelative(lastSyncAt)}</small>` : ''
   }`
   pill.title = [
     isConfigured ? 'Liste partagée via GitHub' : 'Liste locale — configurez GitHub dans Réglages',
     message ? `⚠ ${message}` : '',
-    lastSyncAt ? `Dernière synchro : ${formatRelative(lastSyncAt)}` : '',
-    'Cliquez pour synchroniser maintenant',
+    lastSyncAt ? `Dernier rafraîchissement : ${formatRelative(lastSyncAt)}` : '',
+    'Cliquez pour actualiser la liste depuis GitHub',
   ]
     .filter(Boolean)
     .join(' · ')
@@ -131,7 +107,7 @@ export function setUpdateAvailable(value) {
   /* Le bandeau vert ne s'affiche que s'il reste de la place : on prévient aussi
      la ligne d'état, pour que le bouton des Réglages bascule en « Installer ». */
   if (changed && shell.updateAvailable) {
-    setSyncMessage('Mise à jour disponible — « Installer la mise à jour » recharge l\'application.', 'ok')
+    setSyncMessage('Nouvelle version en ligne — « Installer la mise à jour » recharge l\'application.', 'ok')
   }
 }
 
@@ -154,15 +130,6 @@ export async function promptInstall() {
   setPrefs({ installHidden: true })
   renderBanners()
   return choice?.outcome === 'accepted'
-}
-
-export function applyUpdate() {
-  if (navigator.serviceWorker?.controller) {
-    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload())
-    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' })
-  } else {
-    window.location.reload()
-  }
 }
 
 function detectPlatform() {
@@ -248,17 +215,26 @@ export function renderBanners() {
   const region = $('#banners')
   if (!region) return
   const { installHidden } = getPrefs()
-  const { isConfigured, message, messageKind } = getState()
+  const { isConfigured, status, message, messageKind } = getState()
   const html = []
 
-  /* Un refus de jeton (ou un dépôt inaccessible) doit être visible sans
-     survol de la souris : la pastille devient un point sur les téléphones. */
+  /* Un jeton refusé (ou un dépôt inaccessible) doit être visible sans
+     survol de la souris : la pastille devient un point sur les téléphones.
+     Hors ligne, on propose de réessayer plutôt que d'ouvrir les Réglages. */
   if (isConfigured && messageKind === 'error' && message && message !== shell.syncErrorDismissed) {
+    const offline = status === 'offline'
     html.push(`
       <aside class="banner banner--error">
-        <span class="banner-mark">${icon('alert', 15)}</span>
-        <div class="banner-text"><strong>Synchronisation impossible</strong><span>${esc(message)}</span></div>
-        <a class="btn btn--ghost btn--sm" href="#/reglages">Corriger</a>
+        <span class="banner-mark">${icon(offline ? 'wifiOff' : 'alert', 15)}</span>
+        <div class="banner-text">
+          <strong>${offline ? 'Hors ligne' : 'Synchronisation impossible'}</strong>
+          <span>${esc(message)}</span>
+        </div>
+        ${
+          offline
+            ? '<button type="button" class="btn btn--ghost btn--sm" data-action="sync-now">Réessayer</button>'
+            : '<a class="btn btn--ghost btn--sm" href="#/reglages">Corriger</a>'
+        }
         <button type="button" class="icon-btn icon-btn--plain" data-action="hide-sync-error" aria-label="Masquer">${icon('x', 14)}</button>
       </aside>`)
   }
@@ -267,8 +243,8 @@ export function renderBanners() {
     html.push(`
       <aside class="banner banner--ok">
         <span class="banner-mark">${icon('refresh', 15)}</span>
-        <div class="banner-text"><strong>Une nouvelle version est prête</strong><span>Rechargez pour profiter des dernières nouveautés.</span></div>
-        <button type="button" class="btn btn--primary btn--sm" data-action="apply-update">Recharger</button>
+        <div class="banner-text"><strong>Une nouvelle version est en ligne</strong><span>Installez-la depuis Réglages → Mise à jour de l'application.</span></div>
+        <a class="btn btn--primary btn--sm" href="#/reglages">Installer</a>
       </aside>`)
   } else if (shell.offlineReady) {
     html.push(`

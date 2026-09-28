@@ -1,65 +1,26 @@
 /* ------------------------------------------------------------------ */
-/* Service worker — coquille hors-ligne (v6.3.7)                       */
-/*  - navigation : réseau d'abord, repli sur le cache                  */
-/*  - code (js/css) : réseau d'abord — jamais deux versions mélangées  */
-/*  - images et polices : cache d'abord                                */
-/*  - hors-ligne : repli sur le cache dans tous les cas               */
-/*  - nouvelle version : prise de possession immédiate                */
+/* Service worker — lecture des fichiers, jamais leur stockage          */
+/*                                                                     */
+/*  - une seule règle : le réseau d'abord, pour tout le site            */
+/*  - aucun cache de code (donc aucun mélange de versions possible)    */
+/*  - garde le mode hors-ligne, avec un repli explicite et limited      */
+/*                                                                     */
+/* La mise à jour de l'application ne passe pas par ici : elle est     */
+/* pilotée par `version.json` et le bouton des Réglages (voir           */
+/* `js/core/update.js`).                                                */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v6.3.7'
-const CACHE = `${VERSION}-shell`
-const FONT_CACHE = `${VERSION}-fonts`
+const VERSION = 'mes-achats-v7.0.0'
 
-const ASSETS = [
-  './',
-  'index.html',
-  'manifest.webmanifest',
-  'sync-defaults.json',
-  'css/tokens.css',
-  'css/base.css',
-  'css/layout.css',
-  'css/components.css',
-  'css/views.css',
-  'js/main.js',
-  'js/core/utils.js',
-  'js/core/storage.js',
-  'js/core/router.js',
-  'js/core/theme.js',
-  'js/core/feedback.js',
-  'js/core/photo.js',
-  'js/data/model.js',
-  'js/data/colors.js',
-  'js/data/github.js',
-  'js/data/store.js',
-  'js/data/backup.js',
-  'js/ui/icons.js',
-  'js/ui/shell.js',
-  'js/ui/view.js',
-  'js/ui/product-card.js',
-  'js/ui/product-form.js',
-  'js/ui/views/list.js',
-  'js/ui/views/settings.js',
-  'icons/app-icon.svg',
-  'icons/apple-touch-icon-180x180.png',
-  'icons/favicon.ico',
-  'icons/maskable-icon-512x512.png',
-  'icons/pwa-192x192.png',
-  'icons/pwa-512x512.png',
-  'icons/pwa-64x64.png',
-]
-
-const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com']
+/* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
+const FALLBACK_URLS = ['./', 'index.html', 'css/tokens.css', 'css/base.css', 'css/layout.css', 'css/components.css', 'css/views.css', 'js/main.js']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(ASSETS))
-      .catch(() => undefined)
-      /* Prise de possession immédiate : sans cela, la version précédente garde
-         le contrôle et sert ses fichiers périmés jusqu'à la fermeture de
-         l'onglet — l'application ne peut alors pas se mettre à jour elle-même. */
+      .open(VERSION)
+      /* Seul le repli hors-ligne est mis en cache ; le code, lui, ne l'est pas. */
+      .then((store) => store.addAll(FALLBACK_URLS).catch(() => undefined))
       .then(() => self.skipWaiting()),
   )
 })
@@ -68,7 +29,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   )
 })
@@ -77,44 +38,46 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
-async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName)
-  const cached = await cache.match(request)
-  if (cached) return cached
-  const response = await fetch(request)
-  if (response && response.ok) cache.put(request, response.clone())
-  return response
-}
-
 /**
- * Réseau d'abord pour le code.
- *
- * L'application est faite de modules ES : servir un `main.js` récent avec un
- * `shell.js` périmé fait échouer le chargement (« n'exporte pas … »). Un seul
- * jeu de fichiers vient donc toujours du réseau, le cache ne servant qu'en
- * cas de coupure — ce qui reste le rôle du mode hors-ligne.
+ * Réseau d'abord, repli sur le cache si — et seulement si — le réseau
+ * échoue. Rien n'est mis en cache quand le réseau répond : un fichier
+ * périmé ne peut donc plus être resservi.
  */
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE)
+async function networkFirst(request, { cache = false } = {}) {
   try {
-    const response = await fetch(request)
-    if (response && response.ok) cache.put(request, response.clone())
-    return response
+    return await fetch(request)
   } catch (error) {
-    const cached = await cache.match(request)
+    if (!cache) throw error
+    const store = await caches.open(VERSION)
+    const cached = await store.match(request, { ignoreSearch: true })
     if (cached) return cached
     throw error
   }
 }
 
+/* Hors-ligne : la dernière page connue, servie depuis le cache local. */
+async function offlinePage() {
+  const store = await caches.open(VERSION)
+  for (const url of ['./', 'index.html']) {
+    const cached = await store.match(url)
+    if (cached) return cached
+  }
+  return new Response(
+    '<!doctype html><meta charset="utf-8"><title>Hors ligne</title>' +
+      '<body style="font:16px system-ui;padding:2rem;max-width:32rem;margin:auto">' +
+      '<h1>Hors ligne</h1><p>Connectez-vous à Internet, puis rechargez la page : ' +
+      'vos produits sont conservés sur cet appareil.</p>',
+    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+  )
+}
+
 async function handleNavigation(request) {
-  const cache = await caches.open(CACHE)
   try {
-    const response = await fetch(request)
-    if (response && response.ok) cache.put('index.html', response.clone())
-    return response
+    return await fetch(request)
   } catch {
-    return (await cache.match('index.html')) || (await cache.match('./')) || Response.error()
+    const store = await caches.open(VERSION)
+    const cached = await store.match(request, { ignoreSearch: true })
+    return cached || offlinePage()
   }
 }
 
@@ -122,24 +85,21 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
 
-  const url = new URL(request.url)
-
   if (request.mode === 'navigate') {
     event.respondWith(handleNavigation(request))
     return
   }
 
-  if (FONT_HOSTS.includes(url.hostname)) {
-    event.respondWith(cacheFirst(request, FONT_CACHE))
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+
+  /* Les images et polices ne changent pas d'une version à l'autre : elles
+     restent en cache pour ne pas dépendre du réseau à chaque icône. */
+  if (/\.(?:png|svg|ico|webp|jpe?g|gif|woff2?)$/i.test(url.pathname)) {
+    event.respondWith(networkFirst(request, { cache: true }))
     return
   }
 
-  if (url.origin === self.location.origin) {
-    /* Icônes et images ne changent pas d'une version à l'autre : cache d'abord. */
-    if (/\.(?:png|svg|ico|webp|jpe?g|gif)$/i.test(url.pathname)) {
-      event.respondWith(cacheFirst(request, CACHE))
-      return
-    }
-    event.respondWith(networkFirst(request))
-  }
+  /* Code et données : jamais de cache. */
+  event.respondWith(networkFirst(request))
 })

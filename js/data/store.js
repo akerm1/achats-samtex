@@ -1,5 +1,14 @@
 /* ------------------------------------------------------------------ */
 /* Store — état global, synchronisation GitHub, actions métier         */
+/*                                                                     */
+/* Mécanisme de synchronisation, volontairement simple :                */
+/*   - aucune scrutation en arrière-plan, aucun état « en direct » ;   */
+/*   - une seule lecture distante, déclenchée par un rafraîchissement   */
+/*     de la page, un clic sur la pastille ou le bouton « Actualiser »; */
+/*   - les modifications locales sont poussées immédiatement, et        */
+/*     republiées au prochain rafraîchissement si l'envoi a échoué ;     */
+/*   - les jetons en échec restent affichés (bandeau, pastille,         */
+/*     Réglages) au lieu d'être le résultat d'une scrutation silencieuse.*/
 /* ------------------------------------------------------------------ */
 
 import { storage } from '../core/storage.js'
@@ -15,7 +24,6 @@ const PRODUCTS_KEY = 'purchase-gros-list-v2'
 const CONFIG_KEY = 'purchase-gros-github-v1'
 const PREFS_KEY = 'purchase-gros-prefs-v1'
 const DIRTY_KEY = 'purchase-gros-dirty-v1'
-const POLL_MS = 6000
 
 export const DEFAULT_PREFS = {
   filter: 'todo',
@@ -29,7 +37,7 @@ let config = normalizeConfig(storage.get(CONFIG_KEY))
 let prefs = { ...DEFAULT_PREFS, ...(storage.get(PREFS_KEY) || {}) }
 let state = {
   loaded: false,
-  status: config ? 'syncing' : 'config',
+  status: config ? 'connecting' : 'local',
   message: '',
   messageKind: '',
   lastSyncAt: null,
@@ -37,7 +45,6 @@ let state = {
   dirty: storage.get(DIRTY_KEY) === true,
 }
 let sha = null
-let pollTimer = null
 let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
 const NOTIFY_COOLDOWN_MS = 8000
@@ -65,19 +72,27 @@ function emit() {
 /* Lecture de l'état                                                   */
 /* ------------------------------------------------------------------ */
 
-export function statusLabel(status, messageKind = '') {
-  if (status === 'live') return 'En direct'
-  if (status === 'config') return messageKind === 'error' ? 'GitHub' : 'Local seul'
-  if (status === 'syncing') return 'Connexion…'
-  if (status === 'pending') return 'Envoi…'
-  return 'Hors ligne'
+/** Libellé de la pastille : six états, tous compréhensibles sans survol. */
+export function statusLabel(status) {
+  if (status === 'ready') return 'À jour'
+  if (status === 'connecting') return 'Connexion…'
+  if (status === 'saving') return 'Envoi…'
+  if (status === 'offline') return 'Hors ligne'
+  if (status === 'error') return 'Erreur'
+  return 'Local seul'
 }
 
-/** Record d'un échec (message + genre) puis notification, sans répéter à chaque scrutation. */
+/** Record d'un échec (message + genre) puis notification, une seule fois. */
 function reportFailure(result) {
   state.message = result.message || 'Synchronisation impossible.'
   state.messageKind = 'error'
   notify(state.message)
+}
+
+function applyFailure(result) {
+  /* `offline` = réseau coupé ; `error` = jeton refusé, dépôt inaccessible… */
+  state.status = result.status === 'offline' ? 'offline' : 'error'
+  reportFailure(result)
 }
 
 function notify(message) {
@@ -94,7 +109,7 @@ export function getState() {
     config,
     prefs,
     isConfigured: Boolean(config),
-    statusLabel: statusLabel(state.status, state.messageKind),
+    statusLabel: statusLabel(state.status),
     pendingCount: products.filter((product) => product.status === STATUS.TODO).length,
   }
 }
@@ -187,7 +202,7 @@ export function clearConfig() {
   config = null
   storage.remove(CONFIG_KEY)
   sha = null
-  state.status = 'config'
+  state.status = 'local'
   state.message = ''
   state.messageKind = ''
   state.dirty = false
@@ -217,91 +232,83 @@ function persistLocal() {
 /* Chargement & synchronisation                                        */
 /* ------------------------------------------------------------------ */
 
-export async function load() {
-  state.loaded = false
-  emit()
-
-  if (!config) {
-    loadLocal()
-    state.status = 'config'
-    state.loaded = true
-    state.lastSyncAt = Date.now()
-    emit()
-    return getState()
-  }
-
-  state.status = 'syncing'
-  emit()
-  const result = await syncWithRemote()
-  if (!result.ok) {
-    loadLocal()
-    state.status = result.status === 'config' ? 'config' : 'offline'
-    reportFailure(result)
-  }
-  state.loaded = true
-  state.lastSyncAt = Date.now()
-  emit()
-  startPolling()
-  return getState()
-}
-
 /**
- * Une seule règle : les modifications locales non poussées gagnent,
- * sinon la version distante remplace la locale.
+ * Point d'entrée unique de la lecture distante : appelé au démarrage
+ * (donc à chaque rafraîchissement de la page) et par `refresh()`.
+ * Les modifications locales non poussées gagnent, sinon la version
+ * distante remplace la locale.
  */
 async function syncWithRemote() {
   const remote = await fetchRemoteList(config)
   if (!remote.ok) return { ok: false, status: remote.status, message: remote.message }
 
   if (remote.list === null) {
-    /* Le fichier n'existe pas encore : on publie la liste locale. */
+    /* Le fichier n'existe pas encore sur GitHub : on publie la liste locale. */
     if (state.dirty || products.length) return push({ force: true })
-    return { ok: true, status: 'live' }
+    return markReady()
   }
   if (state.dirty) return push()
 
   const normalized = normalizeList(remote.list)
   sha = remote.sha
+  let changed = false
   if (JSON.stringify(normalized) !== JSON.stringify(products)) {
     products = normalized
     persistLocal()
-    emit()
+    changed = true
   }
-  const settings = applyRemoteSettings(remote.settings)
-  if (settings) emit()
-  state.status = 'live'
+  if (applyRemoteSettings(remote.settings)) changed = true
+  return markReady(changed)
+}
+
+/** État « à jour » : le libellé et l'horodatage ne changent qu'en cas de succès. */
+function markReady(changed = false) {
+  state.status = 'ready'
   state.message = ''
   state.messageKind = ''
   state.lastSyncAt = Date.now()
-  return { ok: true, status: 'live' }
+  if (changed) emit()
+  return { ok: true, status: 'ready' }
 }
 
-/** Relit la liste distante sans rien écrire. */
-export async function loadFromRemote() {
-  if (!config || !state.loaded || state.pending) return getState()
-  const remote = await fetchRemoteList(config)
-  if (!remote.ok) {
-    state.status = remote.status === 'config' ? 'config' : 'offline'
-    reportFailure(remote)
-  } else {
-    state.status = 'live'
-    state.message = ''
-    state.messageKind = ''
-    state.lastSyncAt = Date.now()
-    if (remote.list !== null && !state.dirty) {
-      const normalized = normalizeList(remote.list)
-      sha = remote.sha
-      if (JSON.stringify(normalized) !== JSON.stringify(products)) {
-        products = normalized
-        persistLocal()
-      }
-    }
-    if (!state.dirty && applyRemoteSettings(remote.settings)) emit()
+export async function load() {
+  state.loaded = false
+  emit()
+
+  if (!config) {
+    loadLocal()
+    state.status = 'local'
+    state.loaded = true
+    emit()
+    return getState()
   }
+
+  const result = await refresh()
+  /* Échec : la liste locale reste affichée, l'erreur est signalée. */
+  if (!result.ok) loadLocal()
   state.loaded = true
-  state.lastSyncAt = Date.now()
   emit()
   return getState()
+}
+
+/**
+ * Actualise les données depuis GitHub. C'est le seul déclencheur de lecture
+ * distante : un rafraîchissement de la page, un clic sur la pastille ou le
+ * bouton « Synchroniser » des Réglages.
+ */
+export async function refresh() {
+  if (!config) {
+    persistLocal()
+    return { ok: true, status: 'local' }
+  }
+  if (state.pending) return { ok: true, status: state.status }
+
+  state.status = 'connecting'
+  emit()
+  const result = await syncWithRemote()
+  if (!result.ok) applyFailure(result)
+  emit()
+  return result
 }
 
 /** Publie la liste (GitHub si configuré, sinon stockage local). */
@@ -310,12 +317,12 @@ export async function push({ force = false } = {}) {
     persistLocal()
     state.dirty = false
     emit()
-    return { ok: true, status: 'config' }
+    return { ok: true, status: 'local' }
   }
   if (state.pending && !force) return { ok: true, status: state.status }
 
   state.pending = true
-  state.status = 'pending'
+  state.status = 'saving'
   emit()
 
   const result = await putRemoteList(config, products, sha, settingsSnapshot())
@@ -325,43 +332,18 @@ export async function push({ force = false } = {}) {
     sha = result.sha
     state.dirty = false
     storage.remove(DIRTY_KEY)
-    state.status = 'live'
+    state.status = 'ready'
     state.message = ''
     state.messageKind = ''
     state.lastSyncAt = Date.now()
   } else {
-    state.status = result.status === 'config' ? 'config' : 'offline'
     state.dirty = true
     storage.set(DIRTY_KEY, true)
     persistLocal()
-    reportFailure(result)
+    applyFailure(result)
   }
   emit()
   return result
-}
-
-/** Synchronisation manuelle (pastille de la barre du haut). */
-export async function syncNow() {
-  if (!config) {
-    persistLocal()
-    return { ok: true, status: 'config' }
-  }
-  return state.dirty ? push({ force: true }) : loadFromRemote()
-}
-
-export function startPolling() {
-  stopPolling()
-  if (!config) return
-  pollTimer = setInterval(() => {
-    if (document.visibilityState === 'visible' && !state.pending) loadFromRemote()
-  }, POLL_MS)
-}
-
-export function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
 }
 
 /* ------------------------------------------------------------------ */

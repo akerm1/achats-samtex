@@ -14,19 +14,18 @@ import {
   deleteProduct,
   getProducts,
   getState,
-  loadFromRemote,
+  refresh,
   replaceAll,
   restoreMany,
   restoreProduct,
   setPrefs,
   subscribe,
-  syncNow,
   toggleBought,
 } from './data/store.js'
+import { checkForUpdate, installUpdate, subscribe as subscribeUpdate } from './core/update.js'
 import { exportCSV, exportJSON } from './data/backup.js'
 import { openProductForm } from './ui/product-form.js'
 import {
-  applyUpdate,
   canPromptInstall,
   dismissInstall,
   dismissSyncError,
@@ -36,7 +35,6 @@ import {
   setActiveRoute,
   setInstallEvent,
   setOfflineReady,
-  setRegistration,
   setUpdateAvailable,
   showInstallHelp,
 } from './ui/shell.js'
@@ -186,13 +184,14 @@ const ACTIONS = {
   'share-list': () => shareList(),
   'go-settings': () => navigate('reglages'),
   'sync-now': async () => {
-    const result = await syncNow()
+    const result = await refresh()
     /* Les échecs sont déjà annoncés par le store (toast d'erreur) : on ne
        double pas l'information, on ne confirme que ce qui a fonctionné. */
     if (!result.ok) return
-    toast(result.status === 'config' ? 'Liste enregistrée localement.' : 'Liste synchronisée avec GitHub.', {
-      type: 'ok',
-    })
+    toast(
+      result.status === 'local' ? 'Liste enregistrée localement.' : 'Liste actualisée depuis GitHub.',
+      { type: 'ok' },
+    )
   },
   'disconnect-github': () => handleDisconnect(),
   'export-json': () => {
@@ -203,7 +202,7 @@ const ACTIONS = {
     exportCSV(getProducts())
     toast('Export CSV généré (Excel).', { type: 'ok' })
   },
-  'apply-update': () => applyUpdate(),
+  'install-update': () => installUpdate(),
   'install-app': () => (canPromptInstall() ? promptInstall() : showInstallHelp()),
   'hide-install': () => dismissInstall(),
   'hide-offline': () => hideOfflineNotice(),
@@ -265,27 +264,30 @@ function initShortcuts() {
 }
 
 /* ------------------------------------------------------------------ */
-/* PWA : installation, mises à jour, hors-ligne                        */
+/* PWA : installation, mode hors-ligne, mises à jour                    */
+/*                                                                     */
+/* Le service worker ne sert plus qu'au repli hors-ligne : les fichiers */
+/* ne sont jamais mis en cache, donc le code affiché est toujours celui */
+/* de GitHub. La mise à jour, elle, se décide dans les Réglages à partir*/
+/* de `version.json` — jamais automatiquement.                         */
 /* ------------------------------------------------------------------ */
 
 function initServiceWorker() {
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then((registration) => {
-      setRegistration(registration)
-      /* Une version déjà téléchargée au démarrage : elle est signalée d'emblée. */
-      if (registration.waiting) setUpdateAvailable(true)
-      registration.addEventListener('updatefound', () => {
-        const worker = registration.installing
-        worker?.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) setUpdateAvailable(true)
-        })
-      })
+    navigator.serviceWorker.register('./sw.js').catch((error) => {
+      console.warn('Service worker non enregistré :', error)
     })
     navigator.serviceWorker.ready.then(() => {
       if (!navigator.serviceWorker.controller) setOfflineReady(true)
     })
   })
+}
+
+/** Vérifie la version publiée sans rien installer : le bouton change d'état. */
+async function checkUpdateInBackground() {
+  const result = await checkForUpdate()
+  if (result.available) setUpdateAvailable(true)
 }
 
 function initInstallFlow() {
@@ -295,23 +297,17 @@ function initInstallFlow() {
   })
   window.addEventListener('appinstalled', () => {
     dismissInstall()
-    /* Après installation, on force une synchronisation immédiate. */
-    syncNow().then((result) => {
+    /* Après installation, la liste est relue une fois depuis GitHub. */
+    refresh().then((result) => {
       if (!result.ok) return
       const { status } = getState()
       toast(
-        status === 'config'
+        status === 'local'
           ? 'Application installée — connectez GitHub dans Réglages pour tout partager.'
-          : 'Application installée — liste synchronisée.',
-        { type: status === 'config' ? 'info' : 'ok' },
+          : 'Application installée — liste actualisée.',
+        { type: status === 'local' ? 'info' : 'ok' },
       )
     })
-  })
-}
-
-function initVisibility() {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') loadFromRemote()
   })
 }
 
@@ -327,7 +323,6 @@ function init() {
   initShortcuts()
   initServiceWorker()
   initInstallFlow()
-  initVisibility()
   renderChrome()
 
   /* Chaque changement d'état redessine la coquille puis la vue active. */
@@ -336,8 +331,17 @@ function init() {
     VIEWS[activeRoute]?.update?.()
   })
 
+  /* Idem pour l'état de la mise à jour : le bouton des Réglages bascule seul. */
+  subscribeUpdate(() => {
+    renderChrome()
+    VIEWS[activeRoute]?.update?.()
+  })
+
   /* Le premier rendu de la vue dépend du chargement (local ou GitHub). */
   showRoute('liste')
+
+  /* Une seule vérification silencieuse au démarrage : elle n'installe rien. */
+  checkUpdateInBackground()
 }
 
 if (document.readyState === 'loading') {

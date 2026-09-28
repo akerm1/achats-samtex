@@ -1,4 +1,4 @@
-/* ------------------------------------------------------------------ */
+﻿/* ------------------------------------------------------------------ */
 /* Client GitHub — lecture / écriture de products.json via l'API REST  */
 /* ------------------------------------------------------------------ */
 
@@ -112,7 +112,7 @@ export async function fetchRemoteList(config) {
     if (reachable === null) {
       return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
     }
-    return { ok: true, list: null, sha: null, status: 'live' }
+    return { ok: true, list: null, sha: null, status: 'ok' }
   }
   if (response.status === 401 || response.status === 403 || response.status === 429) {
     return { ok: false, list: null, sha: null, status: 'config', message: failureMessage(response) }
@@ -136,7 +136,7 @@ export async function fetchRemoteList(config) {
   }
   const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.products) ? parsed.products : []
   const settings = parsed && typeof parsed === 'object' && parsed.settings ? parsed.settings : null
-  return { ok: true, list, settings, sha: data.sha, status: 'live' }
+  return { ok: true, list, settings, sha: data.sha, status: 'ok' }
 }
 
 /**
@@ -188,7 +188,7 @@ export async function putRemoteList(config, list, sha, settings) {
 
   if (response.ok) {
     const data = await response.json()
-    return { ok: true, sha: data.content?.sha || sha, status: 'live' }
+    return { ok: true, sha: data.content?.sha || sha, status: 'ok' }
   }
 
   if (response.status === 401 || response.status === 403 || response.status === 429) {
@@ -200,7 +200,7 @@ export async function putRemoteList(config, list, sha, settings) {
     const retry = await send(null)
     if (retry.ok) {
       const data = await retry.json()
-      return { ok: true, sha: data.content?.sha || null, status: 'live' }
+      return { ok: true, sha: data.content?.sha || null, status: 'ok' }
     }
     if (retry.status === 401 || retry.status === 403 || retry.status === 429) {
       return { ok: false, sha, status: 'config', message: failureMessage(retry) }
@@ -233,7 +233,7 @@ export async function putRemoteList(config, list, sha, settings) {
     const retry = await send(fresh.sha)
     if (retry.ok) {
       const data = await retry.json()
-      return { ok: true, sha: data.content?.sha || fresh.sha, status: 'live' }
+      return { ok: true, sha: data.content?.sha || fresh.sha, status: 'ok' }
     }
     return {
       ok: false,
