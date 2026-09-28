@@ -36,6 +36,7 @@ import {
   setActiveRoute,
   setInstallEvent,
   setOfflineReady,
+  setRegistration,
   setUpdateAvailable,
   showInstallHelp,
 } from './ui/shell.js'
@@ -271,6 +272,9 @@ function initServiceWorker() {
   if (!('serviceWorker' in navigator) || !window.isSecureContext) return
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then((registration) => {
+      setRegistration(registration)
+      /* Une version déjà téléchargée au démarrage : elle est signalée d'emblée. */
+      if (registration.waiting) setUpdateAvailable(true)
       registration.addEventListener('updatefound', () => {
         const worker = registration.installing
         worker?.addEventListener('statechange', () => {

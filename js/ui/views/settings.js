@@ -19,11 +19,11 @@ import {
   setPrefs,
   setSyncMessage,
 } from '../../data/store.js'
-import { isInstalled } from '../shell.js'
+import { checkForUpdate, isInstalled, isUpdateAvailable } from '../shell.js'
 import { icon } from '../icons.js'
 import { deferWhileEditing, loadingBlock } from '../view.js'
 
-export const APP_VERSION = '6.3.5'
+export const APP_VERSION = '6.3.6'
 
 let host = null
 /* Empreinte de ce qui est affiché : évite de redessiner (et donc d'effacer
@@ -181,6 +181,32 @@ function installBlock() {
     </div>`
 }
 
+function updateBlock() {
+  /* Hors contexte sécurisé (fichier local, http), le service worker n'existe pas. */
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) return ''
+  const pending = isUpdateAvailable()
+  return `
+    <div class="setting-block">
+      <div class="setting-copy">
+        <strong>Mise à jour de l'application</strong>
+        <p>
+          Version installée <strong>${APP_VERSION}</strong>.
+          ${
+            pending
+              ? 'Une nouvelle version est téléchargée : le bouton ci-dessous l\'installe et recharge l\'application.'
+              : 'Le bouton recherche une nouvelle version publiée sur GitHub, puis l\'installe. ' +
+                'Les fichiers sont rechargés depuis GitHub à chaque ouverture : rien à installer manuellement.'
+          }
+        </p>
+      </div>
+      <div class="setting-side">
+        <button type="button" class="btn btn--${pending ? 'primary' : 'secondary'} btn--sm" data-action="check-update">
+          ${icon('refresh', 14)} ${pending ? 'Installer la mise à jour' : 'Rechercher une mise à jour'}
+        </button>
+      </div>
+    </div>`
+}
+
 function aboutBlock() {
   const persistent = storage.isPersistent()
   return `
@@ -240,7 +266,7 @@ function template() {
       <div class="panel">${themeBlock()}</div>
       <div class="panel">${githubBlock()}</div>
       <div class="panel">${dataBlock()}${dangerBlock()}</div>
-      <div class="panel">${installBlock()}${aboutBlock()}</div>
+      <div class="panel">${installBlock()}${updateBlock()}${aboutBlock()}</div>
     </section>`
 }
 
@@ -312,6 +338,18 @@ async function handleImport(event) {
   )
 }
 
+/** Recherche puis installe une nouvelle version de l'application. */
+async function handleCheckUpdate() {
+  setSyncMessage('Recherche d\'une mise à jour…')
+  const result = await checkForUpdate()
+  if (result.available) {
+    setSyncMessage('Mise à jour installée — rechargement…', 'ok')
+    return
+  }
+  setSyncMessage('Déjà à jour — votre application est la plus récente.', 'ok')
+  toast('Aucune mise à jour disponible.', { type: 'info' })
+}
+
 function bind() {
   host.querySelectorAll('[data-theme-choice]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -341,6 +379,7 @@ function bind() {
 
   host.querySelector('[data-action="test-github"]')?.addEventListener('click', handleTest)
   host.querySelector('[data-action="auto-config"]')?.addEventListener('click', handleAutoConfig)
+  host.querySelector('[data-action="check-update"]')?.addEventListener('click', handleCheckUpdate)
   host.querySelector('[data-action="import-json"]')?.addEventListener('click', () =>
     host.querySelector('[data-role="import-file"]')?.click(),
   )
@@ -356,6 +395,7 @@ function dataSignature() {
     state.lastSyncAt,
     state.products.length,
     state.isConfigured,
+    isUpdateAvailable(),
     state.config?.owner || '',
     state.config?.repo || '',
     state.config?.branch || '',

@@ -1,11 +1,12 @@
 /* ------------------------------------------------------------------ */
-/* Service worker — coquille hors-ligne (v6.3.5)                       */
+/* Service worker — coquille hors-ligne (v6.3.6)                       */
 /*  - navigation : réseau d'abord, repli sur le cache                  */
-/*  - fichiers locaux : cache d'abord + mise à jour en arrière-plan    */
-/*  - polices : cache dédié                                          */
+/*  - code (js/css) : réseau d'abord — jamais deux versions mélangées  */
+/*  - images et polices : cache d'abord                                */
+/*  - hors-ligne : repli sur le cache dans tous les cas               */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v6.3.5'
+const VERSION = 'mes-achats-v6.3.6'
 const CACHE = `${VERSION}-shell`
 const FONT_CACHE = `${VERSION}-fonts`
 
@@ -80,16 +81,25 @@ async function cacheFirst(request, cacheName) {
   return response
 }
 
-async function staleWhileRevalidate(request) {
+/**
+ * Réseau d'abord pour le code.
+ *
+ * L'application est faite de modules ES : servir un `main.js` récent avec un
+ * `shell.js` périmé fait échouer le chargement (« n'exporte pas … »). Un seul
+ * jeu de fichiers vient donc toujours du réseau, le cache ne servant qu'en
+ * cas de coupure — ce qui reste le rôle du mode hors-ligne.
+ */
+async function networkFirst(request) {
   const cache = await caches.open(CACHE)
-  const cached = await cache.match(request)
-  const network = fetch(request)
-    .then((response) => {
-      if (response && response.ok) cache.put(request, response.clone())
-      return response
-    })
-    .catch(() => cached)
-  return cached || network
+  try {
+    const response = await fetch(request)
+    if (response && response.ok) cache.put(request, response.clone())
+    return response
+  } catch (error) {
+    const cached = await cache.match(request)
+    if (cached) return cached
+    throw error
+  }
 }
 
 async function handleNavigation(request) {
@@ -120,6 +130,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin === self.location.origin) {
-    event.respondWith(staleWhileRevalidate(request))
+    /* Icônes et images ne changent pas d'une version à l'autre : cache d'abord. */
+    if (/\.(?:png|svg|ico|webp|jpe?g|gif)$/i.test(url.pathname)) {
+      event.respondWith(cacheFirst(request, CACHE))
+      return
+    }
+    event.respondWith(networkFirst(request))
   }
 })

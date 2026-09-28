@@ -116,6 +116,18 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
 - **Liste vide** : si la connexion échoue, la carte renvoie vers les réglages au lieu d'annoncer
   une liste « partagée via GitHub ».
 
+### Version 6.3.6 — mise à jour depuis les réglages
+
+- **Bouton de mise à jour dans Réglages → Application**, juste sous « Installer sur le téléphone »
+  (les deux actions de vie de la PWA) : « Rechercher une mise à jour » interroge GitHub, installe
+  la version publiée et recharge l'application ; le libellé devient « Installer la mise à jour »
+  dès qu'une version est déjà téléchargée, et la ligne d'état l'annonce à ce moment-là.
+- **Fin du mélange de versions** (correctif de « n'exporte pas `dismissSyncError` ») : le service
+  worker servait le `main.js` nouveau avec le `shell.js` ancien, ce qui cassait le chargement des
+  modules. Le code passe maintenant **réseau d'abord** (un seul jeu de fichiers, toujours cohérent),
+  le cache ne servant qu'en cas de coupure ; icônes et polices restent en cache d'abord.
+- Une version déjà téléchargée au démarrage est signalée sans attendre un nouveau téléchargement.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

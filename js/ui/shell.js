@@ -4,7 +4,7 @@
 
 import { $, esc, formatRelative } from '../core/utils.js'
 import { icon } from './icons.js'
-import { getPrefs, getState, setPrefs, statusLabel } from '../data/store.js'
+import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 
 export const NAV_ITEMS = [
   { route: 'liste', label: 'Liste', icon: 'cart' },
@@ -17,6 +17,36 @@ const shell = {
   updateAvailable: false,
   offlineReady: false,
   syncErrorDismissed: null,
+}
+
+let registration = null
+
+/** Mémorise l'enregistrement du service worker (partagé avec les Réglages). */
+export function setRegistration(value) {
+  registration = value || null
+}
+
+/** `true` quand une version téléchargée attend d'être activée. */
+export function isUpdateAvailable() {
+  return shell.updateAvailable || Boolean(registration?.waiting)
+}
+
+/**
+ * Cherche une nouvelle version puis l'active : le service worker est revalidé
+ * auprès du serveur et, s'il a changé, il bascule avant rechargement.
+ * @returns {Promise<{available:boolean}>}
+ */
+export async function checkForUpdate() {
+  if (!registration) return { available: false }
+  try {
+    await registration.update()
+  } catch {
+    /* Hors-ligne : on ne peut rien vérifier, l'application reste utilisable. */
+    return { available: false }
+  }
+  if (!registration.waiting && !shell.updateAvailable) return { available: false }
+  applyUpdate()
+  return { available: true }
 }
 
 /* Navigation ------------------------------------------------------- */
@@ -95,8 +125,14 @@ export function setInstallEvent(event) {
 }
 
 export function setUpdateAvailable(value) {
-  shell.updateAvailable = value
+  const changed = shell.updateAvailable !== Boolean(value)
+  shell.updateAvailable = Boolean(value)
   renderBanners()
+  /* Le bandeau vert ne s'affiche que s'il reste de la place : on prévient aussi
+     la ligne d'état, pour que le bouton des Réglages bascule en « Installer ». */
+  if (changed && shell.updateAvailable) {
+    setSyncMessage('Mise à jour disponible — « Installer la mise à jour » recharge l\'application.', 'ok')
+  }
 }
 
 export function setOfflineReady(value) {
