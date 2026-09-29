@@ -10,8 +10,8 @@
   "orientation": "portrait",
   "start_url": "./#/liste",
   "scope": "./",
-  "theme_color": "#0c0f14",
-  "background_color": "#0c0f14",
+  "theme_color": "#faf7f1",
+  "background_color": "#faf7f1",
   "categories": ["shopping", "business", "productivity", "utilities"],
   "icons": [
     { "src": "icons/pwa-64x64.png", "sizes": "64x64", "type": "image/png" },

@@ -9,11 +9,18 @@
   Elle ne sert à rien en production : `tools/check.mjs` la sert brièvement
   dans un navigateur sans interface, puis lit le rapport qu'elle poste.
 -->
-<html lang="fr" data-theme="dark">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vérifications</title>
+    <script>
+      /* Le thème est choisi en ligne de commande (`node tools/check.mjs
+         --theme dark`). Il est posé avant les feuilles de style pour que
+         la première mesure porte déjà sur le bon thème — sinon les
+         vérifications de jetons mesureraient toujours le clair. */
+      document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light'
+    </script>
     <link rel="stylesheet" href="../css/tokens.css" />
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/layout.css" />
@@ -22,12 +29,19 @@
     <style>
       body { padding: 24px; }
       .chg { max-width: 1100px; margin: 0 auto; }
+      /* Le.sample rejoue la coque réelle de l'application (bandeau de
+         titre, en-tête de vue, barre d'outils, état vide). Ces quatre
+         blocs sont les seuls qui se dimensionnent en largeur de colonne,
+         et donc les seuls qui peuvent déborder sur un téléphone. */
+      .sample { margin-top: 32px; border: 1px dashed #bbb; border-radius: 8px; overflow: hidden; }
+      .sample .app { min-height: 0; }
     </style>
   </head>
   <body>
     <div class="chg">
       <h1 style="margin: 0 0 16px; font-size: 20px">Banc d’essai — rendu réel</h1>
       <div class="grid" id="grid"></div>
+      <div class="sample" id="shell"></div>
     </div>
 
     <script type="module">
@@ -109,6 +123,65 @@
       const done = () => fetch('/__check/report', { method: 'POST', body: JSON.stringify({ results, errors, viewport: { w: innerWidth, h: innerHeight }, theme: document.documentElement.dataset.theme }) })
 
       try {
+        /* --- Jetons : les deux thèmes doivent être complets --------------- */
+        /* Une couleur oubliée dans le thème sombre ne se voit pas : elle
+           retombe sur la valeur du thème clair, et le texte devient clair
+           sur fond clair. On vérifie donc la présence ET l'opacité. */
+        const TOKENS = [
+          '--bg', '--surface', '--surface-2', '--surface-3',
+          '--ink', '--ink-2', '--ink-3', '--muted', '--line', '--line-strong',
+          '--teal', '--teal-dark', '--teal-soft', '--orange', '--orange-soft',
+          '--red', '--red-soft', '--blue', '--blue-soft', '--gold',
+        ]
+        const themeToken = (name) =>
+          getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+        const startTheme = document.documentElement.dataset.theme
+        const seen = {}
+        for (const theme of ['light', 'dark']) {
+          document.documentElement.dataset.theme = theme
+          const missing = TOKENS.filter((name) => !themeToken(name))
+          const empty = TOKENS.filter((name) => themeToken(name) === 'transparent')
+          check(`jetons ${theme} : tous définis`, missing.length === 0, missing.join(' '))
+          check(`jetons ${theme} : aucune valeur vide`, empty.length === 0, empty.join(' '))
+          seen[theme] = {
+            bg: themeToken('--bg'),
+            surface: themeToken('--surface'),
+            ink: themeToken('--ink'),
+            ink3: themeToken('--ink-3'),
+            teal: themeToken('--teal'),
+          }
+        }
+        document.documentElement.dataset.theme = startTheme
+        check('les deux thèmes ont un fond différent', seen.light.bg !== seen.dark.bg, `${seen.light.bg} / ${seen.dark.bg}`)
+
+        /* --- Lisibilité : contraste de l'encre sur son fond -------------- */
+        const lum = (hex) => {
+          const m = hex.replace('#', '')
+          if (m.length < 6) return null
+          const parts = [0, 2, 4].map((i) => {
+            const c = parseInt(m.slice(i, i + 2), 16) / 255
+            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+          })
+          return 0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]
+        }
+        const ratio = (a, b) => {
+          const la = lum(a)
+          const lb = lum(b)
+          if (la === null || lb === null) return 0
+          return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+        }
+        /* Texte courant : 4.5 est le seuil AA. Le serif enCorp 15 px n'a
+           pas droit à la dérogation « grand texte ». */
+        check('contraste encre sur fond (4.5)', ratio(seen.light.ink, seen.light.bg) >= 4.5, ratio(seen.light.ink, seen.light.bg).toFixed(2))
+        check('contraste encre sur fond, thème sombre (4.5)', ratio(seen.dark.ink, seen.dark.bg) >= 4.5, ratio(seen.dark.ink, seen.dark.bg).toFixed(2))
+        /* L'accent porte du texte (prix, lien, total) : même exigence. */
+        check('contraste accent sur fond (4.5)', ratio(seen.light.teal, seen.light.bg) >= 4.5, ratio(seen.light.teal, seen.light.bg).toFixed(2))
+        check('contraste accent sur fond, thème sombre (4.5)', ratio(seen.dark.teal, seen.dark.bg) >= 4.5, ratio(seen.dark.teal, seen.dark.bg).toFixed(2))
+        /* Le texte secondaire est le plus à risque : `--ink-3` porte les
+           notes et les métadonnées, c'est-à-dire tout ce qu'on survole. */
+        check('contraste texte secondaire sur carte (4.5)', ratio(seen.light.ink3, seen.light.surface) >= 4.5, ratio(seen.light.ink3, seen.light.surface).toFixed(2))
+        check('contraste texte secondaire sur carte, thème sombre (4.5)', ratio(seen.dark.ink3, seen.dark.surface) >= 4.5, ratio(seen.dark.ink3, seen.dark.surface).toFixed(2))
+
         /* --- Rendu des cartes --------------------------------------------- */
         check('cartes rendues', grid.querySelectorAll('article.product').length === items.length, grid.querySelectorAll('article.product').length)
 
@@ -200,7 +273,74 @@
         click(card('rgb').querySelector('.product-name'))
         check('carte : le nom ouvre la fiche', formOpened === 1, formOpened)
 
+        /* --- Coque de l'application : bandeau, en-tête, barre, état vide --- */
+        /* Ces blocs sont en largeur de colonne, et un titre en gros
+           serif déborde plus vite qu'une carte. On mesure donc la coque
+           entière, pas seulement son conteneur. */
+        const shell = document.getElementById('shell')
+        shell.innerHTML = `
+          <div class="app">
+            <header class="appbar">
+              <a class="brand" href="#/liste">
+                <span class="brand-mark">S<span>&amp;</span>T</span>
+                <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+              </a>
+              <nav class="appbar-nav">
+                <a class="navlink is-active" href="#/liste">Liste</a>
+                <a class="navlink" href="#/reglages">Réglages</a>
+              </nav>
+              <div class="appbar-actions">
+                <button type="button" class="sync-pill is-ready">À jour</button>
+                <button type="button" class="icon-btn" aria-label="Ajouter">+</button>
+              </div>
+            </header>
+            <main class="page">
+              <section class="view">
+                <div class="view-head">
+                  <div><h1>Ma liste</h1><p>Ce que je dois acheter chez le grossiste.</p></div>
+                </div>
+                <div class="toolbar"><div class="toolbar-row">
+                  <div class="input-wrap"><input class="search" placeholder="Rechercher" /></div>
+                  <button type="button" class="chip is-active">Toutes</button>
+                  <button type="button" class="chip">À acheter</button>
+                </div></div>
+                <div class="empty">
+                  <strong>Votre liste est vide</strong>
+                  <span>Ajoutez un article pour commencer.</span>
+                </div>
+              </section>
+            </main>
+          </div>`
+        const shellBox = shell.getBoundingClientRect()
+        check('coque : rendue', shellBox.width > 0, `${Math.round(shellBox.width)}px`)
+        check('coque : pas de débordement', shell.scrollWidth <= shell.clientWidth + 1, `${shell.scrollWidth} / ${shell.clientWidth}`)
+        const shellWide = [...shell.querySelectorAll('*')].filter((n) => n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX === 'visible')
+        check('coque : aucun bloc trop large', shellWide.length === 0, shellWide.map((n) => n.className || n.tagName).join(','))
+
+        const emptyTitle = shell.querySelector('.empty strong')
+        const emptyBox = emptyTitle.getBoundingClientRect()
+        const shellPad = shell.querySelector('.page').getBoundingClientRect()
+        check('état vide : titre dans la colonne', emptyBox.width <= shellPad.width + 1, `${Math.round(emptyBox.width)} / ${Math.round(shellPad.width)}`)
+        const brandMark = shell.querySelector('.brand-mark')
+        const brandText = shell.querySelector('.brand-text strong')
+        check('bandeau : marque et titre visibles', brandMark.getBoundingClientRect().width > 0 && brandText.getBoundingClientRect().width > 0, `${Math.round(brandMark.getBoundingClientRect().width)} / ${Math.round(brandText.getBoundingClientRect().width)}`)
+
         check('aucune erreur JavaScript', errors.length === 0, errors.join(' | '))
+
+        /* --- Direction artistique : ce qui ne se mesure pas à l'œil -------- */
+        /* Le titre de la carte doit être en serif : c'est l'intention de la
+           refonte, et un retour à la sans-serif passerait inaperçu. */
+        const nameStyle = getComputedStyle(card('rgb').querySelector('.product-name'))
+        check('titre de carte en serif', /Fraunces|Georgia|serif/.test(nameStyle.fontFamily), nameStyle.fontFamily)
+        check('titre de carte : corps lisible', parseFloat(nameStyle.fontSize) >= 15, `${nameStyle.fontSize}`)
+
+        /* Aucune carte ne doit déborder de la grille, et rien ne doit
+           dépasser horizontalement : c'est le symptôme le plus fréquent
+           d'un rayon ou d'un espacement mal repris. */
+        check('aucun débordement horizontal', document.documentElement.scrollWidth <= innerWidth + 1, `${document.documentElement.scrollWidth} / ${innerWidth}`)
+        const overflowing = [...grid.querySelectorAll('article.product')].filter((node) => node.scrollWidth > node.clientWidth + 1)
+        check('aucune carte tronquée', overflowing.length === 0, overflowing.length)
+
         await done()
       } catch (error) {
         results.push({ name: 'exception : ' + error.message, pass: false, detail: String(error.stack || '') })

@@ -5,6 +5,7 @@
 /*   node tools/check.mjs                 tout                        */
 /*   node tools/check.mjs --shot out.png  + capture d'écran            */
 /*   node tools/check.mjs --width 430     largeur donnée (défaut 1200) */
+/*   node tools/check.mjs --theme dark    force le thème (défaut light)*/
 /*   node tools/check.mjs --keep          laisse le serveur ouvert     */
 /*   BROWSER=/chemin/vers/chrome node tools/check.mjs                 */
 /*                                                                     */
@@ -39,6 +40,7 @@ const flag = (name, fallback = '') => {
 }
 const WIDTH = Number(flag('width', 1200)) || 1200
 const HEIGHT = Number(flag('height', 1000)) || 1000
+const THEME = flag('theme') === 'dark' ? 'dark' : 'light'
 const SHOT = flag('shot')
 const KEEP = argv.includes('--keep')
 
@@ -202,10 +204,10 @@ async function browserChecks() {
   const reportFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'check-')), 'report.json')
   const server = await serve(reportFile)
   const { port } = server.address()
-  const url = `http://127.0.0.1:${port}/tools/check-page.html`
+  const url = `http://127.0.0.1:${port}/tools/check-page.html?theme=${THEME}`
   const shot = SHOT ? path.resolve(SHOT) : null
 
-  console.log(dim(`\n${path.basename(browser)} — ${WIDTH}px${shot ? ' + capture' : ''}`))
+  console.log(dim(`\n${path.basename(browser)} — ${WIDTH}px, thème ${THEME}${shot ? ' + capture' : ''}`))
 
   const args = [
     '--headless=new',
@@ -240,8 +242,7 @@ async function browserChecks() {
     failures += 1
     console.log(red(`  NON  le navigateur n'a rien renvoyé (${TIMEOUT_MS / 1000}s)`))
   } else {
-    report(`Dans le navigateur (${WIDTH}px, thème ${payload.theme})`, payload.results)
-  }
+    report(`Dans le navigateur (${WIDTH}px, thème ${payload.theme})`, payload.results)  }
 
   if (!KEEP) {
     server.close()

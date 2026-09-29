@@ -65,10 +65,11 @@ ne se juge pas à l'œil reliably — elle se mesure.
 
 ```
 Sur disque
-  ok   version.json === APP_VERSION  (7.7.0 / 7.7.0)
+  ok   version.json === APP_VERSION  (8.0.0 / 8.0.0)
   ok   syntaxe js\ui\preview.js
   ...
-Dans le navigateur (1200px, thème dark)
+Dans le navigateur (1200px, thème light)
+  ok   contraste accent sur fond (4.5)  (6.02)
   ok   bande couleur : pleine largeur  (316 / 316)
   ok   aperçu couleur : nom + Hex + RVB  (#efe3d3|rgb(239, 227, 211))
   ok   aperçu couleur : la fiche ne s'ouvre pas  (0)
@@ -81,9 +82,14 @@ Options utiles :
 | Option | Effet |
 |---|---|
 | `--width 430` | vérifie à la largeur d'un téléphone (défaut `1200`) |
+| `--theme dark` | vérifie le thème sombre (défaut `light`) |
 | `--shot fichier.png` | enregistre aussi une capture d'écran |
 | `--keep` | laisse le serveur ouvert pour regarder la page à la main |
 | `BROWSER=/chemin/chrome` | impose le navigateur (sinon Edge puis Chrome sont essayés) |
+
+Comme les deux thèmes sont vérifiés (présence de tous les jetons, contraste de
+l'encre et du texte secondaire), on ne peut pas oublier une couleur dans la
+variante sombre sans que la commande ne le dise.
 
 Quand une vérification casse, elle est écrite ici plutôt que dans un rapport à
 ouvrir : c'est la seule chose à relire avant de publier.
@@ -97,7 +103,7 @@ ouvrir : c'est la seule chose à relire avant de publier.
 | Tableau de bord + mode Marché + plusieurs sections | **Une seule liste simple** : ajouter, cocher, modifier, supprimer |
 | Données de démonstration au premier lancement | **Aucune donnée de démonstration** — la liste partagée affiche la même chose partout |
 | Édition de couleur par valeurs R/V/B, ~64 noms | **Boîte + grande aperçu + palette de ~160 couleurs à toucher**, identique sur téléphone et ordinateur |
-| Thème clair par défaut, sombre optionnel | **Thème sombre moderne par défaut** (clair toujours disponible dans Réglages) |
+| Thème clair par défaut, sombre optionnel | **Refonte éditoriale claire par défaut** — papier chaud, titres en serif, accent teal (les deux thèmes restent disponibles dans Réglages) |
 
 ### Version 6.2 — pensé pour le téléphone
 
@@ -396,6 +402,40 @@ script (`UnauthorizedAccessException`), les étapes manuelles sont :
   loupe au survol — toujours visible sur écran tactile, où il n'y a pas de survol.
 - Un produit **sans photo** n'offre pas de clic : il n'y a rien à agrandir.
 
+### Version 8.0 - refonte éditoriale
+
+La refonte part d'un constat simple : l'application ressemblait à un outil. Elle
+se lit maintenant comme une page. Rien n'a été ajouté aux fonctions, tout a été
+redessiné autour d'une seule idée - du papier.
+
+- **Fond papier, pas fond gris** : un crème chaud (`#faf7f1`) remplace le blanc
+  clinique, et l'encre est un brun-noir adouci plutôt qu'un noir pur, qui
+  claquait sur ce fond.
+- **Les titres passent en serif** (Fraunces, à contraste optique) : titre de
+  l'application, titre de chaque vue, nom de la catégorie, nom du produit, prix,
+  titre des panneaux et des réglages. Le reste du texte reste en sans-serif,
+  parce qu'un article n'est pas fait d'une seule matière.
+- **Moins de verre, moins d'ombre, plus de filet** : les flous d'arrière-plan et
+  les ombres portées denses sont retirés au profit de traits d'1 px et de
+  dégradés très discrets. C'est le changement le plus visible.
+- **Rayons resserrés** : de 30 px à 18 px au maximum. Des angles presque droits
+  rappellent la page imprimée.
+- **La barre du haut devient un bandeau de titre** : la marque s'écrit en entier
+  en serif, la navigation est une simple ligne de sommaire dont l'onglet actif
+  est souligné.
+- **Plus d'air partout** : la colonne de lecture passe de 1080 à 880 px, la
+  grille de cartes s'élargit, les espaces entre blocs doublent.
+- **Boutons et pastilles à plat** : le bouton principal est un aplat de teal
+  plein, plus un dégradé ; les onglets et boutons actifs aussi. Un dégradé sur
+  du papier fait « application », à plat il fait « lien ».
+- **La barre d'outils redevient une ligne** : au lieu d'une boîte flottante en
+  verre, deux filets horizontaux encadrent la recherche et les filtres.
+- **Le thème sombre suit** : ce n'est plus une inversion du clair, mais le même
+  papier réduit sur la luminance, conservé chaud pour rester dans la même famille.
+- **Vérifié par la commande** : `node tools/check.mjs` contrôle désormais que les
+  deux thèmes définissent tous leurs jetons, que l'encre, l'accent et le texte
+  secondaire passent le contraste AA, et que rien ne déborde horizontalement.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
@@ -426,7 +466,7 @@ worker/
   wrangler.toml             configuration de déploiement (namespace KV, Workers.dev)
   setup.ps1                 mise en service en un seul lancement (connexion, KV, secret, déploiement)
 css/
-  tokens.css                variables de design (palette sombre moderne, thème clair optionnel)
+  tokens.css                variables de design (papier chaud en base, variante sombre chaude)
   base.css                  réinitialisation, typographie, utilitaires
   layout.css                barre du haut, navigation, toasts, responsive
   components.css            boutons, champs, cartes, pastilles de couleur, dialogues

@@ -9,39 +9,40 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 18px;
+  padding: 11px 20px;
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.1;
   white-space: nowrap;
-  letter-spacing: -0.006em;
+  letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background-color var(--dur) var(--ease),
     color var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
-/* Enfoncement plus marqué qu'un simple `scale` : le bouton descend
-   légèrement, ce qui donne le retour physique du tactile. */
 .btn:active {
-  transform: translateY(1px) scale(0.975);
+  transform: translateY(1px);
 }
 
 .btn svg {
   flex: 0 0 auto;
 }
 
+/* Le bouton principal est un aplat de teal plein, pas un dégradé. Un
+   dégradé sur du papier fait « bouton d'application » ; à plat, il fait
+   « lien d'appel ». */
 .btn--primary {
-  background: linear-gradient(140deg, var(--mint), var(--teal) 78%);
-  color: #0b0f14;
-  box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: var(--shadow-brand);
 }
 
 @media (hover: hover) {
   .btn--primary:hover {
-    background: linear-gradient(140deg, var(--mint), var(--teal-dark) 78%);
-    color: #0b0f14;
-    box-shadow: var(--shadow-brand-lg), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    background: var(--teal-dark);
+    color: #ffffff;
+    box-shadow: var(--shadow-brand-lg);
   }
 }
 
@@ -51,21 +52,21 @@
 }
 
 .btn--soft:hover {
-  background: var(--surface-3);
-  color: var(--teal);
+  background: var(--teal-soft);
+  color: var(--teal-dark);
 }
 
 .btn--secondary {
   background: var(--surface);
   color: var(--ink);
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-1), var(--hairline);
+  box-shadow: var(--shadow-1);
 }
 
 .btn--secondary:hover {
-  border-color: color-mix(in srgb, var(--teal) 30%, var(--line-strong));
+  border-color: var(--ink-3);
   color: var(--ink);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 
 .btn--ghost {
@@ -86,7 +87,7 @@
 
 .btn--danger:hover {
   background: var(--red);
-  color: #fff;
+  color: #ffffff;
 }
 
 .btn--block {
@@ -94,17 +95,14 @@
 }
 
 .btn--sm {
-  padding: 8px 14px;
-  font-size: 12px;
-  /* Le fond de carte est le seul endroit où le bouton est petit : sans
-     cette garde, sa hauteur tombe à 31 px et devient difficile à viser
-     au doigt. */
+  padding: 8px 15px;
+  font-size: var(--text-sm);
   min-height: 34px;
 }
 
 .btn--lg {
-  padding: 14px 24px;
-  font-size: 14px;
+  padding: 14px 26px;
+  font-size: var(--text-base);
 }
 
 .btn--icon {
@@ -119,9 +117,8 @@
   height: 38px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink-2);
-  box-shadow: var(--hairline);
+  background: transparent;
+  color: var(--ink-3);
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
     border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -162,23 +159,27 @@
 
 .field > label,
 .field-label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--ink-2);
-  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .field-hint {
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
+/* Champs : un fond blanc et un filet, pas une boîte arrondie. Le rayon
+   d'un champ attire l'œil plus que son contenu, alors qu'un champ de
+   saisie se juge à son texte. */
 .input,
 .select,
 .textarea {
   width: 100%;
-  padding: 12px 15px;
+  padding: 11px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   background: var(--surface);
@@ -240,7 +241,7 @@
   border: 0;
   background: none;
   padding: 11px 0;
-  font-size: 14px;
+  font-size: var(--text-base);
   color: var(--ink);
   outline: none;
 }
@@ -257,7 +258,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 5px;
+  padding: 4px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line-strong);
   background: var(--surface);
@@ -271,7 +272,7 @@
   place-items: center;
   color: var(--ink-2);
   background: var(--surface-2);
-  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
 .stepper button:hover {
@@ -284,10 +285,11 @@
   border: 0;
   background: none;
   text-align: center;
-  font-size: 15px;
+  font-size: var(--text-md);
   font-weight: 600;
   outline: none;
   appearance: textfield;
+  font-variant-numeric: tabular-nums;
 }
 
 .stepper input::-webkit-outer-spin-button,
@@ -302,60 +304,57 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 15px;
+  padding: 7px 15px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: transparent;
   color: var(--ink-2);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   font-weight: 500;
   white-space: nowrap;
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+    border-color var(--dur) var(--ease);
 }
 
 .chip:hover {
-  border-color: var(--line-strong);
+  border-color: var(--ink-3);
   color: var(--ink);
-  background: var(--surface-2);
-}
-
-.chip:active {
-  transform: scale(0.97);
+  background: transparent;
 }
 
 .chip.is-active {
-  background: linear-gradient(140deg, var(--mint), var(--teal) 82%);
-  border-color: transparent;
-  color: #0b0f14;
-  font-weight: 700;
-  box-shadow: var(--shadow-brand);
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .chip-count {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   padding: 0 6px;
   border-radius: var(--radius-pill);
   background: var(--surface-3);
   color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .chip.is-active .chip-count {
-  background: rgba(11, 15, 20, 0.22);
-  color: #0b0f14;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 11px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
-  background: var(--surface-3);
+  background: var(--surface-2);
   color: var(--ink-2);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .badge--teal {
@@ -390,9 +389,9 @@
 .color-swatch {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
   flex: 0 0 auto;
 }
 
@@ -429,7 +428,6 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 /* Voile sombre en bas de la bande. Il sert d'abord à la lisibilité : sur un
@@ -459,6 +457,9 @@
   background-color: var(--surface-3);
 }
 
+/* Légende de la bande de couleur : un aplat sombre plat, pas de verre.
+   Le flou ne servait qu'à adoucir un aplat qu'on peut simplement poser —
+   et il rendait le texte moins net sur les teintes claires. */
 .product-color .color-chip {
   position: absolute;
   z-index: 1;
@@ -466,13 +467,11 @@
   right: 10px;
   bottom: 10px;
   display: block;
-  padding: 6px 14px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  background: rgba(6, 9, 13, 0.62);
   font-weight: 600;
-  color: var(--ink);
+  color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -494,18 +493,15 @@
    toujours là au doigt (pas de survol sur un écran tactile). */
 .zoom-mark {
   position: absolute;
-  /* Au-dessus des voiles (::after) posés sur la photo et la bande. */
   z-index: 1;
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--surface-glass);
-  backdrop-filter: blur(8px) saturate(180%);
-  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
-  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-1);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease-out);
@@ -607,10 +603,14 @@
   flex-wrap: wrap;
 }
 
+/* Nom du produit en grand serif : c'est le titre de l'article. */
 .preview-name {
-  font-size: 16px;
-  font-weight: 650;
-  line-height: 1.3;
+  font-family: var(--font-head);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.024em;
+  font-variation-settings: 'opsz' 60;
 }
 
 .preview-facets {
@@ -624,22 +624,22 @@
   align-items: baseline;
   gap: 7px;
   padding: 5px 12px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-xs);
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
 }
 
 .preview-facet small {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
 .preview-facet code {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink);
 }
 
@@ -678,19 +678,22 @@
 
 /* Cartes & panneaux ---------------------------------------------- */
 
+/* Sur papier, une carte est une feuille posée sur une autre : trait
+   fin, ombre presque absente, contour franc. Le rayon reste généreux
+   pour que la forme reste douce, mais la profondeur disparaît. */
 .card {
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1), var(--hairline);
+  box-shadow: var(--shadow-1);
 }
 
 .panel {
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1), var(--hairline);
-  padding: clamp(18px, 2.6vw, 28px);
+  box-shadow: var(--shadow-1);
+  padding: clamp(22px, 3vw, 36px);
 }
 
 .panel--flush {
@@ -706,28 +709,31 @@
   margin-bottom: var(--space-5);
 }
 
+/* Titre de panneau : serif, et suivi d'un filet qui court jusqu'au bord
+   du panneau. C'est le élément le plus « article » de l'interface. */
 .panel-head h2 {
-  font-family: var(--font-body);
-  font-size: 16px;
+  font-family: var(--font-head);
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--ink);
+  letter-spacing: -0.018em;
+  font-variation-settings: 'opsz' 30;
 }
 
 .panel-head p {
   margin-top: 5px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
 }
 
 /* Barres de progression ------------------------------------------ */
 
 .progress {
-  height: 10px;
+  height: 6px;
   border-radius: var(--radius-pill);
   background: var(--surface-3);
-  /* Un liseré sombre sur le bord haut de la gorge : sans lui, la barre
-     paraît plate en thème clair. */
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+  /* Gorge à 6 px et sans liseré sombre : c'est la mesure d'une ligne de
+     texte, pas l'épaisseur d'un composant d'interface. */
   overflow: hidden;
 }
 
@@ -735,10 +741,9 @@
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--mint), var(--teal));
+  background: var(--teal);
   transition: width 0.5s var(--ease-out);
   min-width: 2px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .progress--orange > span {
@@ -751,37 +756,42 @@
 
 /* Bandeaux d'information ----------------------------------------- */
 
+/* Bandeau : pas de dégradé, pas d'ombre. C'est une note en marge, avec
+   un filet de teal à gauche qui la signale sans la remplir. */
 .banner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 13px 16px;
-  border-radius: var(--radius);
+  padding: 15px 18px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--teal);
   background: var(--surface);
-  box-shadow: var(--shadow-1);
-  font-size: 13px;
+  font-size: var(--text-sm);
   animation: slide-up 0.3s var(--ease) both;
 }
 
 .banner--install {
-  background: linear-gradient(120deg, var(--teal-soft), var(--surface) 72%);
-  border-color: var(--teal-soft);
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  border-left-color: var(--teal);
 }
 
+/* Les variantes d'état ne teignent plus le fond : elles ne changent que
+   le filet de gauche. Un aplat coloré satrait le texte à l'intérieur. */
 .banner--warn {
-  background: var(--orange-soft);
-  border-color: var(--orange-soft);
+  background: var(--surface-2);
+  border-left-color: var(--orange);
 }
 
 .banner--ok {
-  background: var(--teal-soft);
-  border-color: var(--teal-soft);
+  background: var(--surface-2);
+  border-left-color: var(--teal);
 }
 
 .banner--error {
-  background: var(--red-soft);
-  border-color: var(--red-soft);
+  background: var(--surface-2);
+  border-left-color: var(--red);
 }
 
 .banner--error .banner-text strong {
@@ -791,10 +801,10 @@
 .banner-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  background: var(--surface-2);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-3);
   color: var(--teal);
   flex: 0 0 auto;
 }
@@ -808,11 +818,11 @@
 }
 
 .banner-text strong {
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .banner-text span {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--ink-2);
 }
 
@@ -822,14 +832,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 13px 16px;
-  border-radius: var(--radius);
+  padding: 13px 18px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
-  background: var(--surface-glass);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: var(--shadow-3), var(--hairline);
-  font-size: 13px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
   animation: spring-in var(--dur-slow) var(--ease-spring) both;
 }
 
@@ -863,16 +871,19 @@
 }
 
 .toast-action {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--teal);
-  padding: 7px 12px;
+  padding: 7px 13px;
   border-radius: var(--radius-pill);
+  border: 1px solid var(--teal-soft);
   background: var(--teal-soft);
 }
 
 /* Dialogues ------------------------------------------------------ */
 
+/* Un dialogue est une page detournée : mêmes feuilles, mêmes filets, et
+   pas de flou — le fond ne se déforme pas. */
 .dialog {
   width: min(720px, calc(100vw - 24px));
   padding: 0;
@@ -880,14 +891,12 @@
   border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: var(--shadow-3), var(--hairline);
+  box-shadow: var(--shadow-3);
   overflow: hidden;
 }
 
 .dialog::backdrop {
-  background: rgba(4, 6, 10, 0.62);
-  backdrop-filter: blur(6px) saturate(120%);
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  background: rgba(24, 20, 16, 0.45);
   animation: fade-in var(--dur) var(--ease-out) both;
 }
 
@@ -914,9 +923,9 @@
   justify-content: flex-end;
   gap: var(--space-3);
   flex-wrap: wrap;
-  padding: 16px clamp(18px, 2.8vw, 30px);
+  padding: 18px clamp(18px, 2.8vw, 30px);
   border-top: 1px solid var(--line-strong);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 
 .dialog-foot .btn--primary {
@@ -926,7 +935,7 @@
 .form-message {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 
@@ -940,32 +949,18 @@
 
 /* États vides ---------------------------------------------------- */
 
+/* Un état vide est une page blanche avec une simple note centrée : pas de
+   boîte, pas de halo. C'est le vide qui parle, pas le décor. */
 .empty {
   position: relative;
-  padding: clamp(44px, 9vw, 80px) 24px;
+  padding: clamp(48px, 9vw, 88px) 24px;
   text-align: center;
   color: var(--ink-3);
-  font-size: 13.5px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  box-shadow: var(--shadow-1), var(--hairline);
-}
-
-/* Halo doux derrière l'icône : donne un centre de gravité à un état
-   vide, qui est par nature une zone morte. */
-.empty::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(420px 200px at 50% 0%, var(--teal-soft), transparent 70%);
-  opacity: 0.55;
 }
 
 .empty > * {
@@ -974,20 +969,26 @@
 
 .empty svg {
   color: var(--teal);
-  opacity: 0.9;
+  opacity: 0.75;
 }
 
+/* L'état vide est le seul moment où l'application peut se permettre un
+   vrai niveau de titraille : il n'y a rien d'autre à regarder. */
 .empty strong {
   display: block;
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-display);
   font-family: var(--font-head);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'opsz' 100;
 }
 
 .skeleton {
   color: var(--ink-3);
-  font-size: 14px;
-  padding: 48px;
+  font-size: var(--text-base);
+  padding: 56px;
   text-align: center;
 }
 
@@ -999,23 +1000,31 @@
   gap: var(--space-3);
 }
 
+/* Chiffre clé : en-tête de rubrique au-dessus du nombre. */
 .kv-item {
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--line-strong);
 }
 
 .kv-item small {
   display: block;
   color: var(--ink-3);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .kv-item strong {
-  font-size: 15px;
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'opsz' 30;
   font-variant-numeric: tabular-nums;
 }
 

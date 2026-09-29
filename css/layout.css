@@ -6,30 +6,30 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Les halos radiaux presque effacés : sur papier, un dégradé de fond
+     se remarque. Ils servent juste à réchauffer les deux coins opposés. */
   background:
-    radial-gradient(1200px 520px at 100% -8%, var(--bg-accent-1), transparent 60%),
-    radial-gradient(900px 460px at -10% 110%, var(--bg-accent-2), transparent 60%),
+    radial-gradient(1100px 480px at 100% -10%, var(--bg-accent-1), transparent 62%),
+    radial-gradient(900px 420px at -10% 108%, var(--bg-accent-2), transparent 62%),
     var(--bg);
 }
 
 /* Barre du haut --------------------------------------------------- */
 
+/* Une « une » de magazine plutôt qu'une barre d'outils : le titre de
+   marque domine, et la navigation devient une simple ligne de sommaire
+   à droite. Aucun verre, aucun flou — du papier, et un trait. */
 .appbar {
   position: sticky;
   top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-5);
   min-height: calc(var(--appbar-h) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) clamp(16px, 4vw, 40px) 0;
-  background: var(--surface-glass);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  padding: env(safe-area-inset-top) clamp(20px, 5vw, 44px) 0;
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
-  /* Le liseré sur le bord haut compense le fait que le filet du bas soit
-     le seul côté visible quand la barre est collée en haut de l'écran. */
-  box-shadow: 0 1px 24px -18px rgba(0, 0, 0, 0.9);
 }
 
 .brand {
@@ -40,80 +40,109 @@
   flex: 0 0 auto;
 }
 
+/* Le monogramme devient un filet de deux lignes : un bloc de couleur
+   filled à 44 px aurait fait « application », pas « titre ». */
 .brand-mark {
   font-family: var(--font-head);
-  background: linear-gradient(140deg, var(--mint), var(--teal) 72%);
-  color: #0b0f14;
-  border-radius: 15px;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  font-size: 15.5px;
-  letter-spacing: -0.01em;
-  box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition: transform 0.3s var(--ease-spring);
+  background: none;
+  color: var(--teal);
+  border-left: 2px solid var(--teal);
+  border-radius: 0;
+  width: auto;
+  height: auto;
+  display: block;
+  padding: 2px 0 2px 11px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variation-settings: 'opsz' 20;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
 .brand:hover .brand-mark {
-  transform: rotate(-4deg) scale(1.04);
+  color: var(--teal-dark);
+  border-color: var(--teal-dark);
 }
 
 .brand-mark span {
-  color: #ffe3c8;
+  color: var(--ink-3);
 }
 
 .brand-text strong {
   display: block;
-  font-size: 15.5px;
-  letter-spacing: 0.1px;
+  font-family: var(--font-head);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  font-variation-settings: 'opsz' 40;
 }
 
 .brand-text small {
   display: block;
   color: var(--ink-3);
   font-size: 10.5px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 3px;
 }
 
+/* Navigation de bureau : une simple ligne de sommaire, sans pastille
+   de fond. Un onglet actif est souligné, comme un sommaire d'article. */
 .appbar-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-5);
   margin: 0 auto;
-  padding: 5px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
 }
 
 .navlink {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 17px;
-  border-radius: var(--radius-pill);
-  font-size: 13px;
+  gap: 7px;
+  padding: 6px 0;
+  border-radius: 0;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--ink-2);
-  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+  color: var(--ink-3);
+  transition: color var(--dur) var(--ease);
 }
 
 .navlink svg {
   flex: 0 0 auto;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .navlink:hover {
-  background: var(--surface);
+  background: none;
   color: var(--ink);
 }
 
 .navlink.is-active {
-  background: var(--surface);
-  color: var(--teal);
+  background: none;
+  color: var(--ink);
   font-weight: 600;
-  box-shadow: var(--shadow-1);
+  box-shadow: none;
+}
+
+/* Le soulignement part de la gauche, comme une entrée d'index. */
+.navlink::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1.5px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.navlink.is-active::after {
+  transform: scaleX(1);
 }
 
 .appbar-actions {
@@ -124,26 +153,28 @@
   flex: 0 0 auto;
 }
 
-/* Pastille de synchronisation */
+/* Pastille de synchronisation — un mot discret, pas une pastille de
+   statut. Sur papier, c'est un renvoi en bas d'article. */
 .sync-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  font-size: 12px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--ink-3);
   white-space: nowrap;
-  transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background-color 0.2s var(--ease);
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 
 .sync-pill::before {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   flex: 0 0 auto;
@@ -172,7 +203,7 @@
 }
 
 .sync-pill.is-config {
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 
 .sync-pill.is-error {
@@ -193,13 +224,15 @@
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: clamp(22px, 3.4vw, 40px) clamp(16px, 4vw, 40px) 110px;
+  /* Respiration generousse en haut : l'en-tete a besoin d'air pour se
+     lire comme un titre, pas comme un bandeau colle. */
+  padding: clamp(36px, 5vw, 64px) clamp(20px, 5vw, 44px) 120px;
 }
 
 .view {
   display: flex;
   flex-direction: column;
-  gap: clamp(20px, 2.8vw, 32px);
+  gap: clamp(28px, 4vw, 48px);
   animation: rise var(--dur-slow) var(--ease-out) both;
 }
 
@@ -213,16 +246,17 @@
 
 .view-head h1 {
   font-family: var(--font-head);
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: var(--text-2xl);
   line-height: 1.05;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
 }
 
 .view-head p {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--ink-3);
-  font-size: 14px;
-  max-width: 62ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  max-width: 54ch;
 }
 
 .view-head-actions {
@@ -232,12 +266,16 @@
   flex-wrap: wrap;
 }
 
+/* En-tête de section : un filet fin qui court jusqu'au bout de la
+   colonne, comme la ligne de séparation d'un sommaire. */
 .section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
 }
 
 .banners {
@@ -258,14 +296,12 @@
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(10px + env(safe-area-inset-bottom));
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 45;
-  width: min(520px, calc(100vw - 20px));
-  padding: 6px;
+  width: min(480px, calc(100vw - 24px));
+  padding: 5px;
   border-radius: var(--radius-lg);
-  background: var(--surface-glass);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: var(--surface);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-2), var(--hairline);
 }
@@ -288,8 +324,9 @@
   border-radius: var(--radius-sm);
   font-size: 10.5px;
   font-weight: 500;
-  color: var(--muted);
-  transition: color 0.2s var(--ease), background-color 0.2s var(--ease), transform 0.2s var(--ease);
+  color: var(--ink-3);
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
 }
 
 .navtab:active {
@@ -319,22 +356,23 @@
   place-items: center;
 }
 
-/* Onglet central Ajouter (mobile) : bouton qui déborde au-dessus de la
-   barre, cerclé de la couleur du fond pour qu'il paraisse posé dessus. */
+/* Onglet central Ajouter : sur papier, un aplat plein ferait tache.
+   C'est un disque de teal, cerclé de blanc pour rester détaché de la
+   barre, et qui s'enfonce au toucher. */
 .navtab--add {
   justify-content: center;
   color: var(--teal);
 }
 
 .navtab--add svg {
-  width: 46px;
-  height: 46px;
-  margin-top: -16px;
+  width: 44px;
+  height: 44px;
+  margin-top: -14px;
   padding: 12px;
   border-radius: 50%;
-  background: linear-gradient(140deg, var(--mint), var(--teal) 78%);
-  color: #0b0f14;
-  box-shadow: var(--shadow-brand), 0 0 0 5px var(--bg), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: var(--shadow-brand), 0 0 0 5px var(--surface);
   transition: transform 0.3s var(--ease-spring);
 }
 
@@ -343,7 +381,7 @@
 }
 
 .navtab--add span {
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 
 .navtab--add.is-active span {
@@ -383,11 +421,11 @@
 
 @media (max-width: 720px) {
   :root {
-    --appbar-h: 62px;
+    --appbar-h: 64px;
   }
 
   body {
-    font-size: 14.5px;
+    font-size: 15px;
   }
 
   /* La barre flottante occupe ~70 px, plus sa marge au bord du bas :
@@ -406,15 +444,19 @@
     display: none;
   }
 
-  .brand-text {
+  /* Le sommaire passe sous la forme d'onglets, mais le titre de marque
+     reste : c'est lui qui donne le caractère de la page. */
+  .brand-text small {
     display: none;
   }
 
   .brand-mark {
-    width: 38px;
-    height: 38px;
-    font-size: 13.5px;
-    border-radius: 12px;
+    font-size: 15px;
+    padding: 3px 0 3px 10px;
+  }
+
+  .brand-text strong {
+    font-size: 18px;
   }
 
   /* Les toasts se posent au-dessus de la barre flottante, pas derrière. */
@@ -423,7 +465,7 @@
   }
 
   .sync-pill {
-    padding: 7px 10px;
+    padding: 6px 10px;
   }
 
   .sync-pill small {
@@ -453,8 +495,8 @@
   }
 
   .sync-pill::before {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 }
 

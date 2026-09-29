@@ -19,8 +19,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--text-base);
+  line-height: 1.6;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
@@ -38,23 +38,27 @@ h4 {
   line-height: 1.2;
   /* Les titres sont resserrés : à ces tailles, l'espace négatif entre
      lettres compense la graisse et donne une silhouette plus nette. */
-  letter-spacing: -0.022em;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
+/* La titraille est le niveau signature : c'est elle qui donne à
+   l'application son caractère d'article plutôt que d'outil. */
 h1 {
   font-family: var(--font-head);
   font-weight: 600;
   font-size: var(--text-2xl);
-  line-height: 1.08;
-  letter-spacing: -0.028em;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'SOFT' 0, 'WONK' 1, 'opsz' 100;
 }
 
 h2 {
   font-family: var(--font-head);
   font-size: var(--text-xl);
-  line-height: 1.15;
+  line-height: 1.12;
   letter-spacing: -0.024em;
+  font-variation-settings: 'opsz' 40;
 }
 
 h3 {
@@ -82,9 +86,9 @@ small {
 
 code {
   font-family: var(--font-mono);
-  font-size: 0.92em;
-  background: var(--surface-3);
-  border-radius: 6px;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  border-radius: var(--radius-xs);
   padding: 1px 5px;
 }
 
@@ -108,18 +112,18 @@ button:disabled {
   opacity: 0.55;
 }
 
-/* Anneau de focus : un contour net, plus un halo large et discret. Le halo
-   fait le travail sur les surfaces sombres, où un contour seul se perd. */
+/* Sur du papier, l'anneau de focus se voit surtout par sa teinte :
+   un halo trop large s'ennoie et donne un halo beige. */
 :focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
-  box-shadow: 0 0 0 5px var(--teal-soft);
+  box-shadow: 0 0 0 4px var(--teal-soft);
 }
 
 ::selection {
   background: var(--teal);
-  color: #0b0f14;
+  color: #ffffff;
 }
 
 /* Barres de défilement discrètes */
@@ -202,12 +206,15 @@ button:disabled {
   gap: var(--space-4);
 }
 
+/* Sur-titre : petites capitales très espacées, le repère typographique
+   d'un article. C'est le détail qui fait le plus « éditorial » sur un
+   simple en-tête de section. */
 .u-eyebrow {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 1.4px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink-3);
 }
 
 /* Apparition douce des blocs */

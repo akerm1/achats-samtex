@@ -26,11 +26,16 @@ export function getThemePreference() {
   return preference
 }
 
+/* La couleur de la barre du navigateur suit le fond réel du thème. Sur
+   papier, une teinte d'accent aurait laissé un bandeau vert en haut de
+   la page, ce qui rompait l'effet « feuille ». */
+const CHROME = { light: '#faf7f1', dark: '#141210' }
+
 export function applyTheme() {
   const resolved = resolveTheme()
   document.documentElement.dataset.theme = resolved
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0c0f14' : '#14795a')
+  if (meta) meta.setAttribute('content', CHROME[resolved] || CHROME.light)
   return resolved
 }
 

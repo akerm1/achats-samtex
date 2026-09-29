@@ -4,6 +4,9 @@
 
 /* Liste : barre d'outils ------------------------------------------ */
 
+/* Barre d'outils : un bandeau de papier, pas une boîte flottante. Le
+   verre est retiré — sur fond clair il ternissait le texte qu'il était
+   censé laisser passer. */
 .toolbar {
   position: sticky;
   top: calc(var(--appbar-h) + env(safe-area-inset-top));
@@ -11,16 +14,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  /* Verre plutôt qu'un bloc plein : la liste qui défile reste
-     devinable derrière, ce qui garde la barre de recherche présente
-     sans écraser le contenu. */
-  background: var(--surface-glass);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: var(--shadow-1), var(--hairline);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
 }
 
 .toolbar-row {
@@ -43,25 +41,25 @@
 
 /* Premier lancement : invitation à connecter GitHub --------------- */
 
+/* Invitation de premier lancement : un encart bordé de teal, avec la
+   même ligne de filet que les bandeaux d'information. */
 .setup-card {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
-  border-radius: var(--radius);
-  border: 1px solid var(--teal);
-  background:
-    radial-gradient(460px 200px at 100% 0%, var(--teal-soft), transparent 70%),
-    var(--surface);
-  box-shadow: var(--shadow-1);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--teal);
+  background: var(--surface);
 }
 
 .setup-mark {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 13px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   background: var(--teal-soft);
   color: var(--teal);
   display: grid;
@@ -75,12 +73,15 @@
 
 .setup-copy strong {
   display: block;
-  font-size: 14px;
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.018em;
 }
 
 .setup-copy p {
   margin-top: 5px;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
 }
 
@@ -89,10 +90,8 @@
 }
 
 .setup-card--error {
-  border-color: var(--red-soft);
-  background:
-    radial-gradient(460px 200px at 100% 0%, var(--red-soft), transparent 70%),
-    var(--surface);
+  border-color: var(--line-strong);
+  border-left-color: var(--red);
 }
 
 .setup-card--error .setup-mark {
@@ -117,56 +116,60 @@
 /* Liste : groupes par catégorie ----------------------------------- */
 
 .group + .group {
-  margin-top: clamp(24px, 3.4vw, 36px);
+  margin-top: clamp(40px, 5.5vw, 64px);
 }
 
-/* En-tête de groupe : le nom de la catégorie reste lisible d'un coup,
-   le compte reste discret, le total reste à droite. */
+/* En-tête de groupe : le nom de la catégorie est un vrai titre de
+   rubrique, le compte reste en surcharge discrète, le total s'aligne à
+   droite. Un filet referme la ligne, comme un séparateur d'article. */
 .group-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
 }
 
 .group-head h3 {
-  font-size: var(--text-md);
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
   font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.014em;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'opsz' 40;
 }
 
 .group-count {
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--ink-3);
-  background: var(--surface-3);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
+  letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
 
 .group-total {
   margin-left: auto;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--teal);
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
 }
 
+/* Grille plus large et plus aérée : les cartes ont besoin de place pour
+   laisser respirer un titre en serif, qui est plus long que le corps. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: clamp(14px, 2vw, 22px);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: clamp(18px, 2.4vw, 30px);
 }
 
 /* Carte produit --------------------------------------------------- */
 
-/* Carte produit --------------------------------------------------- */
-
-/* Une ombre d'ambiance très douce posée sous la carte, plus un liseré
-   sur le bord haut : c'est ce duo qui fait « planer » la carte au-dessus
-   du fond au lieu de la rendre plus claire — plus lisible sur fond noir. */
+/* Sur papier, une carte est une fiche : trait net, ombre à peine
+   perceptible, et un simple déplacement de 2 px au survol. Le « planage »
+   d'un bouton 3D n'a pas sa place dans cette direction artistique. */
 .product {
   position: relative;
   display: flex;
@@ -174,7 +177,7 @@
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1), var(--hairline);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
   transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out),
     border-color var(--dur) var(--ease-out);
@@ -183,9 +186,9 @@
 
 @media (hover: hover) {
   .product:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-2), var(--hairline);
-    border-color: color-mix(in srgb, var(--teal) 26%, var(--line-strong));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+    border-color: color-mix(in srgb, var(--teal) 30%, var(--line-strong));
   }
 }
 
@@ -211,9 +214,9 @@
   color: var(--ink-3);
 }
 
-/* La priorité ne se signale plus par un liseré à gauche : il se perdait
-   entre deux cartes. C'est un point coloré en haut de la photo, à l'endroit
-   exact où l'œil entre dans la carte. */
+/* La priorité se signale par un filet plein de 3 px sur le bord haut de
+   la carte. C'est le détail le plus sobre qui reste visible d'un coup
+   d'œil à travers toute la grille. */
 .product--p1::after,
 .product--p2::after,
 .product--p3::after {
@@ -227,21 +230,23 @@
 }
 
 .product--p1::after {
-  background: linear-gradient(90deg, var(--red), transparent 88%);
+  background: var(--red);
 }
 
 .product--p2::after {
-  background: linear-gradient(90deg, var(--gold), transparent 88%);
+  background: var(--gold);
 }
 
 .product--p3::after {
-  background: linear-gradient(90deg, var(--teal), transparent 88%);
+  background: var(--teal);
 }
 
+/* Photo : ratio 3/2, celui d'une photographie encadrée. Le 16/10
+   rognait trop, et une image de produit se juge sur ce qu'elle montre. */
 .product-photo {
   position: relative;
-  aspect-ratio: 16 / 10;
-  background: var(--surface-3);
+  aspect-ratio: 3 / 2;
+  background: var(--surface-2);
   display: grid;
   place-items: center;
   color: var(--ink-3);
@@ -268,41 +273,45 @@
   flex-direction: column;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .product-photo .badge {
   position: absolute;
-  top: 11px;
-  left: 11px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-1);
+  top: 12px;
+  left: 12px;
+  background: var(--surface);
   color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-1);
 }
 
+/* Ruban « acheté » : blanc, discret. C'est une information d'état, pas
+   une décoration : en teal plein, il concurrençait le prix. */
 .product-ribbon {
   position: absolute;
-  top: 11px;
-  right: 11px;
+  top: 12px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
-  background: var(--teal);
-  color: #0b0f14;
-  font-size: 11px;
-  font-weight: 700;
-  box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--teal);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-1);
 }
 
 .product-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 12px;
+  gap: 7px;
+  padding: 18px 20px 14px;
   flex: 1;
   cursor: pointer;
   border-radius: var(--radius);
@@ -319,11 +328,15 @@
   background: var(--surface-3);
 }
 
+/* Nom du produit : c'est le seul élément de la carte en serif. Il porte
+   le regard, et le reste passe au second plan. */
 .product-name {
-  font-size: 15px;
+  font-family: var(--font-head);
+  font-size: var(--text-md);
   font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.014em;
+  line-height: 1.24;
+  letter-spacing: -0.018em;
+  font-variation-settings: 'opsz' 24;
   text-wrap: balance;
 }
 
@@ -332,25 +345,27 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink-2);
 }
 
+/* Prix : en serif aussi, un cran au-dessus des métadonnées. Le prix est
+   ce qu'on relit le plus, il mérite la même matière que le titre. */
 .product-price {
-  font-size: 13px;
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
   font-weight: 600;
   color: var(--teal);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'opsz' 20;
   font-variant-numeric: tabular-nums;
-  /* Les prix sont ce qu'on relit le plus : on les isole du reste du
-     texte en leur donnant sa propre ligne, déjà le cas, et un corps
-     un cran au-dessus des métadonnées. */
-  letter-spacing: -0.006em;
 }
 
 .product-note {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
-  line-height: 1.45;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -362,7 +377,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 16px 14px;
+  padding: 0 20px 18px;
 }
 
 .product-foot .btn {
@@ -395,12 +410,15 @@
 
 .setting-copy strong {
   display: block;
-  font-size: 14px;
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.016em;
 }
 
 .setting-copy p {
   margin-top: 5px;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
   max-width: 56ch;
 }
@@ -427,20 +445,18 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 14px;
+  padding: 9px 15px;
   border-radius: var(--radius-pill);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--ink-2);
-  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
 .segmented button.is-active {
-  background: var(--surface);
-  color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: var(--shadow-1), var(--hairline);
 }
 
 .settings-grid {
@@ -458,17 +474,19 @@
   align-items: start;
 }
 
+/* Zone de dépôt : pointillés fins et pas de fond teinté. La zone vide
+   doit lire « rien ici pour l'instant », pas « composant désactivé ». */
 .photo-picker {
   position: relative;
   aspect-ratio: 4 / 3;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   border: 1.5px dashed var(--line-strong);
-  background: var(--surface-2);
+  background: transparent;
   display: grid;
   place-items: center;
   overflow: hidden;
   color: var(--ink-3);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
 }
 
 .photo-picker img {
@@ -490,7 +508,8 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background: var(--surface-glass);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
 }
 
 .picker-actions {
@@ -500,10 +519,12 @@
   flex-wrap: wrap;
 }
 
+/* Formulaire : champs séparés par du filet, pas par des boîtes empilées.
+   C'est la mise en page d'un formulaire imprimé, qui se scanne mieux. */
 .form-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-5);
 }
 
 /* Couleur : boîte à côté du nom + grande boîte d'aperçu en dessous */
@@ -524,7 +545,7 @@
   height: 44px;
   padding: 3px;
   flex: 0 0 auto;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   cursor: pointer;
   background:
@@ -554,7 +575,7 @@ input.color-box::-webkit-color-swatch-wrapper {
 
 input.color-box::-webkit-color-swatch {
   border: none;
-  border-radius: 9px;
+  border-radius: 5px;
 }
 
 /* Roue chromatique ------------------------------------------------- */
@@ -626,21 +647,21 @@ input.color-box::-webkit-color-swatch {
 
 .color-wheel-swatch {
   height: 64px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .color-wheel-readout {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .color-wheel-name {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--ink-3);
   min-height: 1.4em;
   cursor: pointer;
@@ -655,11 +676,11 @@ input.color-box::-webkit-color-swatch {
 .color-preview {
   height: 72px;
   margin-top: var(--space-2);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
   cursor: pointer;
-  transition: border-color 0.2s var(--ease);
+  transition: border-color var(--dur) var(--ease);
 }
 
 .color-preview:hover,
@@ -698,9 +719,10 @@ input.color-box::-webkit-color-swatch {
   gap: 2px;
   margin-top: var(--space-2);
   padding: 5px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
   max-height: 248px;
   overflow-y: auto;
 }
@@ -714,12 +736,12 @@ input.color-box::-webkit-color-swatch {
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border: 0;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--ink);
-  font-size: 13.5px;
+  font-size: var(--text-base);
   text-align: left;
   cursor: pointer;
   transition: background-color 0.16s var(--ease);
@@ -749,15 +771,15 @@ input.color-box::-webkit-color-swatch {
   /* Une seule colonne de cartes : tous les boutons restent visibles. */
   .grid {
     grid-template-columns: 1fr;
-    gap: var(--space-3);
+    gap: var(--space-4);
   }
 
   .product-body {
-    padding: 11px 13px 9px;
+    padding: 16px 18px 12px;
   }
 
   .product-foot {
-    padding: 0 13px 13px;
+    padding: 0 18px 16px;
     gap: var(--space-2);
   }
 
@@ -822,11 +844,13 @@ input.color-box::-webkit-color-swatch {
 }
 
 @media (max-width: 480px) {
+  /* Le serif ne descend pas en dessous de 15 px : sous ce seuil, les
+     contreformes se referment et le titre devient illisible. */
   .product-name {
-    font-size: 14.5px;
+    font-size: var(--text-md);
   }
 
   .product-price {
-    font-size: 13px;
+    font-size: var(--text-md);
   }
 }
