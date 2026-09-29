@@ -6,7 +6,7 @@
 /* l'application compare au sien pour savoir si une mise à jour existe. */
 /* ------------------------------------------------------------------ */
 
-export const APP_VERSION = '8.1.0'
+export const APP_VERSION = '8.2.0'
 
 /** Date de publication (informative, affichée dans les Réglages). */
 export const APP_RELEASE = '2026-09-29'

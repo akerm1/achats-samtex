@@ -1,0 +1,184 @@
+<!doctype html>
+<!--
+  Page de mise en page — sert à *regarder* une présentation de la liste
+  dans le navigateur, sans passer par l'application entière.
+
+      node tools/check.mjs --shot out.png   (utilise check-page.html)
+      tools/preview.html?layout=mosaic&theme=dark
+
+  Elle importe les vrais modules et les vraies feuilles de style : ce qu'on
+  voit ici est ce que voit l'application. Elle n'est jamais publiée.
+-->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mise en page — aperçu</title>
+    <script>
+      const params = new URLSearchParams(location.search)
+      document.documentElement.dataset.theme = params.get('theme') === 'dark' ? 'dark' : 'light'
+    </script>
+    <link rel="stylesheet" href="../css/tokens.css" />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/layout.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/views.css" />
+    <style>
+      /* Le banc occupe tout l'écran : on juge la page, pas une marge. */
+      body { padding: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      /* Toute erreur de module est renvoyée telle quelle : sans ce piège,
+         une page blanche ne distingue pas « script cassé » de « mise en page
+         vide », et le banc rendrait des zéros difficiles à lire. */
+      const send = (payload) => fetch('/__diag', { method: 'POST', body: JSON.stringify(payload, null, 1) })
+      addEventListener('error', (event) => {
+        send({ fatal: 'error', message: event.message, file: event.filename, line: event.lineno })
+      })
+      addEventListener('unhandledrejection', (event) => {
+        send({ fatal: 'rejet', message: String(event.reason), stack: String(event.reason?.stack || '') })
+      })
+    </script>
+    <script type="module">
+      import { renderProductCard } from '../js/ui/product-card.js'
+      import { normalizeProduct, productView, groupByCategory, categoryLabel, sumTotal } from '../js/data/model.js'
+      import { esc, formatMoney } from '../js/core/utils.js'
+
+      const params = new URLSearchParams(location.search)
+      const layout = params.get('layout') || 'mosaic'
+      const label = { card: 'Fiche', mosaic: 'Mosaïque', row: 'Liste' }[layout] || layout
+
+      /* Un contour de couleur, pour juger une vraie teinte. Les aplats unis
+         ne disent rien de la lisibilité d'un nom posé dessus. */
+      const swatch = (hex) =>
+        'data:image/svg+xml;base64,' +
+        btoa(
+          unescape(
+            encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hex}" stop-opacity=".55"/><stop offset="1" stop-color="${hex}"/></linearGradient></defs><rect width="600" height="450" fill="#f2ece2"/><rect width="600" height="450" fill="url(#g)"/><circle cx="450" cy="120" r="90" fill="#ffffff" opacity=".25"/></svg>`,
+            ),
+          ),
+        )
+
+      const raw = [
+        { id: '1', name: 'Ceinture satin ivoire', type: 'ceinture', color: 'Ivoire', colorRgb: { r: 239, g: 227, b: 211 }, qty: 25, unit: 'piece', price: 1.5, priority: 'haute', supplier: 'Textile Pro' },
+        { id: '2', name: 'Tulle rose bébé', type: 'tulle', color: 'Rose bébé', colorRgb: { r: 255, g: 215, b: 222 }, qty: 4, unit: 'metre', price: 3.2, priority: 'normale' },
+        { id: '3', name: 'Fil doré', type: 'fil', color: 'Or', colorRgb: { r: 201, g: 162, b: 39 }, qty: 6, unit: 'rouleau', price: 2.4, priority: 'normale', supplier: 'Mercerie Centre' },
+        { id: '4', name: 'Dentelle écrue', type: 'dentelle', color: 'Écru', colorRgb: { r: 245, g: 240, b: 228 }, qty: 3, unit: 'metre' },
+        { id: '5', name: 'Ruban bleu roi', type: 'ruban', color: 'Bleu roi', colorRgb: { r: 42, g: 82, b: 190 }, qty: 12, unit: 'rouleau', price: 1.1, priority: 'basse', status: 'bought', boughtAt: '2026-09-20T10:00:00.000Z' },
+        { id: '6', name: 'Bordure brodée assortie à la ceinture assortie', type: 'accessoire', color: 'Bordeaux', colorRgb: { r: 122, g: 30, b: 46 }, qty: 8, unit: 'piece', price: 4.8, priority: 'haute', photo: swatch('#7a1e2e') },
+        { id: '7', name: 'Tissu satin vert forêt', type: 'tissu', color: 'Vert forêt', colorRgb: { r: 34, g: 84, b: 58 }, qty: 6, unit: 'metre', price: 9.9, photo: swatch('#225438') },
+        { id: '8', name: 'Fermoir doré', type: 'accessoire', color: 'Laiton', colorRgb: { r: 198, g: 173, b: 106 }, qty: 40, unit: 'piece', price: 0.6, priority: 'basse' },
+      ]
+
+      const items = raw.map((item) => productView(normalizeProduct(item)))
+      const groups = [...groupByCategory(items).entries()]
+      const total = sumTotal(items)
+
+      const grid = (list) =>
+        `<div class="grid grid--${layout}">${list.map((item) => renderProductCard(item, layout)).join('')}</div>`
+
+      const body = groups
+        .map(
+          ([type, list]) => `
+        <section class="group">
+          <header class="group-head">
+            <span class="dot"></span>
+            <h3>${esc(categoryLabel(type))}</h3>
+            <span class="group-count">${list.length}</span>
+            <span class="group-total">${formatMoney(sumTotal(list).total)}</span>
+          </header>
+          ${grid(list)}
+        </section>`,
+        )
+        .join('')
+
+      document.getElementById('root').innerHTML = `
+        <div class="app">
+          <header class="appbar">
+            <a class="brand" href="#/liste">
+              <span class="brand-mark">S<span>&amp;</span>T</span>
+              <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+            </a>
+            <nav class="appbar-nav">
+              <a class="navlink is-active" href="#/liste">Liste</a>
+              <a class="navlink" href="#/reglages">Réglages</a>
+            </nav>
+            <div class="appbar-actions">
+              <button type="button" class="sync-pill is-ready">À jour</button>
+              <button type="button" class="icon-btn" aria-label="Ajouter">+</button>
+            </div>
+          </header>
+          <main class="page">
+            <section class="view">
+              <div class="view-head">
+                <div>
+                  <h1>Ma liste d'achat</h1>
+                  <p>${items.length} produit(s) · ${label} · ≈ ${formatMoney(total.total)} dans la vue en cours.</p>
+                </div>
+              </div>
+              <div class="toolbar">
+                <div class="toolbar-row">
+                  <div class="input-wrap"><input id="q" type="search" placeholder="Rechercher un produit…" /></div>
+                </div>
+                <div class="scroller">
+                  <button type="button" class="chip is-active">À acheter<span class="chip-count">7</span></button>
+                  <button type="button" class="chip">Achetés<span class="chip-count">1</span></button>
+                  <button type="button" class="chip">Toutes<span class="chip-count">8</span></button>
+                </div>
+              </div>
+              ${body}
+            </section>
+          </main>
+        </div>`
+
+      /* --- Mesures, renvoyées en JSON ------------------------------------ */
+      /* `?diag=1` : loggle ne renvoie pas d'image mais des nombres, qu'on
+         peut lire dans un rapport texte. C'est la seule façon de juger une
+         mise en page sans la voir. */
+      if (params.get('diag')) {
+        const round = (n) => Math.round(n * 10) / 10
+        const near = (a, b, tol = 2) => Math.abs(a - b) <= tol
+        const box = (node) => {
+          if (!node) return null
+          const b = node.getBoundingClientRect()
+          return { w: round(b.width), h: round(b.height) }
+        }
+        const rows = [...document.querySelectorAll('article.product')].map((article) => {
+          const name = article.querySelector('.product-name, .tile-name, .row-name')?.textContent?.trim() || '?'
+          const visual = article.querySelector('.tile-visual, .row-visual, .product-photo')
+          const flat = article.querySelector('.cv--color')
+          const img = article.querySelector('.cv--photo img, img')
+          const tag = article.querySelector('.tile-tag, .color-chip')
+          const flatStyle = flat ? getComputedStyle(flat) : null
+          return {
+            name,
+            product: article.className,
+            article: box(article),
+            visual: box(visual),
+            /* `color` = la case est un aplat de couleur ; `photo` = une image ;
+               `vide` = ni l'une ni l'autre (le défaut, à ne jamais avoir). */
+            visualKind: flat ? 'color' : img ? 'photo' : 'AUCUN',
+            flatColor: flatStyle?.backgroundColor || null,
+            flatIsEmpty: flat?.classList.contains('is-empty') || false,
+            flatFillsTile: flat && visual ? near(flat.getBoundingClientRect().width, visual.getBoundingClientRect().width, 2) : null,
+            tag: box(tag),
+            tagText: tag?.textContent?.trim() || null,
+            tagOpaque: tag ? !/rgba\(.*,\s*0\)$|transparent/.test(getComputedStyle(tag).backgroundColor) : null,
+            metaText: article.querySelector('.row-meta')?.textContent?.trim() || null,
+            img: box(img),
+            imgFit: img ? getComputedStyle(img).objectFit : null,
+            bar: box(article.querySelector('.tile-bar')),
+            photoShare: img && visual ? round((visual.getBoundingClientRect().height / article.getBoundingClientRect().height) * 100) : null,
+            overflow: { scrollW: article.scrollWidth, clientW: article.clientWidth, scrollH: article.scrollHeight, clientH: article.clientHeight },
+          }
+        })
+        fetch('/__diag', { method: 'POST', body: JSON.stringify({ layout, theme: params.get('theme') || 'light', viewport: { w: innerWidth, h: innerHeight }, rows }, null, 1) })
+      }
+    </script>
+  </body>
+</html>

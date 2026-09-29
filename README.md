@@ -68,7 +68,7 @@ elle se mesure.
 
 ```
 Sur disque
-  ok   version.json === APP_VERSION  (8.1.0 / 8.1.0)
+  ok   version.json === APP_VERSION  (8.2.0 / 8.2.0)
   ok   syntaxe js\ui\preview.js
   ...
 Dans le navigateur (1200px, thème light)
@@ -448,12 +448,21 @@ il est partagé entre les appareils comme le thème.
 
 - **Fiche** (par défaut) : la carte actuelle, inchangée - photo ou bande de
   couleur, prix, note, boutons.
-- **Mosaïque** : quatre carrés par ligne (trois sur téléphone). L'image occupe la
-  tuile et le nom passe dans un bandeau **sous** l'image, et non par-dessus : le
-  contraste ne dépend alors plus de la photo. C'est le mode pour comparer des
-  couleurs d'un seul regard.
+- **Mosaïque** : quatre carrés par ligne (trois sur téléphone). La case est
+  l'image ou la teinte ; le nom passe dans une barre **sous** la case, et le
+  nom de la couleur dans une étiquette opaque en haut. C'est le mode pour
+  comparer des couleurs d'un seul regard.
 - **Liste** : une ligne par produit - vignette, nom, quantité, prix, coche. Une
   dizaine de produits tiennent dans une seule hauteur d'écran.
+
+Les deux présentations denses partagent un **visuel compact** qui n'a rien de la
+bande de couleur de la fiche. Ce détail compte plus qu'il n'en a l'air : la
+bande de la fiche est haute de 84 px, voilée sur ses deux tiers pour porter une
+étiquette de nom. Resservie dans une case, elle donnait une teinte ternie ; dans
+une vignette de 56 px, l'étiquette était rognée au milieu d'un mot. Ici la
+teinte est un aplat nu qui remplit la case, et le nom de la couleur est écrit en
+allonge dans le texte voisin — y compris pour un produit qui a une photo, qui la
+perdait complètement.
 
 Ce que les trois modes partagent, c'est ce qui compte :
 
@@ -466,6 +475,32 @@ Ce que les trois modes partagent, c'est ce qui compte :
 
 Un mode reçu d'un autre appareil qui ne serait pas connu retombe sur « Fiche »
 plutôt que de produire un écran vide.
+
+### Version 8.2 - la couleur et la photo reprennent leur place
+
+La 8.1 avait introduced la mosaïque et la ligne en **réemployant la bande de
+couleur de la fiche**. C'était une erreur, et elle se voyait : dans une case de
+190 px, le voile sombre qui aide à lire l'étiquette de la fiche mangeait la
+teinte sur ses deux tiers — la couleur paraissait avoir disparu. La photo, elle,
+n'occupait plus que 60 % de la case. Dans la ligne, l'étiquette de couleur
+était comprimée dans une vignette de 52 px et rognée au milieu d'un mot ; et un
+produit ayant une photo perdait son nom de couleur, complètement.
+
+- **Un visuel compact, écrit pour ces deux modes** : la teinte est un aplat nu
+  qui remplit la case ou la vignette, sans voile et sans étiquette posée
+  dessus. Elle reste cliquable — l'aperçu en grand fonctionne donc partout.
+- **La photo reprend les 82 % de la case** (contre 60 %), grâce à une barre
+  sous la case réduite à une seule ligne : nom à gauche, prix à droite, le
+  nom complet étant dans la fiche.
+- **Le nom de la couleur est écrit en toutes lettres** dans la barre (mosaïque)
+  ou dans la ligne (liste), y compris quand le produit a une photo.
+- **Une vignette un peu plus grande** (56 px, 48 px sur téléphone) : à 52 px une
+  photo n'était plus qu'une tache.
+
+Vérifié par `node tools/check.mjs` : 128 vérifications, thèmes clair et sombre,
+1200 px et 430 px. Le banc mesure désormais la part réelle du visuel dans la
+case et la couleur de fond exacte de l'aplat — les deux défauts ci-dessus
+étaient invisibles à l'œil *et* aux vérifications précédentes.
 
 ## Écrans & fonctionnalités
 
@@ -534,7 +569,20 @@ icons/                      icônes de l'application (PWA)
 tools/
   check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic
   check-page.html           banc d'essai dans le navigateur, appelé par check.mjs
+  preview.html              aperçu d'une présentation ?layout=card|mosaic|row
 ```
+
+`tools/preview.html` rend la liste entière dans une seule présentation, pour la
+regarder telle qu'elle apparaîtra à l'écran :
+
+```
+tools/preview.html?layout=mosaic&theme=dark
+```
+
+Ajoutez `&diag=1` et la page renvoie ses mesures (taille de chaque case, part de
+la photo, couleur de fond de l'aplat) au lieu d'une image. C'est ce mode qui a
+révélé que la couleur disparaissait et que la photo n'occupait que 60 % de la
+case : la 8.1 passait les vérifications automate *et* ces deux défauts.
 
 ## Synchronisation : GitHub ou lien privé
 

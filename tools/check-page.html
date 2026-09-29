@@ -346,13 +346,36 @@
         const mosaicCols = getComputedStyle(mosaic).gridTemplateColumns.split(' ').filter(Boolean).length
         check('mosaïque : quatre colonnes sur grand écran', innerWidth > 720 ? mosaicCols === 4 : mosaicCols === 3, `${mosaicCols} colonnes à ${innerWidth}px`)
 
-        /* La légende est un bandeau posé sous l'image, pas un voile : c'est
-           ce qui garantit un nom lisible quelle que soit la photo. */
+        /* La barre est posée sous le visuel, et elle est fine : c'est elle
+           qui volait à la photo un tiers de la case. */
         const tile = mosaic.querySelector('article[data-id="rgb"] .tile')
         const visual = tile.querySelector('.tile-visual').getBoundingClientRect()
-        const caption = tile.querySelector('.tile-caption').getBoundingClientRect()
-        check('mosaïque : légende sous l’image', caption.top >= visual.bottom - 1, `${Math.round(caption.top)} / ${Math.round(visual.bottom)}`)
-        check('mosaïque : l’image remplit la largeur', near(visual.width, caption.width, 2), `${Math.round(visual.width)} / ${Math.round(caption.width)}`)
+        const bar = tile.querySelector('.tile-bar').getBoundingClientRect()
+        check('mosaïque : la barre est sous le visuel', bar.top >= visual.bottom - 1, `${Math.round(bar.top)} / ${Math.round(visual.bottom)}`)
+        check('mosaïque : la barre tient sur une ligne', bar.height <= 40, `${Math.round(bar.height)}px`)
+        check('mosaïque : le visuel remplit la largeur', near(visual.width, bar.width, 2), `${Math.round(visual.width)} / ${Math.round(bar.width)}`)
+
+        /* Le reproche le plus facile à recevoir sans s'en apercevoir : une
+           photo qui n'occupe plus qu'un tiers de la case. On mesure sa part
+           réelle, pas son `object-fit`. */
+        const photoTile = mosaic.querySelector('article[data-id="rgb"]')
+        const photoVisual = photoTile.querySelector('.tile-visual').getBoundingClientRect()
+        const photoShare = (photoVisual.height / photoTile.getBoundingClientRect().height) * 100
+        check('mosaïque : la photo occupe la majeure partie', photoShare >= 75, `${photoShare.toFixed(0)}% de la case`)
+
+        /* La couleur doit être un aplat, pas une bande voilée : un voile
+          la mange et la case finit par ressembler à une étiquette sombre.
+          On vérifie la couleur de fond exacte du visuel. */
+        const flat = mosaic.querySelector('article[data-id="named"] .cv--color')
+        check('mosaïque : la couleur est un aplat pur', getComputedStyle(flat).backgroundColor === 'rgb(255, 215, 222)', getComputedStyle(flat).backgroundColor)
+        const flatVisual = mosaic.querySelector('article[data-id="named"] .tile-visual').getBoundingClientRect()
+        check('mosaïque : l’aplat remplit la case', near(flatVisual.width, flat.getBoundingClientRect().width, 2) && near(flatVisual.height, flat.getBoundingClientRect().height, 2), `${Math.round(flat.getBoundingClientRect().width)}x${Math.round(flat.getBoundingClientRect().height)}`)
+
+        /* Le nom de la couleur est écrit, pas rogné dans la case. */
+        const tag = mosaic.querySelector('article[data-id="named"] .tile-tag')
+        check('mosaïque : le nom de la couleur est écrit', tag?.textContent.trim() === 'rose bébé', tag?.textContent)
+        check('mosaïque : l’étiquette est opaque', tag && !/transparent/.test(getComputedStyle(tag).backgroundColor), tag && getComputedStyle(tag).backgroundColor)
+
         const tileName = tile.querySelector('.tile-name')
         check('mosaïque : le nom est lisible', tileName.getBoundingClientRect().height >= 14 && tileName.textContent.trim().length > 0, `${Math.round(tileName.getBoundingClientRect().height)}px`)
         /* La tuile la plus petite reste assez grande pour qu'on vise juste. */
@@ -369,9 +392,30 @@
         check('liste : la mosaïque est bien plus basse que la fiche', Math.max(...rowBoxes.map((b) => b.height)) < Math.min(...[...grid.querySelectorAll('article.product')].map((n) => n.getBoundingClientRect().height)), `${Math.round(Math.max(...rowBoxes.map((b) => b.height)))}px / ${Math.round(Math.min(...[...grid.querySelectorAll('article.product')].map((n) => n.getBoundingClientRect().height)))}px`)
         const rowVisual = rows.querySelector('.row-visual').getBoundingClientRect()
         check('liste : vignette carrée', near(rowVisual.width, rowVisual.height, 2), `${Math.round(rowVisual.width)}x${Math.round(rowVisual.height)}`)
+        check('liste : la vignette se voit', rowVisual.width >= 44, `${Math.round(rowVisual.width)}px`)
         check('liste : la ligne ne déborde pas', rowBoxes.every((b) => b.right <= mosaic.getBoundingClientRect().right + 1))
         const rowName = rows.querySelector('article[data-id="rgb"] .row-name')
         check('liste : le nom est lisible', rowName.getBoundingClientRect().height >= 14 && rowName.textContent.trim().length > 0, `${Math.round(rowName.getBoundingClientRect().height)}px`)
+
+        /* Le nom de la couleur doit être écrit dans la ligne, y compris pour
+           un produit qui a une photo : posé dans une vignette de 56 px, il
+           serait rogné au milieu d'un mot. */
+        const rowMetaColor = rows.querySelector('article[data-id="named"] .row-meta')?.textContent || ''
+        check('liste : la couleur est écrite dans la ligne', rowMetaColor.includes('rose bébé'), rowMetaColor)
+        const rowMetaPhoto = rows.querySelector('article[data-id="rgb"] .row-meta')?.textContent || ''
+        check('liste : la couleur survit à la photo', rowMetaPhoto.includes('ivoire'), rowMetaPhoto)
+        check('liste : rien n’est écrit dans la vignette', !rows.querySelector('.row-visual .color-chip') && !rows.querySelector('.row-visual .product-color'))
+
+        /* --- Aucun mode ne doit produire une case sans visuel ---------------- */
+        /* Sans photo ni couleur, la case reste un aplat neutre : ce qui
+           compte, c'est qu'elle ne soit pas vide de 0 px de haut. */
+        for (const layout of LAYOUTS) {
+          const blank = layouts.querySelector(`[data-layout="${layout}"] article[data-id="plain"]`)
+          const blankVisual = blank.querySelector('.tile-visual, .row-visual, .product-photo')
+          const b = blankVisual?.getBoundingClientRect()
+          check(`${layout} : la case garde un visuel`, b && b.width >= 40 && b.height >= 40, b && `${Math.round(b.width)}x${Math.round(b.height)}`)
+        }
+
 
         /* --- Coque de l'application : bandeau, en-tête, barre, état vide --- */
         /* Ces blocs sont en largeur de colonne, et un titre en gros
