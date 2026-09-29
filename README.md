@@ -502,6 +502,45 @@ Vérifié par `node tools/check.mjs` : 128 vérifications, thèmes clair et somb
 case et la couleur de fond exacte de l'aplat — les deux défauts ci-dessus
 étaient invisibles à l'œil *et* aux vérifications précédentes.
 
+### Version 8.3 - refonte pour le téléphone
+
+La 8.0 avait fait passer l'application du « logiciel » au « papier ». C'était
+joli sur un grand écran, et moins juste sur un téléphone : 15 px de corps de
+texte, des boutons de 34 px, et un fond crème qui jaunissait sous un écran
+amère. Cette version reprend tout le système visuel, en partant d'une seule
+question : **sur un écran de 6 pouces, qu'est-ce qu'on doit voir sans
+aprocher ?**
+
+- **Une base froide, pas crème** : l'ardoise remplace le papier, et
+  l'émeraude reste le seul accent. La couleur d'un tissu est désormais la
+  seule chose colorée de l'écran — c'est elle qu'on compare, et un fond chaud
+  lui prenait des tons.
+- **La lisibilité passe avant tout** : chaque couleur a été choisie sur sa
+  valeur de contraste, calculée sur le fond où elle sert réellement et non par
+  habitude. L'encre est à **16,8:1** sur le fond (au lieu de 12:1), le texte
+  secondaire à **5,9:1**, l'accent à **6,3:1** — tout est au-delà du seuil AA,
+  ce qui n'était pas le cas du texte secondaire.
+- **Le corps de texte passe de 15 à 16 px**, et l'échelle de titres monte
+  d'un cran. Sous 15 px, un serif voit ses contreformes se refermer et le
+  titre devient illisible — c'est désormais le plancher, pas la moyenne.
+- **Plus rien d'utile sous 44 px au doigt** : boutons 46 px, champs 48 px,
+  pastilles 44 px, coches de mosaïque 44 px. La version précédente descent
+  couramment à 34 px, ce qui revient à rater une cible sur trois.
+- **Une mise en page écrite mobile-first** : la grille part d'une colonne et
+  gagne des colonnes quand la place existe. La 8.0 utilisait `auto-fill`, qui
+  produisait des cartes de 190 px dès que la colonne passait sous 900 px.
+- **La bascule tablette/ordinateur est passée de 1020 à 820 px** : en dessous,
+  la navigation du haut n'a plus la place, elle descend dans la barre du bas.
+- **Quelques manques de la 8.2 corrigés** : le message d'information par
+  défaut (`toast--info`) n'avait aucune règle de style et s'affichait avec la
+  marque verte des succès ; le curseur de luminosité de la roue de couleur
+  s'affichait en contrôle natif, dix fois plus petit que les champs voisins.
+
+Vérifié par `node tools/check.mjs` sur **neuf largeurs** (320 à 1400 px), les
+deux thèmes, plus la passe `--e2e` qui lance l'application réelle : tout passe.
+Le lien d'évitement, le `100dvh` (fini le saut de la barre d'URL sur iOS) et
+les marges de défilement sous les barres collantes sont également ajoutés.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

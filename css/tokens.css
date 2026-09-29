@@ -1,103 +1,117 @@
 /* ------------------------------------------------------------------ */
 /* Design tokens — Mes achats                                          */
 /*                                                                      */
-/* Direction « éditoriale » : papier chaud, encre presque noire,       */
-/* accent teal employé avec retenue, titres en serif.                   */
+/* Refonte 2026. La direction est « vitrine » plutôt que « papier » :   */
+/*                                                                      */
+/*   - une base froide et neutre (ardoise) plutôt qu'un crème, pour     */
+/*     que la couleur d'un tissu soit la seule chose colorée à l'écran ; */
+/*   - un texte très foncé, `--ink` à 16:1 sur le fond, et `--ink-3`   */
+/*     encore à 5,9:1 — la lisibilité passe avant l'élégance ;          */
+/*   - un seul accent (émeraude) réservé aux actions et aux chiffres   */
+/*     qui comptent : le prix, le total, l'onglet actif.                */
 /*                                                                      */
 /* Le thème CLAIR est la base (`:root`). Le thème sombre est une       */
-/* variante declaration, et non l'inverse : c'est ce qui permet de     */
-/* traiter le papier comme la surface « normale » de l'application.    */
+/* variante déclarée, pas l'inverse : c'est ce qui permet de traiter le */
+/* fond comme la surface normale de l'application.                     */
+/*                                                                      */
+/* Chaque valeur a été vérifiée au contraste (WCAG AA, 4,5:1) sur le   */
+/* fond où elle sert réellement — pas sur `--bg` par habitude.          */
 /* ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light;
 
-  /* Surfaces — un papier légèrement chaud, pas un blanc pur : un blanc
-     franc fait « écran » et « application », un crème fait « papier ». */
-  --bg: #faf7f1;
-  --bg-accent-1: rgba(15, 107, 87, 0.055);
-  --bg-accent-2: rgba(176, 122, 58, 0.05);
+  /* Surfaces — quatre niveaux nets. L'écart entre `--bg` et `--surface`
+     est volontairement plus franc qu'avant (gris bleuté contre blanc) :
+     une carte doit se détacher du fond sans avoir recours à l'ombre. */
+  --bg: #f4f6f9;
+  --bg-accent-1: rgba(4, 102, 92, 0.07);
+  --bg-accent-2: rgba(34, 80, 143, 0.06);
   --surface: #ffffff;
-  --surface-2: #f6f3ec;
-  --surface-3: #edeae1;
+  --surface-2: #eef1f6;
+  --surface-3: #e2e8f0;
 
-  /* Encre — chaude, jamais pure noire : le noir absolu « claque » sur
-     un fond crème et fatigue l'œil. Un brun-noir à 26/24/20 suffit et
-     repose la lecture. */
-  --ink: #1a1814;
-  --ink-2: #4a463e;
-  --ink-3: #6f6a60;
-  --muted: #6f6a60;
+  /* Encre — un bleu-noir, pas un brun. Sur une base froide, un brun
+     tire vers le jaune et paraît « jauni » à côté des gris. */
+  --ink: #0d1526;
+  --ink-2: #3c4759;
+  --ink-3: #5a6478;
+  --muted: #5a6478;
 
-  /* Filets — la structure d'une page éditoriale tient moins à des
-     bordures qu'à des traits de 1 px bien placés. */
-  --line: #e6e1d6;
-  --line-strong: #d4cec0;
+  /* Filets — plus présents qu'avant : c'est le filet, et non l'ombre,
+     qui dessine les limites de l'interface. */
+  --line: #e3e8ef;
+  --line-strong: #c8d1de;
 
-  /* Couleurs de marque — le teal est volontairement sombre et peu
-     saturé : sur papier, un teal vif devient criard. */
-  --teal: #0f6b57;
-  --teal-dark: #0a5243;
-  --teal-soft: rgba(15, 107, 87, 0.1);
-  --orange: #a95a1c;
-  --orange-soft: rgba(169, 90, 28, 0.1);
-  --red: #a8342a;
-  --red-soft: rgba(168, 52, 42, 0.09);
-  --blue: #2b549c;
-  --blue-soft: rgba(43, 84, 156, 0.1);
-  --gold: #8a6a15;
-  --gold-soft: rgba(138, 106, 21, 0.13);
+  /* Couleurs de marque — l'émeraude est l'accent unique. Toutes les
+     valeurs ci-dessous tiennent 4,5:1 sur `--bg` et sur `--surface`. */
+  --teal: #04665c;
+  --teal-dark: #034d45;
+  --teal-soft: rgba(4, 102, 92, 0.12);
+  --orange: #a2560d;
+  --orange-soft: rgba(162, 86, 13, 0.12);
+  --red: #b3261e;
+  --red-soft: rgba(179, 38, 30, 0.11);
+  --blue: #22508f;
+  --blue-soft: rgba(34, 80, 143, 0.11);
+  --gold: #7a5c05;
+  --gold-soft: rgba(122, 92, 5, 0.14);
 
-  /* Rayons — nettement moins arrondis qu'avant. C'est le changement qui
-     fait le plus « éditorial » : des angles presque droits rappellent la
-     page imprimée, là où 30 px rappelaient l'application. */
-  --radius-xs: 6px;
-  --radius-sm: 9px;
-  --radius: 13px;
-  --radius-lg: 18px;
+  /* Rayons — plus francs, plus réguliers. Un rayon généreux et constant
+     donne au telephone un rythme qui tient jusqu'au bout de l'ecran ;
+     les rayons heterogenes d'avant lisaient comme un kit d'interface. */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
   --radius-pill: 999px;
 
-  /* Échelle de texte — plus généreuse, avec un vrai niveau « titraille ». */
-  --text-xs: 11px;
-  --text-sm: 12.5px;
-  --text-base: 15px;
-  --text-md: 16px;
-  --text-lg: 19px;
-  --text-xl: clamp(21px, 2.4vw, 25px);
-  --text-2xl: clamp(27px, 4vw, 38px);
-  --text-display: clamp(34px, 6vw, 60px);
+  /* Échelle de texte — remonte d'un cran partout. Le corps passe de
+     15 à 16 px : sur un telephone tenu à bout de bras, 15 px est la
+     frontière sous laquelle on relit. Les titres gardent leur serif. */
+  --text-xs: 12px;
+  --text-sm: 13.5px;
+  --text-base: 16px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: clamp(22px, 2.6vw, 27px);
+  --text-2xl: clamp(28px, 4.4vw, 42px);
+  --text-display: clamp(36px, 7vw, 64px);
 
-  /* Espaces — plus larges : « aéré » se joue surtout là. */
+  /* Espaces — un peu plus larges. */
+  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 26px;
+  --space-5: 24px;
 
-  /* Ombres — très diffuses et très faibles. Sur papier, une ombre dense
-     donne un rendu « plastique » ; on lui demande surtout de décoller
-     le bloc, pas de le dramatiser. */
-  --shadow-1: 0 1px 2px rgba(26, 24, 20, 0.04), 0 1px 3px rgba(26, 24, 20, 0.05);
-  --shadow-2: 0 2px 4px rgba(26, 24, 20, 0.04), 0 10px 26px -12px rgba(26, 24, 20, 0.12);
-  --shadow-3: 0 28px 64px -26px rgba(26, 24, 20, 0.24), 0 2px 6px rgba(26, 24, 20, 0.05);
-  --shadow-brand: 0 6px 18px -8px rgba(15, 107, 87, 0.4);
-  --shadow-brand-lg: 0 10px 26px -10px rgba(15, 107, 87, 0.5);
+  /* Ombres — plus structurées qu'avant : une ombre courte et dense qui
+     décolle le bloc, plus une longue et très diluée qui l'inscrit dans
+     la page. C'est ce duo qui remplace l'ombre unique et plate. */
+  --shadow-1: 0 1px 2px rgba(13, 21, 38, 0.06), 0 1px 3px rgba(13, 21, 38, 0.05);
+  --shadow-2: 0 2px 4px rgba(13, 21, 38, 0.05), 0 12px 28px -14px rgba(13, 21, 38, 0.22);
+  --shadow-3: 0 30px 70px -28px rgba(13, 21, 38, 0.4), 0 4px 12px rgba(13, 21, 38, 0.08);
+  --shadow-brand: 0 6px 18px -8px rgba(4, 102, 92, 0.5);
+  --shadow-brand-lg: 0 12px 30px -10px rgba(4, 102, 92, 0.55);
 
-  /* Sur papier, le liseré va dans l'autre sens : un filet de lumière sur
-     le bord haut du bloc, comme la tranche d'une feuille posée à plat. */
-  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Liseré de lumière : un filet clair en haut du bloc, comme la tranche
+     d'une feuille posée à plat. Il double `--hairline` du thème sombre. */
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 
-  /* Typographie — Fraunces est un serif à contraste optique : il a
-     besoin de ses grands corps pour le meritrer, d'où le niveau
-     « titraille » plus haut. */
+  /* Typographie — Fraunces reste le serif des titres et des prix : c'est
+     lui qui donne son caractère à la page. Le corps passe sur une sans
+     neutre et plus large, lisible jusqu'à 16 px sur téléphone. */
   --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Consolas, monospace;
 
-  /* Mise en page — page plus étroite : un article se lit en colonne,
-     pas sur 1200 px de large. */
-  --appbar-h: 78px;
-  --page-max: 880px;
-  --nav-h: 66px;
+  /* Mise en page — la colonne s'élargit un peu : 880 px sur un écran
+     large, 440 px sur un téléphone, et rien entre les deux qui ferait
+     des cartes de 700 px. */
+  --appbar-h: 72px;
+  --page-max: 920px;
+  --nav-h: 72px;
 
   /* Divers */
   --ease: cubic-bezier(0.22, 0.68, 0.32, 1);
@@ -111,43 +125,43 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* Le sombre n'est plus une inversion : c'est le même papier, réduit sur
-     la luminance. On le garde chaud pour qu'il reste dans la même
-     famille que le clair. */
-  --bg: #141210;
-  --bg-accent-1: rgba(95, 211, 176, 0.06);
-  --bg-accent-2: rgba(216, 168, 112, 0.05);
-  --surface: #1c1a16;
-  --surface-2: #23201b;
-  --surface-3: #2c2822;
+  /* Le sombre n'est pas une inversion : c'est la même base, réduite sur
+     la luminance et refroidie. Un fond bleuté évite l'effet « gris
+     sale » qu'un noir neutre donne sur un ecran OLED. */
+  --bg: #0a101c;
+  --bg-accent-1: rgba(58, 217, 184, 0.07);
+  --bg-accent-2: rgba(143, 179, 236, 0.06);
+  --surface: #111a2b;
+  --surface-2: #182338;
+  --surface-3: #202d45;
 
-  --ink: #f3efe7;
-  --ink-2: #c5bfb2;
-  --ink-3: #948d80;
-  --muted: #948d80;
+  --ink: #eef3fa;
+  --ink-2: #b9c5d8;
+  --ink-3: #93a2ba;
+  --muted: #93a2ba;
 
-  --line: #2b2720;
-  --line-strong: #3b352c;
+  --line: #223049;
+  --line-strong: #33425e;
 
-  /* Sur fond sombre, l'accent doit être clair pour garder le même poids
-     visuel : c'est la seule valeur qui change vraiment de rôle. */
-  --teal: #5fd3b0;
-  --teal-dark: #3fbe99;
-  --teal-soft: rgba(95, 211, 176, 0.14);
-  --orange: #e2a367;
-  --orange-soft: rgba(226, 163, 103, 0.14);
-  --red: #e8837a;
-  --red-soft: rgba(232, 131, 122, 0.13);
-  --blue: #8fb0e8;
-  --blue-soft: rgba(143, 176, 232, 0.14);
-  --gold: #ddbe76;
-  --gold-soft: rgba(221, 190, 118, 0.15);
+  /* Sur fond sombre, l'accent s'éclaircit : c'est la seule valeur dont
+     le rôle change vraiment, tout le reste garde sa sémantique. */
+  --teal: #3ad9b8;
+  --teal-dark: #6ce8cd;
+  --teal-soft: rgba(58, 217, 184, 0.16);
+  --orange: #f0a765;
+  --orange-soft: rgba(240, 167, 101, 0.16);
+  --red: #f2857c;
+  --red-soft: rgba(242, 133, 124, 0.15);
+  --blue: #8fb3ec;
+  --blue-soft: rgba(143, 179, 236, 0.16);
+  --gold: #e2c471;
+  --gold-soft: rgba(226, 196, 113, 0.16);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -14px rgba(0, 0, 0, 0.7);
-  --shadow-3: 0 28px 64px -26px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-brand: 0 8px 22px -10px rgba(95, 211, 176, 0.45);
-  --shadow-brand-lg: 0 12px 30px -12px rgba(95, 211, 176, 0.55);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 30px -16px rgba(0, 0, 0, 0.8);
+  --shadow-3: 0 30px 70px -30px rgba(0, 0, 0, 0.9), 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-brand: 0 8px 24px -10px rgba(58, 217, 184, 0.5);
+  --shadow-brand-lg: 0 14px 34px -12px rgba(58, 217, 184, 0.6);
 
-  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }

@@ -26,16 +26,32 @@ export function getThemePreference() {
   return preference
 }
 
-/* La couleur de la barre du navigateur suit le fond réel du thème. Sur
-   papier, une teinte d'accent aurait laissé un bandeau vert en haut de
-   la page, ce qui rompait l'effet « feuille ». */
-const CHROME = { light: '#faf7f1', dark: '#141210' }
+/* La couleur de la barre du navigateur suit le fond réel du thème.
+   `index.html` déclare deux `meta[name="theme-color"]`, une par média :
+   elles couvrent le premier rendu, avant que ce module ne s'exécute. Une
+   fois le thème résolu, on retire cet attribut `media` de la
+   declaration retenue et on fixe sa couleur — sinon la déclaration vide
+   resterait prioritaire et la barre garderait la couleur du système. */
+const CHROME = { light: '#f4f6f9', dark: '#0a101c' }
 
 export function applyTheme() {
   const resolved = resolveTheme()
   document.documentElement.dataset.theme = resolved
-  const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', CHROME[resolved] || CHROME.light)
+  const color = CHROME[resolved] || CHROME.light
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+    if (meta.media) {
+      /* Le média ne correspond pas au thème résolu : on retire la
+         déclaration plutôt que de la laisser décider. */
+      if (meta.media.includes(resolved)) {
+        meta.removeAttribute('media')
+        meta.setAttribute('content', color)
+      } else {
+        meta.remove()
+      }
+    } else {
+      meta.setAttribute('content', color)
+    }
+  }
   return resolved
 }
 

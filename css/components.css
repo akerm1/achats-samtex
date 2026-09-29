@@ -1,5 +1,9 @@
 /* ------------------------------------------------------------------ */
 /* Composants — boutons, champs, pastilles, cartes, dialogues, toasts  */
+/*                                                                      */
+/* Règle de tactile : sur téléphone, aucune cible utile sous 44 px.    */
+/* Les variantes desktop restent au-dessus de 36 px, ce qui suffit à la  */
+/* souris et reste assez franc pour un doigt sur un.trackpad.          */
 /* ------------------------------------------------------------------ */
 
 /* Boutons --------------------------------------------------------- */
@@ -9,14 +13,15 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 20px;
+  min-height: 40px;
+  padding: 10px 18px;
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
   font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
   transition: transform var(--dur-fast) var(--ease), background-color var(--dur) var(--ease),
     color var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
@@ -29,9 +34,9 @@
   flex: 0 0 auto;
 }
 
-/* Le bouton principal est un aplat de teal plein, pas un dégradé. Un
-   dégradé sur du papier fait « bouton d'application » ; à plat, il fait
-   « lien d'appel ». */
+/* Le bouton principal est un aplat plein : sur un fond clair, un
+   dégradé fait « bouton d'application » et devient illisible en
+   Capture d'écran. */
 .btn--primary {
   background: var(--teal);
   color: #ffffff;
@@ -70,13 +75,13 @@
 }
 
 .btn--ghost {
-  background: transparent;
+  background: var(--surface-2);
   color: var(--ink-2);
   border-color: var(--line);
 }
 
 .btn--ghost:hover {
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--ink);
 }
 
@@ -95,7 +100,7 @@
 }
 
 .btn--sm {
-  padding: 8px 15px;
+  padding: 7px 14px;
   font-size: var(--text-sm);
   min-height: 34px;
 }
@@ -103,6 +108,7 @@
 .btn--lg {
   padding: 14px 26px;
   font-size: var(--text-base);
+  min-height: 50px;
 }
 
 .btn--icon {
@@ -113,11 +119,11 @@
 .icon-btn {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  background: transparent;
+  background: var(--surface);
   color: var(--ink-3);
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
     border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
@@ -160,9 +166,9 @@
 .field > label,
 .field-label {
   font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink-3);
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--ink-2);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -172,16 +178,17 @@
   line-height: 1.5;
 }
 
-/* Champs : un fond blanc et un filet, pas une boîte arrondie. Le rayon
-   d'un champ attire l'œil plus que son contenu, alors qu'un champ de
-   saisie se juge à son texte. */
+/* Champs : un fond blanc et un filet marqué. Le rayon d'un champ
+   attire l'œil plus que son contenu, alors qu'un champ de saisie se
+   juge à son texte : le rayon reste, mais la bordure porte. */
 .input,
 .select,
 .textarea {
   width: 100%;
-  padding: 11px 14px;
+  min-height: 48px;
+  padding: 12px 15px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink);
   font-size: var(--text-base);
@@ -205,7 +212,7 @@
 }
 
 .textarea {
-  min-height: 84px;
+  min-height: 96px;
   resize: vertical;
 }
 
@@ -215,16 +222,17 @@
   background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%;
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
-  padding-right: 38px;
+  padding-right: 40px;
 }
 
 .input-wrap {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0 14px;
+  padding: 0 16px;
+  min-height: 48px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
   color: var(--ink-3);
   transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
@@ -240,10 +248,63 @@
   min-width: 0;
   border: 0;
   background: none;
-  padding: 11px 0;
+  padding: 12px 0;
   font-size: var(--text-base);
   color: var(--ink);
   outline: none;
+}
+
+/* Le curseur de réglage de la roue chromatique n'avait aucune règle :
+   il s'affichait comme un natif, dix fois plus petit que les champs
+   voisins. Il est désormais un vrai contrôle de l'application. */
+.range {
+  width: 100%;
+  height: 40px;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #000, #fff);
+  border: 1px solid var(--line-strong);
+}
+
+.range::-moz-range-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #000, #fff);
+  border: 1px solid var(--line-strong);
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--teal);
+  box-shadow: var(--shadow-1);
+  cursor: grab;
+}
+
+.range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--teal);
+  box-shadow: var(--shadow-1);
+  cursor: grab;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
 }
 
 .range-row {
@@ -260,13 +321,13 @@
   gap: var(--space-2);
   padding: 4px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--line-strong);
   background: var(--surface);
 }
 
 .stepper button {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -286,7 +347,7 @@
   background: none;
   text-align: center;
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: 700;
   outline: none;
   appearance: textfield;
   font-variant-numeric: tabular-nums;
@@ -303,43 +364,50 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 15px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 16px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--line-strong);
-  background: transparent;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
   color: var(--ink-2);
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
+    border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
 
 .chip:hover {
   border-color: var(--ink-3);
   color: var(--ink);
-  background: transparent;
+  background: var(--surface);
+}
+
+.chip:active {
+  transform: scale(0.96);
 }
 
 .chip.is-active {
   background: var(--teal);
   border-color: var(--teal);
   color: #ffffff;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: var(--shadow-brand);
 }
 
 .chip-count {
   font-size: var(--text-xs);
-  padding: 0 6px;
+  font-weight: 700;
+  padding: 1px 7px;
   border-radius: var(--radius-pill);
   background: var(--surface-3);
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
 .chip.is-active .chip-count {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
 
@@ -347,13 +415,13 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: var(--radius-pill);
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -384,11 +452,11 @@
 
 /* Couleurs ---------------------------------------------- */
 
-/* La couleur se voit d'un coup d'œil : c'est souvent le critère de tri à
-   l'achat, donc la pastille est grande plutôt que minuscule. */
+/* La couleur se voit d'un coup d'œil : c'est souvent le critère de tri
+   à l'achat, donc la pastille est grande plutôt que minuscule. */
 .color-swatch {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
@@ -401,8 +469,8 @@
     linear-gradient(-45deg, var(--surface-3) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, var(--surface-3) 75%),
     linear-gradient(-45deg, transparent 75%, var(--surface-3) 75%);
-  background-size: 11px 11px;
-  background-position: 0 0, 0 5.5px, 5.5px -5.5px, -5.5px 0;
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
 
 .color-chip {
@@ -412,36 +480,36 @@
   padding: 5px 15px 5px 6px;
   border-radius: var(--radius-pill);
   background: var(--surface-2);
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--ink-2);
   white-space: nowrap;
 }
 
-/* Dans la carte produit, la couleur prend toute la largeur : le nom est posé
-   par-dessus la teinte, sur une pastille translucide. */
+/* Dans la carte produit, la couleur prend toute la largeur : le nom est
+   posé par-dessus la teinte, sur un aplat sombre opaque. */
 .product-color {
   position: relative;
   display: block;
   flex: none;
   width: 100%;
-  height: 84px;
+  height: 92px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--line-strong);
 }
 
-/* Voile sombre en bas de la bande. Il sert d'abord à la lisibilité : sur un
-   ivoire ou un crème, une étiquette de verre passait presque inaperçue.
-   Le voile est assez bas pour ne pas ternir la teinte elle-même. */
+/* Voile sombre en bas de la bande. Il sert d'abord à la lisibilité : sur
+   un ivoire ou un crème, une étiquette claire passait inaperçue. Le
+   voile est assez bas pour ne pas ternir la teinte elle-même. */
 .product-color::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 66%;
+  height: 62%;
   pointer-events: none;
-  background: linear-gradient(to top, rgba(6, 9, 13, 0.45), transparent);
+  background: linear-gradient(to top, rgba(3, 8, 16, 0.5), transparent);
 }
 
 .product-color .color-swatch {
@@ -457,9 +525,9 @@
   background-color: var(--surface-3);
 }
 
-/* Légende de la bande de couleur : un aplat sombre plat, pas de verre.
-   Le flou ne servait qu'à adoucir un aplat qu'on peut simplement poser —
-   et il rendait le texte moins net sur les teintes claires. */
+/* Légende de la bande de couleur : un aplat sombre opaque, pas de
+   verre. Le flou n'adoucit qu'un aplat qu'on peut poser tel quel, et il
+   rendait le texte moins net sur les teintes claires. */
 .product-color .color-chip {
   position: absolute;
   z-index: 1;
@@ -467,10 +535,10 @@
   right: 10px;
   bottom: 10px;
   display: block;
-  padding: 6px 12px;
+  padding: 7px 12px;
   border-radius: var(--radius-xs);
-  background: rgba(6, 9, 13, 0.62);
-  font-weight: 600;
+  background: rgba(3, 8, 16, 0.68);
+  font-weight: 700;
   color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -489,18 +557,18 @@
   outline-offset: 2px;
 }
 
-/* Petit repère qui dit « ça s'agrandit » : visible au survol à la souris,
-   toujours là au doigt (pas de survol sur un écran tactile). */
+/* Petit repère qui dit « ça s'agrandit » : visible au survol à la
+   souris, toujours là au doigt (pas de survol sur un écran tactile). */
 .zoom-mark {
   position: absolute;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0d1526;
   box-shadow: var(--shadow-1);
   opacity: 0;
   pointer-events: none;
@@ -521,7 +589,7 @@
 
 @media (hover: none) {
   .zoom-mark {
-    opacity: 0.75;
+    opacity: 0.8;
   }
 }
 
@@ -536,7 +604,7 @@
 /* Boîte d'aperçu ------------------------------------------------ */
 
 .dialog--preview {
-  width: min(720px, calc(100vw - 24px));
+  width: min(760px, calc(100vw - 20px));
 }
 
 .preview-head {
@@ -544,7 +612,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 10px 10px 10px 20px;
+  padding: 12px 10px 12px 22px;
   border-bottom: 1px solid var(--line-strong);
   background: var(--surface-2);
 }
@@ -553,7 +621,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -564,12 +632,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: clamp(16px, 3vw, 26px);
+  padding: clamp(16px, 3vw, 28px);
 }
 
 .preview-color {
   width: 100%;
-  height: min(52vh, 340px);
+  height: min(52vh, 360px);
   border-radius: var(--radius);
   border: 1px solid var(--line-strong);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), var(--shadow-1);
@@ -588,7 +656,7 @@
 .preview-photo {
   display: block;
   width: 100%;
-  max-height: min(74vh, 760px);
+  max-height: min(74vh, 780px);
   object-fit: contain;
   border-radius: var(--radius);
   border: 1px solid var(--line-strong);
@@ -603,12 +671,12 @@
   flex-wrap: wrap;
 }
 
-/* Nom du produit en grand serif : c'est le titre de l'article. */
+/* Nom du produit en grand serif : c'est le titre de la fiche. */
 .preview-name {
   font-family: var(--font-head);
   font-size: var(--text-xl);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.14;
   letter-spacing: -0.024em;
   font-variation-settings: 'opsz' 60;
 }
@@ -623,7 +691,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 7px;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: var(--radius-xs);
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
@@ -631,8 +699,8 @@
 
 .preview-facet small {
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -657,8 +725,8 @@
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex: 0 0 auto;
   background: var(--teal);
@@ -670,6 +738,17 @@
   overflow-x: auto;
   padding-bottom: 4px;
   scrollbar-width: none;
+  /* Le défilement horizontal au doigt doit pouvoir démarrer sans que le
+     navigateur prenne un glissé oblique pour un geste vertical : sans
+     ceci, le premier mouvement diagonal fait défiler la page au lieu de
+     la rangée de pastilles. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+
+.scroller > * {
+  scroll-snap-align: start;
 }
 
 .scroller::-webkit-scrollbar {
@@ -678,9 +757,8 @@
 
 /* Cartes & panneaux ---------------------------------------------- */
 
-/* Sur papier, une carte est une feuille posée sur une autre : trait
-   fin, ombre presque absente, contour franc. Le rayon reste généreux
-   pour que la forme reste douce, mais la profondeur disparaît. */
+/* Une carte est un panneau posé sur un fond : filet net, ombre courte
+   et dense, rayon généreux mais constant. */
 .card {
   background: var(--surface);
   border: 1px solid var(--line-strong);
@@ -693,7 +771,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
-  padding: clamp(22px, 3vw, 36px);
+  padding: clamp(20px, 3vw, 32px);
 }
 
 .panel--flush {
@@ -709,14 +787,14 @@
   margin-bottom: var(--space-5);
 }
 
-/* Titre de panneau : serif, et suivi d'un filet qui court jusqu'au bord
-   du panneau. C'est le élément le plus « article » de l'interface. */
+/* Titre de panneau : serif, suivi d'un filet qui court jusqu'au bord
+   du panneau. */
 .panel-head h2 {
   font-family: var(--font-head);
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
   font-weight: 600;
   color: var(--ink);
-  letter-spacing: -0.018em;
+  letter-spacing: -0.02em;
   font-variation-settings: 'opsz' 30;
 }
 
@@ -729,11 +807,9 @@
 /* Barres de progression ------------------------------------------ */
 
 .progress {
-  height: 6px;
+  height: 8px;
   border-radius: var(--radius-pill);
   background: var(--surface-3);
-  /* Gorge à 6 px et sans liseré sombre : c'est la mesure d'une ligne de
-     texte, pas l'épaisseur d'un composant d'interface. */
   overflow: hidden;
 }
 
@@ -743,7 +819,7 @@
   border-radius: var(--radius-pill);
   background: var(--teal);
   transition: width 0.5s var(--ease-out);
-  min-width: 2px;
+  min-width: 3px;
 }
 
 .progress--orange > span {
@@ -756,41 +832,39 @@
 
 /* Bandeaux d'information ----------------------------------------- */
 
-/* Bandeau : pas de dégradé, pas d'ombre. C'est une note en marge, avec
-   un filet de teal à gauche qui la signale sans la remplir. */
+/* Bandeau : un filet de couleur à gauche, qui signale sans remplir.
+   Le texte reste sur `--surface`, donc il garde son contraste. */
 .banner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 15px 18px;
-  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border-radius: var(--radius);
   border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--teal);
+  border-left: 4px solid var(--teal);
   background: var(--surface);
   font-size: var(--text-sm);
   animation: slide-up 0.3s var(--ease) both;
 }
 
 .banner--install {
-  background: var(--surface-2);
+  background: var(--surface);
   border-color: var(--line-strong);
-  border-left-color: var(--teal);
+  border-left-color: var(--blue);
 }
 
-/* Les variantes d'état ne teignent plus le fond : elles ne changent que
-   le filet de gauche. Un aplat coloré satrait le texte à l'intérieur. */
 .banner--warn {
-  background: var(--surface-2);
+  background: var(--surface);
   border-left-color: var(--orange);
 }
 
 .banner--ok {
-  background: var(--surface-2);
+  background: var(--surface);
   border-left-color: var(--teal);
 }
 
 .banner--error {
-  background: var(--surface-2);
+  background: var(--surface);
   border-left-color: var(--red);
 }
 
@@ -801,8 +875,8 @@
 .banner-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--surface-3);
   color: var(--teal);
@@ -819,11 +893,13 @@
 
 .banner-text strong {
   font-size: var(--text-sm);
+  font-weight: 700;
 }
 
 .banner-text span {
   font-size: var(--text-sm);
   color: var(--ink-2);
+  line-height: 1.5;
 }
 
 /* Toasts --------------------------------------------------------- */
@@ -832,13 +908,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 13px 18px;
-  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  border-radius: var(--radius);
   border: 1px solid var(--line-strong);
   background: var(--surface);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-3);
   font-size: var(--text-sm);
   animation: spring-in var(--dur-slow) var(--ease-spring) both;
+}
+
+/* `info` est le type par défaut de `feedback.js` : sans variante, il
+   tombait sur le `.toast` nu, dont la marque restait verte même pour un
+   message neutre. Il a désormais sa propre teinte. */
+.toast--info {
+  border-color: var(--blue-soft);
 }
 
 .toast--ok {
@@ -852,12 +935,17 @@
 .toast-mark {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue);
+  flex: 0 0 auto;
+}
+
+.toast--ok .toast-mark {
   background: var(--teal-soft);
   color: var(--teal);
-  flex: 0 0 auto;
 }
 
 .toast--error .toast-mark {
@@ -872,20 +960,20 @@
 
 .toast-action {
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--teal);
-  padding: 7px 13px;
+  padding: 8px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--teal-soft);
   background: var(--teal-soft);
+  white-space: nowrap;
 }
 
 /* Dialogues ------------------------------------------------------ */
 
-/* Un dialogue est une page detournée : mêmes feuilles, mêmes filets, et
-   pas de flou — le fond ne se déforme pas. */
 .dialog {
-  width: min(720px, calc(100vw - 24px));
+  width: min(760px, calc(100vw - 20px));
+  max-height: calc(100dvh - 32px);
   padding: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
@@ -896,25 +984,23 @@
 }
 
 .dialog::backdrop {
-  background: rgba(24, 20, 16, 0.45);
+  background: rgba(6, 11, 20, 0.55);
   animation: fade-in var(--dur) var(--ease-out) both;
 }
 
-/* Ressort plutôt qu'un simple zoom : la boîte surgit en dominant le
-   contenu, ce qui marque clairement l'ouverture. */
 .dialog[open] {
   animation: spring-in var(--dur-slow) var(--ease-spring) both;
 }
 
 .dialog--sm {
-  width: min(460px, calc(100vw - 24px));
+  width: min(480px, calc(100vw - 20px));
 }
 
 .dialog-body {
   padding: clamp(18px, 2.8vw, 30px);
   overflow-y: auto;
-  max-height: min(88vh, 900px);
-  max-height: min(calc(100dvh - 112px), 900px);
+  max-height: min(88vh, 920px);
+  max-height: min(calc(100dvh - 132px), 920px);
 }
 
 .dialog-foot {
@@ -923,9 +1009,9 @@
   justify-content: flex-end;
   gap: var(--space-3);
   flex-wrap: wrap;
-  padding: 18px clamp(18px, 2.8vw, 30px);
+  padding: 16px clamp(18px, 2.8vw, 30px);
   border-top: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .dialog-foot .btn--primary {
@@ -936,7 +1022,7 @@
   flex: 1;
   min-width: 0;
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .form-message.is-ok {
@@ -949,11 +1035,12 @@
 
 /* États vides ---------------------------------------------------- */
 
-/* Un état vide est une page blanche avec une simple note centrée : pas de
-   boîte, pas de halo. C'est le vide qui parle, pas le décor. */
+/* Un état vide est une page centrée : pas de boîte, pas de halo. C'est
+   la parole qui parle, et elle est en grand parce qu'il n'y a rien
+   d'autre à regarder. */
 .empty {
   position: relative;
-  padding: clamp(48px, 9vw, 88px) 24px;
+  padding: clamp(40px, 9vw, 88px) 20px;
   text-align: center;
   color: var(--ink-3);
   font-size: var(--text-base);
@@ -969,20 +1056,19 @@
 
 .empty svg {
   color: var(--teal);
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
-/* L'état vide est le seul moment où l'application peut se permettre un
-   vrai niveau de titraille : il n'y a rien d'autre à regarder. */
 .empty strong {
   display: block;
   color: var(--ink);
   font-size: var(--text-display);
   font-family: var(--font-head);
   font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  line-height: 1.06;
+  letter-spacing: -0.032em;
   font-variation-settings: 'opsz' 100;
+  text-wrap: balance;
 }
 
 .skeleton {
@@ -1003,17 +1089,17 @@
 /* Chiffre clé : en-tête de rubrique au-dessus du nombre. */
 .kv-item {
   padding: 16px 18px;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
 }
 
 .kv-item small {
   display: block;
   color: var(--ink-3);
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1039,7 +1125,10 @@
   animation: spin 1s linear infinite;
 }
 
-/* Téléphone : champs ≥ 16 px pour éviter le zoom iOS à la saisie */
+/* Téléphone ------------------------------------------------------ */
+
+/* Champs ≥ 16 px pour éviter le zoom iOS à la saisie — et 48 px de
+   haut, parce qu'un champ de 40 px se rate une fois sur trois au doigt. */
 @media (max-width: 720px) {
   .input,
   .select,
@@ -1049,9 +1138,53 @@
     font-size: 16px;
   }
 
+  .input,
+  .select,
+  .textarea,
+  .input-wrap,
+  .stepper button {
+    min-height: 48px;
+  }
+
+  .stepper button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .btn {
+    min-height: 46px;
+    padding: 12px 20px;
+  }
+
+  .btn--sm {
+    min-height: 40px;
+    padding: 9px 16px;
+  }
+
+  .btn--lg {
+    min-height: 54px;
+  }
+
+  .icon-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .chip {
+    min-height: 44px;
+    padding: 10px 18px;
+  }
+
   .dialog,
-  .dialog--sm {
-    width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
+  .dialog--sm,
+  .dialog--preview {
+    width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  /* Le pied de dialogue colle au bord bas : sur téléphone, un bouton
+     à 18 px du bord est hors de portée du pouce. */
+  .dialog-foot {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
