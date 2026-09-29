@@ -25,6 +25,7 @@ import {
 import { checkForUpdate, installUpdate, subscribe as subscribeUpdate } from './core/update.js'
 import { exportCSV, exportJSON } from './data/backup.js'
 import { openProductForm } from './ui/product-form.js'
+import { openColorPreview, openPhotoPreview } from './ui/preview.js'
 import {
   canPromptInstall,
   dismissInstall,
@@ -163,6 +164,14 @@ const ACTIONS = {
     const product = productById(node.dataset.id)
     if (product) openProductForm(product)
   },
+  'preview-color': (node) => {
+    const product = productById(node.dataset.id)
+    if (product) openColorPreview(product)
+  },
+  'preview-photo': (node) => {
+    const product = productById(node.dataset.id)
+    if (product) openPhotoPreview(product)
+  },
   toggle: (node) => {
     toggleBought(node.dataset.id)
   },
@@ -238,6 +247,14 @@ function initActions() {
   document.addEventListener('keydown', (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return
     if (isTyping(event.target)) return
+    /* La couleur et la photo s'agrandissent d'abord : elles vivent dans la
+       carte, il ne faut pas que la fiche s'ouvre à leur place. */
+    const zoomer = event.target.closest('[data-action="preview-color"], [data-action="preview-photo"]')
+    if (zoomer && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault()
+      ACTIONS[zoomer.dataset.action]?.(zoomer)
+      return
+    }
     const card = event.target.closest('[data-role="card-body"]')
     if (!card) return
     if (event.key !== 'Enter' && event.key !== ' ') return

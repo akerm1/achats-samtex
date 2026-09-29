@@ -440,6 +440,169 @@
   text-overflow: ellipsis;
 }
 
+/* Clic pour agrandir — couleur et photo ------------------------- */
+
+.product-color,
+.product-photo[data-action] {
+  cursor: zoom-in;
+}
+
+.product-color:focus-visible,
+.product-photo:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Petit repère qui dit « ça s'agrandit » : visible au survol à la souris,
+   toujours là au doigt (pas de survol sur un écran tactile). */
+.zoom-mark {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s var(--ease);
+}
+
+.product-color .zoom-mark {
+  top: 10px;
+  right: 10px;
+}
+
+/* La photo porte déjà son badge (haut gauche) et son ruban « Acheté »
+   (haut droite) : le repère se pose en bas, où rien ne le recouvre. */
+.product-photo .zoom-mark {
+  right: 10px;
+  bottom: 10px;
+}
+
+@media (hover: none) {
+  .zoom-mark {
+    opacity: 0.75;
+  }
+}
+
+.product-color:hover .zoom-mark,
+.product-color:focus-visible .zoom-mark,
+.product-photo:hover .zoom-mark,
+.product-photo:focus-visible .zoom-mark {
+  opacity: 1;
+}
+
+/* Boîte d'aperçu ------------------------------------------------ */
+
+.dialog--preview {
+  width: min(720px, calc(100vw - 24px));
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 10px 10px 20px;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface-2);
+}
+
+.preview-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: clamp(16px, 3vw, 26px);
+}
+
+.preview-color {
+  width: 100%;
+  height: min(52vh, 340px);
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), var(--shadow-1);
+}
+
+.preview-color.is-empty {
+  background:
+    linear-gradient(45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--surface-3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--surface-3) 75%);
+  background-size: 22px 22px;
+  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+}
+
+.preview-photo {
+  display: block;
+  width: 100%;
+  max-height: min(74vh, 760px);
+  object-fit: contain;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-3);
+}
+
+.preview-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.preview-name {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.preview-facets {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.preview-facet {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+}
+
+.preview-facet small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.preview-facet code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
 .separator {
   opacity: 0.5;
   color: var(--ink-3);

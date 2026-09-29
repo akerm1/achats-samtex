@@ -9,16 +9,20 @@ import { icon } from './icons.js'
 const PRIORITY_CLASS = { haute: 'product--p1', normale: 'product--p2', basse: 'product--p3' }
 
 /* La couleur est le premier critère de tri à l'achat : elle occupe donc
-   toute la largeur de la carte, avec son nom posé dessus. */
+   toute la largeur de la carte, avec son nom posé dessus, et s'agrandit
+   d'un clic. */
 function colorBlock(item) {
   if (!item.color && !item.colorRgb) return ''
   const label = item.color ? esc(item.color) : 'Couleur'
   const css = colorCss(item)
   const swatch = `<span class="color-swatch${css ? '' : ' is-empty'}" style="background:${css || ''}" aria-hidden="true"></span>`
   return `
-    <div class="product-color">
+    <div class="product-color" data-action="preview-color" data-id="${esc(item.id)}"
+         role="button" tabindex="0" title="Agrandir la couleur ${label}"
+         aria-label="Agrandir la couleur ${label}">
       ${swatch}
       <span class="color-chip">${label}</span>
+      <span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>
     </div>`
 }
 
@@ -28,11 +32,17 @@ function photoBlock(item, { size = 'card' } = {}) {
     ? `<img src="${esc(item.photo)}" alt="${label}" loading="lazy" decoding="async">`
     : `<span class="placeholder">${icon('imageOff', 22)}Aucune photo</span>`
   if (size === 'thumb') return image
+  /* Sans photo, il n'y a rien à agrandir : on n'offre pas le clic. */
+  const zoom = item.photo
+    ? `data-action="preview-photo" data-id="${esc(item.id)}" role="button" tabindex="0"
+       title="Agrandir la photo de ${label}" aria-label="Agrandir la photo de ${label}"`
+    : ''
   return `
-    <div class="product-photo">
+    <div class="product-photo" ${zoom}>
       ${image}
       <span class="badge">${esc(item.typeLabel)}</span>
       ${item.isBought ? `<span class="product-ribbon">${icon('check', 11)} Acheté</span>` : ''}
+      ${item.photo ? `<span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>` : ''}
     </div>`
 }
 

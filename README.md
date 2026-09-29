@@ -332,6 +332,23 @@ script (`UnauthorizedAccessException`), les étapes manuelles sont :
   on voit qu'il faut préciser la couleur, sans que la ligne paraisse cassée.
 - Les produits **sans couleur** ne réserve aucune place : rien ne change pour eux.
 
+### Version 7.7 — un clic sur la couleur ou la photo l'agrandit
+
+- **La couleur s'ouvre en grand** : un clic sur la bande de couleur ouvre une boîte
+  qui montre la teinte en pleine largeur, avec son nom et ses valeurs **Hex** et
+  **RVB** — utile pour commander une teinte précise au fournisseur.
+- **La photo s'ouvre en grand** : un clic sur la photo ouvre la même boîte avec
+  l'image entière, sans quitter la liste.
+- **La fiche produit ne s'ouvre plus par accident** : le clic sur la couleur ou la
+  photo ouvre l'aperçu, pas le formulaire. Cliquer ailleurs sur la carte ouvre
+  toujours la fiche, comme avant.
+- **Fermeture** : la croix, la touche **Échap**, ou un clic à côté de la boîte.
+  Un seul aperçu à la fois — un nouvel aperçu remplace le précédent.
+- **Au doigt comme au clavier** : les deux zones sont focusables (Entrée ou Espace
+  les ouvre), portent un libellé pour les lecteurs d'écran, et affichent une
+  loupe au survol — toujours visible sur écran tactile, où il n'y a pas de survol.
+- Un produit **sans photo** n'offre pas de clic : il n'y a rien à agrandir.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
@@ -387,9 +404,10 @@ js/
     store.js                état global, rafraîchissement, actions métier, préférences
     backup.js               export/import JSON et CSV, fusion
   ui/
-    icons.js                icônes SVG inline
-    shell.js                barre du haut, navigations, bandeaux, pastille de sync
-    view.js                 helpers de vue (ne pas casser une saisie en cours)
+    icons.js               icônes SVG inline
+    shell.js               barre du haut, navigations, bandeaux, pastille de sync
+    preview.js             aperçu agrandi (couleur, photo) au clic
+    view.js                helpers de vue (ne pas casser une saisie en cours)
     product-card.js         carte produit
     product-form.js         formulaire produit (ajout / modification)
     views/
