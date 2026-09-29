@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc de bout en bout — présentation de la liste</title>
+<!--
+  Banc d'essai de l'application RÉELLEMENT lancée, et non d'un rendu isolé.
+
+  Tout ce que la page rend dans un iframe de même origine : on lit ensuite son
+  DOM, ses erreurs et son style calculé. C'est le seul moyen de vérifier que le
+  réglage de présentation arrive vraiment jusqu'à l'écran — un rendu isolé le
+  donnerait pour acquis, alors que c'est précisément là que la 8.1 pouvait
+  échouer sans que personne ne le voie.
+
+  Le contrôle se fait ici en direct, la sortie est renvoyée par POST pour être
+  affichée dans la console Node (voir check.mjs).
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+  #stage { position: fixed; left: -20000px; top: 0; width: 1200px; height: 1400px; border: 0; }
+  #log { padding: 1rem; }
+  .ok { color: #17803d; }
+  .non { color: #b91c1c; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="log">Lancement de l'application…</div>
+<iframe id="stage" title="application"></iframe>
+
+<!--
+  Filet de sécurité : un module qui ne part pas (faute de frappe comprise) ne
+  peut rien signaler lui-même. Sans ce script, le banc se contente de ne pas
+  répondre et l'attente expire sans dire pourquoi.
+-->
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.__e2eDone) return
+      const log = document.getElementById('log')
+      fetch('/__check/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: 'light',
+          fatal: {
+            message: 'le banc e2e n’a rien renvoyé',
+            stack: `écran = « ${(log?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200)} » — module témoin = ${window.__modRan ? 'ok' : 'NON exécuté'}`,
+          },
+          results: [],
+        }),
+      }).catch(() => undefined)
+    }, 20_000)
+  })
+  /* Un module peut échouer à l'exécution : ce signal-là ne dépend d'aucune
+     importation et se voit donc toujours, lui. */
+  window.addEventListener('error', (e) => {
+    fetch('/__check/log', { method: 'POST', body: `ERREUR PAGE : ${e.message} @ ${e.filename}:${e.lineno}` }).catch(() => undefined)
+  })
+</script>
+
+<script type="module">window.__modRan = true</script>
+
+<script type="module">
+const KEY_PREFS = 'purchase-gros-prefs-v1'
+const KEY_LIST = 'purchase-gros-list-v2'
+const KEY_CONFIG = 'purchase-gros-github-v1'
+const KEY_OPTOUT = 'purchase-gros-github-optout-v1'
+const REPORT_URL = '/__check/report'
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const log = (message) => fetch('/__check/log', { method: 'POST', body: String(message) }).catch(() => undefined)
+const results = []
+const errors = []
+
+/* Le compte de démonstration de l'application part sur le dépôt GitHub
+   annoncé : sans cela, il remplace la liste locale pendant le démarrage et le
+   banc ne teste que les deux produits de `products.json`. Le refus du dépôt
+   est un réglage prévu par l'application (rester hors GitHub), pas une
+   bidouille : c'est le seul moyen d'avoir une liste maîtrisée. */
+function seedProducts() {
+  const now = Date.now()
+  const products = [
+    { id: 'e2e-rgb', name: 'Ceinture satin ivoire', type: 'tissu', color: 'Ivoire', colorRgb: { r: 239, g: 227, b: 211 }, qty: 2, unit: 'm', price: 6.5, status: 'todo', createdAt: new Date(now).toISOString() },
+    { id: 'e2e-named', name: 'Tulle rose bébé', type: 'dentelle', color: 'Rose bébé', colorRgb: { r: 255, g: 215, b: 222 }, qty: 4, unit: 'm', price: null, status: 'todo', createdAt: new Date(now).toISOString() },
+    { id: 'e2e-photo', name: 'Bordure brodée assortie à la ceinture', type: 'accessoire', color: 'Ivoire', colorRgb: { r: 239, g: 227, b: 211 }, qty: 1, unit: 'pc', price: 3, status: 'todo', photo: 'data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" fill="%23b98a5e"/%3E%3C/svg%3E', createdAt: new Date(now).toISOString() },
+  ]
+  localStorage.removeItem(KEY_CONFIG)
+  localStorage.setItem(KEY_OPTOUT, 'true')
+  localStorage.setItem(KEY_LIST, JSON.stringify(products))
+}
+const check = (name, pass, detail = '') => {
+  results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
+  document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
+}
+
+const doc = () => document.getElementById('stage').contentDocument
+const win = () => document.getElementById('stage').contentWindow
+
+/* On force la présentation, puis on attend que l'écran soit vraiment rendu :
+   `refresh()` passe par un différé, et la liste peut être vide le premier tour.
+   Au bout du compte on note ce que contient l'écran : sans cela, un démarrage
+   raté ne se distingue pas d'un sélecteur mal visé. */
+/* Quand l'écran ne vient pas, on dit ce qu'il contient vraiment : sans cette
+   trace, un démarrage raté, une liste vide et un sélecteur erroné se ressemblent
+   tous les trois. */
+/* La structure réelle, telle qu'elle est : on remonte la chaîne des
+   conteneurs depuis un produit, plutôt que de deviner un identifiant. */
+function ancestors(el) {
+  const chain = []
+  for (let node = el; node && node !== document.body; node = node.parentElement) {
+    if (node.classList?.length) chain.push(node.tagName.toLowerCase() + '.' + [...node.classList].join('.'))
+  }
+  return chain.join(' < ')
+}
+
+function probe(d) {
+  if (!d) return 'document illisible'
+  const count = (sel) => d.querySelectorAll(sel).length
+  const first = d.querySelector('.product')
+  return [
+    `product=${count('.product')}`,
+    `grilles=[${[...new Set([...d.querySelectorAll('*')].flatMap((el) => [...el.classList]).filter((c) => c.startsWith('grid')))].join(' ')}]`,
+    first ? `structure=« ${ancestors(first).slice(0, 200)} »` : 'structure=aucun produit',
+    `texte=« ${(d.body?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160)} »`,
+  ].join(' · ')
+}
+
+/* Un iframe neuf à chaque écran. Le même iframe réutilisé laissait l'application
+   précédente vivante : elle réécrivait ses préférences dans `localStorage`
+   après le dépôt, et l'écran suivant lisait l'ancienne présentation — c'est
+   ainsi qu'un `row` affichait la mosaïque. */
+function freshFrame() {
+  document.getElementById('stage')?.remove()
+  const frame = document.createElement('iframe')
+  frame.id = 'stage'
+  frame.title = 'application'
+  frame.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
+  document.body.appendChild(frame)
+  return frame
+}
+
+async function mount(hash, layout, readySelector) {
+  localStorage.setItem(KEY_PREFS, JSON.stringify({ filter: 'todo', category: 'all', sort: 'recent', layout }))
+  const frame = freshFrame()
+  frame.src = `/index.html?e2e=${layout}-${Date.now()}#${hash}`
+  let last = null
+  for (let i = 0; i < 100; i += 1) {
+    await sleep(50)
+    try {
+      last = frame.contentDocument
+      if (last?.querySelector(readySelector)) return { ok: true, screen: '' }
+    } catch { /* iframe pas encore prêt */ }
+  }
+  return { ok: false, screen: probe(last) }
+}
+
+function capture(win) {
+  win.addEventListener('error', (e) => errors.push(String(e.message)))
+  win.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
+  win.console.error = (...a) => errors.push(a.map(String).join(' '))
+}
+
+async function inspectLayout(layout) {
+  const d = doc()
+  const w = win()
+  /* Le conteneur n'a pas d'identifiant : on le prend par sa classe de grille,
+     et à défaut par le parent commun des produits. */
+  const grid = d.querySelector(`.grid--${layout}`) || d.querySelector('.product')?.parentElement
+  const items = d.querySelectorAll('.product')
+  const style = grid ? w.getComputedStyle(grid) : null
+
+  check(`${layout} : l’écran affiche bien des produits`, items.length === 3, `${items.length} produits`)
+  check(`${layout} : la grille porte la classe de présentation`, !!d.querySelector(`.grid--${layout}`), d.querySelector('.product') ? `structure = ${ancestors(d.querySelector('.product')).slice(0, 90)}` : 'aucun produit')
+  check(`${layout} : rien ne déborde horizontalement`, grid ? grid.scrollWidth <= grid.clientWidth + 1 : false, grid ? `${grid.scrollWidth} / ${grid.clientWidth}` : 'pas de grille')
+  check(`${layout} : les colonnes sont réparties`, style ? style.gridTemplateColumns.split(' ').filter(Boolean).length >= 1 : false, style ? `${style.gridTemplateColumns}` : '—')
+
+  /* La couleur doit être là : c'est le défaut reproché. Dans la fiche, la
+     teinte est sur la pastille (`.color-swatch`) et non sur la bande, qui est
+     transparente et porte le voile. */
+  const rgbTile = d.querySelector('[data-id="e2e-rgb"] .cv--color, [data-id="e2e-rgb"] .color-swatch')
+  const rgbBg = rgbTile ? w.getComputedStyle(rgbTile).backgroundColor : null
+  check(`${layout} : la couleur est un aplat pur`, rgbBg === 'rgb(239, 227, 211)', `${rgbBg}${rgbTile ? '' : ' (pastille absente)'}`)
+
+  const named = d.querySelector('[data-id="e2e-named"]')
+  const namedText = named ? named.textContent.replace(/\s+/g, ' ') : ''
+  check(`${layout} : le nom de la couleur est écrit`, /rose/i.test(namedText), namedText.slice(0, 60))
+
+  const photo = d.querySelector('[data-id="e2e-photo"]')
+  const photoText = photo ? photo.textContent.replace(/\s+/g, ' ') : ''
+  check(`${layout} : la couleur survit à la photo`, /ivoire/i.test(photoText), photoText.slice(0, 60))
+
+  const img = d.querySelector('[data-id="e2e-photo"] img')
+  const box = img?.getBoundingClientRect()
+  const tile = photo?.getBoundingClientRect()
+  const share = box && tile && tile.height ? Math.round((box.height / tile.height) * 100) : 0
+  check(`${layout} : la photo est présente`, share > 0, share ? `${share} % de la case` : 'aucune image')
+  /* La fiche garde sa bande de couleur sous l'image : la photo n'y occupe que
+     la moitié, c'est voulu. La contrainte ne vaut que pour les vues denses. */
+  if (layout === 'card') {
+    check(`${layout} : la photo et la couleur cohabitent`, share >= 40 && share <= 60, `${share} % de la case`)
+  } else {
+    check(`${layout} : la photo remplit son cadre`, share >= 70, `${share} % de la case`)
+  }
+
+  const buy = d.querySelector('[data-id="e2e-rgb"] .check, [data-id="e2e-rgb"] [data-action="toggle"]')
+  const buyBox = buy?.getBoundingClientRect()
+  check(`${layout} : la coche est atteignable`, !!buyBox && buyBox.width >= 28 && buyBox.height >= 28, buyBox ? `${Math.round(buyBox.width)}×${Math.round(buyBox.height)} px` : 'absente')
+
+  return { gridClass: grid?.className || null, items: items.length }
+}
+
+async function run() {
+  const report = { theme: 'light', fatal: null, results, errors, detail: {} }
+  try {
+    log('démarrage')
+    seedProducts()
+    log(`liste déposée : ${(localStorage.getItem(KEY_LIST) || '').length} car.`)
+    capture(win())
+
+    for (const layout of ['card', 'mosaic', 'row']) {
+      log(`montage ${layout}…`)
+      const { ok, screen } = await mount('/liste', layout, '[data-id^="e2e-"]')
+      log(`${layout} : ${ok ? 'prêt' : screen}`)
+      if (!ok) {
+        check(`${layout} : l’application démarre et rend la liste`, false, screen)
+        continue
+      }
+      report.detail[layout] = await inspectLayout(layout)
+    }
+
+    /* Le réglage, par le chemin qu'on emprunte vraiment : on part de la liste,
+       on clique « Réglages », on change la présentation, on revient. C'est
+       précisément ce que la 8.1 ne faisait pas — le rendu isolé le donnait pour
+       acquis, alors que rien ne garantissait que le réglage repeigne l'écran. */
+    log('écran des réglages…')
+    const start = await mount('/liste', 'mosaic', '[data-id^="e2e-"]')
+    if (!start.ok) {
+      check('le parcours liste → réglages → liste fonctionne', false, start.screen)
+    } else {
+      const d0 = doc()
+      const nav = [...d0.querySelectorAll('.navlink')].find((a) => /reglages/i.test(a.getAttribute('href') || ''))
+      check('la liste offre un accès aux réglages', !!nav, nav ? nav.textContent.trim() : 'lien absent')
+      nav?.click()
+      let buttons = null
+      for (let i = 0; i < 60; i += 1) {
+        await sleep(50)
+        const found = doc().querySelectorAll('[data-layout-choice]')
+        if (found.length) { buttons = found; break }
+      }
+      const group = buttons?.[0]?.closest('div, fieldset, section')
+      check('l’écran des réglages s’ouvre au clic', !!group, group ? '' : probe(doc()))
+      if (buttons) {
+        check('le sélecteur propose les trois présentations', buttons.length === 3, `${buttons.length} boutons`)
+        const active = group.querySelector('.is-active')?.dataset.layoutChoice
+        check('il reflète la présentation enregistrée', active === 'mosaic', `actif = ${active}`)
+
+        /* Changer de présentation doit repeindre la liste sans recharger. */
+        const rowBtn = [...buttons].find((b) => b.dataset.layoutChoice === 'row')
+        rowBtn?.click()
+        await sleep(500)
+        const back = [...doc().querySelectorAll('.navlink')].find((a) => /liste/i.test(a.getAttribute('href') || ''))
+        back?.click()
+        let rendered = null
+        for (let i = 0; i < 60; i += 1) {
+          await sleep(50)
+          rendered = doc().querySelector('.grid--row, .grid--mosaic')
+          if (rendered) break
+        }
+        check('changer de présentation repeint la liste', rendered?.classList.contains('grid--row'), rendered ? rendered.className : 'rien rendu')
+        report.detail.apresChangement = rendered?.className || null
+      }
+    }
+
+    check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
+  } catch (error) {
+    report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }
+  }
+  document.getElementById('log').textContent = `${results.filter((r) => !r.pass).length} échec(s) sur ${results.length}`
+  window.__e2eDone = true
+  await fetch(REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) }).catch(() => undefined)
+}
+
+run()
+</script>
+</body>
+</html>

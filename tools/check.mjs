@@ -7,18 +7,22 @@
 /*   node tools/check.mjs --width 430     largeur donnée (défaut 1200) */
 /*   node tools/check.mjs --theme dark    force le thème (défaut light)*/
 /*   node tools/check.mjs --keep          laisse le serveur ouvert     */
+/*   node tools/check.mjs --e2e            + l'application réelle       */
 /*   BROWSER=/chemin/vers/chrome node tools/check.mjs                 */
 /*                                                                     */
 /* Deux passes :                                                        */
 /*                                                                     */
-/*   1. Sur disque — chaque module `js/` est analysé, et `version.json` */
+/*   1. Sur disque — chaque module `js/` est analysé, et `version.json`  */
 /*      est comparé à `APP_VERSION` (le repère de mise à jour).         */
 /*   2. Dans un vrai navigateur — `tools/check-page.html` importe les    */
 /*      modules de l'application, rend les cartes, clique, et renvoie   */
 /*      les mesures de mise en page. Les mesures comptent : on ne peut  */
 /*      pas juger une largeur « pleine » à l'œil reliably.             */
 /*                                                                     */
-/* Code de sortie 0 si tout passe, 1 sinon.                             */
+/*   3. Avec `--e2e`, `tools/e2e.html` va plus loin : il lance l'appli-  */
+/*      cation elle-même dans un iframe, règle une présentation, et lit */
+/*      son DOM. Une passe qui rend juste les composants ne prouve pas   */
+/*      que le réglage atteint l'écran.                                 */
 /* ------------------------------------------------------------------ */
 
 import { spawn } from 'node:child_process'
@@ -43,6 +47,8 @@ const HEIGHT = Number(flag('height', 1000)) || 1000
 const THEME = flag('theme') === 'dark' ? 'dark' : 'light'
 const SHOT = flag('shot')
 const KEEP = argv.includes('--keep')
+const E2E = argv.includes('--e2e') || flag('only') === 'e2e'
+const ONLY = flag('only')
 
 /* --- Couleurs du rapport (lisible sans dépendre du terminal) --------- */
 
@@ -128,6 +134,37 @@ async function diskChecks() {
   })
 
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'js')).map(checkSyntax))))
+
+  /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
+     les vérifie, et une simple accolade en trop les laisse muets jusqu'à
+     l'expiration du délai. On les analyse donc ici, avant le navigateur. */
+  for (const page of ['check-page.html', 'e2e.html', 'preview.html']) {
+    const file = path.join(ROOT, 'tools', page)
+    if (!fs.existsSync(file)) continue
+    const html = fs.readFileSync(file, 'utf8')
+    const modules = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1])
+    if (!modules.length) {
+      results.push({ name: `syntaxe tools/${page}`, pass: false, detail: 'aucun module à analyser' })
+      continue
+    }
+    for (const [i, code] of modules.entries()) {
+      const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'check-html-'))
+      fs.writeFileSync(path.join(sandbox, 'package.json'), '{"type":"module"}')
+      fs.writeFileSync(path.join(sandbox, 'module.js'), code)
+      const child = spawn(process.execPath, ['--check', 'module.js'], { cwd: sandbox, stdio: ['ignore', 'pipe', 'pipe'] })
+      let stderr = ''
+      child.stderr.on('data', (chunk) => (stderr += chunk))
+      const codeOut = await new Promise((resolve) => child.on('close', resolve))
+      fs.rmSync(sandbox, { recursive: true, force: true })
+      const message = stderr.split('\n').find((line) => line.includes('Error')) || ''
+      results.push({
+        name: `syntaxe tools/${page} (module ${i + 1})`,
+        pass: codeOut === 0,
+        detail: message,
+      })
+    }
+  }
+
   report('Sur disque', results)
 }
 
@@ -169,6 +206,17 @@ const TYPES = {
 function serve(reportFile) {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/__check/log') {
+        /* Filet de débogage : la page peut signaler où elle en est. Sans lui,
+           un banc qui n'aboutit pas ne dit rien de plus que « rien reçu ». */
+        let body = ''
+        req.on('data', (chunk) => (body += chunk))
+        req.on('end', () => {
+          console.log(dim(`  · ${body}`))
+          res.writeHead(200).end('ok')
+        })
+        return
+      }
       if (req.method === 'POST' && req.url === '/__check/report') {
         let body = ''
         req.on('data', (chunk) => (body += chunk))
@@ -199,15 +247,15 @@ const waitFor = async (file, deadline) => {
   return null
 }
 
-async function browserChecks() {
+async function browserChecks(page = 'check-page.html', label = 'rendu') {
   const browser = findBrowser()
   const reportFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'check-')), 'report.json')
   const server = await serve(reportFile)
   const { port } = server.address()
-  const url = `http://127.0.0.1:${port}/tools/check-page.html?theme=${THEME}`
+  const url = `http://127.0.0.1:${port}/tools/${page}?theme=${THEME}`
   const shot = SHOT ? path.resolve(SHOT) : null
 
-  console.log(dim(`\n${path.basename(browser)} — ${WIDTH}px, thème ${THEME}${shot ? ' + capture' : ''}`))
+  console.log(dim(`\n${path.basename(browser)} — ${WIDTH}px, thème ${THEME}, passe « ${label} »${shot ? ' + capture' : ''}`))
 
   const args = [
     '--headless=new',
@@ -215,15 +263,28 @@ async function browserChecks() {
     '--no-sandbox',
     '--no-first-run',
     '--hide-scrollbars',
+    /* Sans cela, la page du banc passe pour être en arrière-plan et le
+       navigateur ramène ses minuteries à une par seconde : la sonde de
+       démarrage, qui attend cinq secondes, en prendrait une minute. */
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
     `--window-size=${WIDTH},${HEIGHT}`,
-    '--virtual-time-budget=15000',
+    /* Le banc e2e attend le vrai démarrage de l'application : le budget de
+       temps virtuel avancerait l'horloge de la page et ferait boucler la
+       sonde avant que la liste ne soit rendue. On lui laisse des minuteries
+       réelles, et c'est le délai du rapport qui borne l'attente. */
+    ...(page === 'e2e.html' ? [] : ['--virtual-time-budget=15000']),
     `--user-data-dir=${fs.mkdtempSync(path.join(os.tmpdir(), 'check-profile-'))}`,
   ]
-  if (shot) args.push(`--screenshot=${shot}`)
+  if (shot && page !== 'e2e.html') args.push(`--screenshot=${shot}`)
   args.push(url)
 
   const child = spawn(browser, args, { stdio: 'ignore' })
-  const deadline = Date.now() + TIMEOUT_MS
+  /* L'application réelle démarre lentement (IndexedDB, lecture distante) :
+     quatre écrans à la suite demands plus de temps qu'un rendu de composants. */
+  const budget = page === 'e2e.html' ? 150_000 : TIMEOUT_MS
+  const deadline = Date.now() + budget
   const payload = await waitFor(reportFile, deadline)
   const exited = new Promise((resolve) => child.on('close', resolve))
   if (!payload) {
@@ -240,9 +301,15 @@ async function browserChecks() {
 
   if (!payload) {
     failures += 1
-    console.log(red(`  NON  le navigateur n'a rien renvoyé (${TIMEOUT_MS / 1000}s)`))
+    console.log(red(`  NON  le navigateur n'a rien renvoyé (${budget / 1000}s)`))
   } else {
-    report(`Dans le navigateur (${WIDTH}px, thème ${payload.theme})`, payload.results)  }
+    if (payload.fatal) {
+      failures += 1
+      console.log(red(`  NON  ${label} : ${payload.fatal.message}`))
+      if (payload.fatal.stack) console.log(red(`        ${String(payload.fatal.stack).split('\n')[0].slice(0, 300)}`))
+    }
+    report(`Dans le navigateur — ${label} (${WIDTH}px, thème ${payload.theme || THEME})`, payload.results)
+  }
 
   if (!KEEP) {
     server.close()
@@ -256,9 +323,10 @@ async function browserChecks() {
 
 console.log(bold('Vérifications — Mes achats'))
 await diskChecks()
-const answered = await browserChecks()
+const answered = ONLY === 'e2e' ? true : await browserChecks()
 if (!answered) {
   console.log(red('\nImpossible de vérifier le rendu.'))
 }
+if (E2E && ONLY !== 'render') await browserChecks('e2e.html', 'application réelle')
 console.log(failures === 0 ? `\n${green('Tout passe.')}\n` : `\n${red(`${failures} échec(s).`)}\n`)
 process.exit(failures === 0 ? 0 : 1)

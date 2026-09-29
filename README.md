@@ -569,8 +569,16 @@ icons/                      icônes de l'application (PWA)
 tools/
   check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic
   check-page.html           banc d'essai dans le navigateur, appelé par check.mjs
+  e2e.html                  l'application réelle, lancée et pilotée au clic
   preview.html              aperçu d'une présentation ?layout=card|mosaic|row
 ```
+
+`node tools/check.mjs --e2e` ajoute une passe que les deux autres ne font pas :
+`tools/e2e.html` lance l'application elle-même dans un iframe, règle une
+présentation, clique sur « Réglages », en change une autre, et vérifie que la
+liste **se repeint**. C'est la seule façon de prouver que le réglage atteint
+l'écran — un banc qui rend des composants suppose le trajet, alors que c'est
+justement là que la 8.1 pouvait casser sans qu'aucune vérification ne bronche.
 
 `tools/preview.html` rend la liste entière dans une seule présentation, pour la
 regarder telle qu'elle apparaîtra à l'écran :
