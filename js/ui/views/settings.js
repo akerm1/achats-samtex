@@ -8,11 +8,13 @@ import { storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
 import { LINK_PLACEHOLDER, normalizeConfig, testConnection } from '../../data/sync.js'
+import { CARD_LAYOUTS } from '../../data/model.js'
 import {
   getConfig,
   getLastSyncAt,
   getProducts,
   getState,
+  getPrefs,
   importFromGithub,
   importProducts,
   isLoaded,
@@ -55,6 +57,28 @@ function themeBlock() {
           ${THEMES.map(
             (item) => `
             <button type="button" data-theme-choice="${item.value}" class="${item.value === preference ? 'is-active' : ''}">
+              ${icon(item.icon, 14)} ${esc(item.label)}
+            </button>`,
+          ).join('')}
+        </div>
+      </div>
+    </div>`
+}
+
+function layoutBlock() {
+  const prefs = getPrefs()
+  const current = CARD_LAYOUTS.find((item) => item.value === prefs.layout) || CARD_LAYOUTS[0]
+  return `
+    <div class="setting-block">
+      <div class="setting-copy">
+        <strong>Présentation de la liste</strong>
+        <p>${esc(current.hint)} Ce réglage est partagé entre tous vos appareils.</p>
+      </div>
+      <div class="setting-side">
+        <div class="segmented" role="group" aria-label="Présentation de la liste">
+          ${CARD_LAYOUTS.map(
+            (item) => `
+            <button type="button" data-layout-choice="${item.value}" class="${item.value === current.value ? 'is-active' : ''}">
               ${icon(item.icon, 14)} ${esc(item.label)}
             </button>`,
           ).join('')}
@@ -387,7 +411,7 @@ function template() {
         </div>
       </div>
 
-      <div class="panel">${themeBlock()}</div>
+      <div class="panel">${themeBlock()}${layoutBlock()}</div>
       <div class="panel">${shareBlock()}</div>
       <div class="panel">${dataBlock()}${dangerBlock()}</div>
       <div class="panel">${installBlock()}${updateBlock()}${aboutBlock()}</div>
@@ -554,6 +578,20 @@ function bind() {
       host.querySelectorAll('[data-theme-choice]').forEach((other) =>
         other.classList.toggle('is-active', other === button),
       )
+    })
+  })
+
+  host.querySelectorAll('[data-layout-choice]').forEach((button) => {
+    button.addEventListener('click', () => {
+      setPrefs({ layout: button.dataset.layoutChoice })
+      host.querySelectorAll('[data-layout-choice]').forEach((other) =>
+        other.classList.toggle('is-active', other === button),
+      )
+      /* Le texte d'aide décrit le mode choisi. On le remplace sur place :
+         redessiner la vue effacerait les saisies de la section suivante. */
+      const chosen = CARD_LAYOUTS.find((item) => item.value === button.dataset.layoutChoice)
+      const copy = button.closest('.setting-block')?.querySelector('.setting-copy p')
+      if (chosen && copy) copy.textContent = `${chosen.hint} Ce réglage est partagé entre tous vos appareils.`
     })
   })
 

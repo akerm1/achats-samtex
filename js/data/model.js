@@ -43,6 +43,34 @@ export const SORTS = [
   { value: 'priority', label: 'Priorité' },
 ]
 
+/* Présentation de la liste : trois façons de montrer les mêmes produits.
+   `card` garde la fiche complète (photo ou bande de couleur, prix, note,
+   boutons) ; `mosaic` aligne des carrés pour voir d'un coup d'œil les
+   teintes ; `row` tient une ligne par produit pour les longues listes.
+   Les trois modes ouvrent toujours la fiche produit au clic : ce que le
+   mode change, c'est la densité, jamais l'accès à l'information. */
+export const CARD_LAYOUTS = [
+  {
+    value: 'card',
+    label: 'Fiche',
+    icon: 'store',
+    hint: "La fiche complète : photo ou bande de couleur, prix, note et boutons. C'est le mode le plus détaillé.",
+  },
+  {
+    value: 'mosaic',
+    label: 'Mosaïque',
+    icon: 'grid',
+    hint: "Des carrés alignés, quatre par ligne sur ordinateur : on compare les teintes d'un seul regard.",
+  },
+  {
+    value: 'row',
+    label: 'Liste',
+    icon: 'list',
+    hint: 'Une ligne par produit, avec une petite vignette. Le mode le plus compact, pour les longues listes.',
+  },
+]
+export const CARD_LAYOUT_VALUES = CARD_LAYOUTS.map((layout) => layout.value)
+
 /** Nettoie une couleur RGB brute (n'importe quelle table 0-255). */
 function normalizeRgb(raw) {
   if (!raw || typeof raw !== 'object') return null

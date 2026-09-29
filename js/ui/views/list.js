@@ -164,13 +164,15 @@ function results() {
   /* Le tri par priorité garde une liste à plat : les urgences d'abord. */
   const body =
     prefs.sort === 'priority'
-      ? sectionHtml('', filtered)
-      : [...groupByCategory(filtered).entries()].map(([type, items]) => sectionHtml(categoryLabel(type), items)).join('')
+      ? sectionHtml('', filtered, prefs.layout)
+      : [...groupByCategory(filtered).entries()]
+          .map(([type, items]) => sectionHtml(categoryLabel(type), items, prefs.layout))
+          .join('')
 
   return summary + body
 }
 
-function sectionHtml(title, items) {
+function sectionHtml(title, items, layout) {
   const total = sumTotal(items)
   return `
     <section class="group">
@@ -184,7 +186,7 @@ function sectionHtml(title, items) {
             </header>`
           : ''
       }
-      <div class="grid">${items.map(renderProductCard).join('')}</div>
+      <div class="grid grid--${esc(layout)}">${items.map((item) => renderProductCard(item, layout)).join('')}</div>
     </section>`
 }
 

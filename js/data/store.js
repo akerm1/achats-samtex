@@ -20,7 +20,7 @@ import { storage } from '../core/storage.js'
 import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
-import { STATUS, normalizeList, normalizeProduct } from './model.js'
+import { STATUS, CARD_LAYOUT_VALUES, normalizeList, normalizeProduct } from './model.js'
 import {
   PROVIDER_GITHUB,
   PROVIDER_WORKER,
@@ -49,12 +49,21 @@ export const DEFAULT_PREFS = {
   filter: 'todo',
   category: 'all',
   sort: 'recent',
+  layout: 'card',
   installHidden: false,
+}
+
+/* Les préférences viennent du stockage local ET d'un fichier distant. Une
+   valeur illisible ne doit pas produire une classe CSS qui n'existe pas :
+   on retombe sur le mode par défaut plutôt que sur un écran cassé. */
+function normalizeLayout(value) {
+  return CARD_LAYOUT_VALUES.includes(value) ? value : DEFAULT_PREFS.layout
 }
 
 let products = []
 let config = normalizeConfig(storage.get(CONFIG_KEY))
 let prefs = { ...DEFAULT_PREFS, ...(storage.get(PREFS_KEY) || {}) }
+prefs.layout = normalizeLayout(prefs.layout)
 let state = {
   loaded: false,
   status: config ? 'connecting' : 'local',
@@ -184,7 +193,7 @@ export const getPrefs = () => ({ ...prefs })
 export const isPending = () => state.pending
 
 /* Réglages partagés entre appareils (le jeton et `installHidden` restent locaux). */
-const SYNCED_PREFS = ['filter', 'category', 'sort']
+const SYNCED_PREFS = ['filter', 'category', 'sort', 'layout']
 
 function settingsSnapshot() {
   return {
@@ -192,6 +201,7 @@ function settingsSnapshot() {
     filter: prefs.filter,
     category: prefs.category,
     sort: prefs.sort,
+    layout: prefs.layout,
   }
 }
 
@@ -200,6 +210,14 @@ function applyRemoteSettings(settings) {
   if (!settings || typeof settings !== 'object') return false
   let changed = false
   for (const key of SYNCED_PREFS) {
+    if (key === 'layout') {
+      const layout = normalizeLayout(settings[key])
+      if (settings[key] !== undefined && layout !== prefs.layout) {
+        prefs.layout = layout
+        changed = true
+      }
+      continue
+    }
     if (settings[key] !== undefined && settings[key] !== prefs[key]) {
       prefs[key] = settings[key]
       changed = true
@@ -224,6 +242,7 @@ export function setPrefs(patch = {}) {
   const { theme, ...rest } = patch
   if (theme) setTheme(theme)
   if (Object.keys(rest).length) {
+    if ('layout' in rest) rest.layout = normalizeLayout(rest.layout)
     prefs = { ...prefs, ...rest }
     storage.set(PREFS_KEY, prefs)
   }

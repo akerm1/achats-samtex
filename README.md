@@ -61,11 +61,14 @@ version), et le lien privé est vérifié comme bien ignoré par Git.
 `tools/check-page.html` importe les vrais modules, rend les cartes, clique, et
 renvoie les mesures réelles. C'est là que ça compte : la largeur « pleine » d'un
 bandeau de couleur, la taille d'une boîte d'aperçu ou la position d'une étiquette
-ne se juge pas à l'œil reliably — elle se mesure.
+ne se juge pas à l'œil — elle se mesure. Les trois présentations de la liste
+sont rendues côte à côte et vérifiées de la même façon : une tuile de mosaïque
+qui sortirait du carré, ou une ligne qui déborderait, se verrait à l'œil, mais
+elle se mesure.
 
 ```
 Sur disque
-  ok   version.json === APP_VERSION  (8.0.0 / 8.0.0)
+  ok   version.json === APP_VERSION  (8.1.0 / 8.1.0)
   ok   syntaxe js\ui\preview.js
   ...
 Dans le navigateur (1200px, thème light)
@@ -436,12 +439,40 @@ redessiné autour d'une seule idée - du papier.
   deux thèmes définissent tous leurs jetons, que l'encre, l'accent et le texte
   secondaire passent le contraste AA, et que rien ne déborde horizontalement.
 
+### Version 8.1 - la liste se présente comme on veut
+
+Une liste d'achat n'a pas la même forme selon ce qu'on en fait. Comparer des
+teintes devant le fournisseur, ou cocher ce qu'on a déjà pris, n'appellent pas
+le même écran. Le mode se règle dans **Réglages → Présentation de la liste**, et
+il est partagé entre les appareils comme le thème.
+
+- **Fiche** (par défaut) : la carte actuelle, inchangée - photo ou bande de
+  couleur, prix, note, boutons.
+- **Mosaïque** : quatre carrés par ligne (trois sur téléphone). L'image occupe la
+  tuile et le nom passe dans un bandeau **sous** l'image, et non par-dessus : le
+  contraste ne dépend alors plus de la photo. C'est le mode pour comparer des
+  couleurs d'un seul regard.
+- **Liste** : une ligne par produit - vignette, nom, quantité, prix, coche. Une
+  dizaine de produits tiennent dans une seule hauteur d'écran.
+
+Ce que les trois modes partagent, c'est ce qui compte :
+
+- la photo et la couleur **s'agrandissent toujours** au clic ;
+- la **coche reste accessible** dans les trois modes, sans passer par la fiche ;
+- le clic sur le nom **ouvre la fiche** avec tous les détails (les boutons
+  d'édition y sont : la mosaïque n'a pas la place de les montrer) ;
+- la **priorité** reste visible : filet en haut de la tuile en mosaïque, filet à
+  gauche de la ligne en mode liste.
+
+Un mode reçu d'un autre appareil qui ne serait pas connu retombe sur « Fiche »
+plutôt que de produire un écran vide.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
 |---|---|
-| **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter (bouton + en bas), cocher, modifier, supprimer |
-| **Réglages** | Thème (sombre/clair/système), configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
+| **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter (bouton + en bas), cocher, modifier, supprimer, choisir la présentation (fiche / mosaïque / liste) |
+| **Réglages** | Thème (sombre/clair/système), présentation de la liste, configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
 Formulaire produit (ajout **et** modification) : photo (caméra ou galerie, compressée en
 JPEG ≤ 900 px), **nom facultatif**, catégorie (l'unité suit la catégorie), **couleur avec
