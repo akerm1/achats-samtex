@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "updatedAt": "2026-09-23T10:30:00.000Z",
+  "settings": { "theme": "system", "filter": "todo", "category": "all", "sort": "recent" },
+  "products": [
+    { "id": "test-001", "name": "Ceinture satin ivoire (essai)", "photo": "", "note": "Produit de test", "type": "ceinture", "color": "ivoire", "colorRgb": { "r": 239, "g": 227, "b": 211 }, "supplier": "", "qty": 12, "unit": "piece", "price": 1.5, "priority": "haute", "status": "todo", "boughtAt": null, "createdAt": "2026-09-23T10:30:00.000Z", "updatedAt": "2026-09-23T10:30:00.000Z" },
+    { "id": "test-002", "name": "Tissu gros œuvre vert (essai)", "photo": "", "note": "Produit de test", "type": "tissu", "color": "vert", "colorRgb": { "r": 61, "g": 153, "b": 88 }, "supplier": "", "qty": 20, "unit": "metre", "price": 3.2, "priority": "normale", "status": "todo", "boughtAt": null, "createdAt": "2026-09-23T10:30:00.000Z", "updatedAt": "2026-09-23T10:30:00.000Z" }
+  ]
+}
