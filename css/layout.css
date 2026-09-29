@@ -24,9 +24,12 @@
   min-height: calc(var(--appbar-h) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) clamp(16px, 4vw, 40px) 0;
   background: var(--surface-glass);
-  backdrop-filter: blur(22px) saturate(1.7);
-  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--line);
+  /* Le liseré sur le bord haut compense le fait que le filet du bas soit
+     le seul côté visible quand la barre est collée en haut de l'écran. */
+  box-shadow: 0 1px 24px -18px rgba(0, 0, 0, 0.9);
 }
 
 .brand {
@@ -39,15 +42,21 @@
 
 .brand-mark {
   font-family: var(--font-head);
-  background: linear-gradient(135deg, var(--mint), var(--teal) 72%);
+  background: linear-gradient(140deg, var(--mint), var(--teal) 72%);
   color: #0b0f14;
-  border-radius: 16px;
-  width: 46px;
-  height: 46px;
+  border-radius: 15px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  font-size: 16px;
-  box-shadow: var(--shadow-brand);
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
+  box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.brand:hover .brand-mark {
+  transform: rotate(-4deg) scale(1.04);
 }
 
 .brand-mark span {
@@ -191,7 +200,7 @@
   display: flex;
   flex-direction: column;
   gap: clamp(20px, 2.8vw, 32px);
-  animation: rise 0.34s var(--ease) both;
+  animation: rise var(--dur-slow) var(--ease-out) both;
 }
 
 .view-head {
@@ -240,27 +249,33 @@
 
 /* Navigation mobile ---------------------------------------------- */
 
+/* Barre flottante plutôt qu'un bandeau plaqué en bas : le contenu passe
+   underneath, la barre garde ses coins arrondis, et la bordure disparaît
+   au profit d'une ombre portée. C'est le geste le plus lisible vers
+   « moderne » sur téléphone, et il se contente de marges. */
 .bottomnav {
   display: none;
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 45;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  width: min(520px, calc(100vw - 20px));
+  padding: 6px;
+  border-radius: var(--radius-lg);
   background: var(--surface-glass);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
-  border-top: 1px solid var(--line);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-2), var(--hairline);
 }
 
 .bottomnav-inner {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
+  align-items: center;
   gap: 2px;
-  max-width: 520px;
-  margin: 0 auto;
 }
 
 .navtab {
@@ -269,12 +284,16 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 7px 4px 6px;
+  padding: 8px 4px 7px;
   border-radius: var(--radius-sm);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--muted);
-  transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
+  transition: color 0.2s var(--ease), background-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.navtab:active {
+  transform: scale(0.94);
 }
 
 .navtab.is-active {
@@ -300,25 +319,35 @@
   place-items: center;
 }
 
-/* Onglet central Ajouter (mobile) */
+/* Onglet central Ajouter (mobile) : bouton qui déborde au-dessus de la
+   barre, cerclé de la couleur du fond pour qu'il paraisse posé dessus. */
 .navtab--add {
   justify-content: center;
   color: var(--teal);
 }
 
 .navtab--add svg {
-  width: 40px;
-  height: 40px;
-  margin-top: -18px;
-  padding: 10px;
+  width: 46px;
+  height: 46px;
+  margin-top: -16px;
+  padding: 12px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--mint), var(--teal) 78%);
+  background: linear-gradient(140deg, var(--mint), var(--teal) 78%);
   color: #0b0f14;
-  box-shadow: var(--shadow-brand);
+  box-shadow: var(--shadow-brand), 0 0 0 5px var(--bg), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.navtab--add:active svg {
+  transform: scale(0.9);
 }
 
 .navtab--add span {
   color: var(--ink-2);
+}
+
+.navtab--add.is-active span {
+  color: var(--teal);
 }
 
 /* Notifications --------------------------------------------------- */
@@ -361,8 +390,11 @@
     font-size: 14.5px;
   }
 
+  /* La barre flottante occupe ~70 px, plus sa marge au bord du bas :
+     on réserve cette hauteur pour que le dernier produit reste
+     atteignable au pouce, sans qu'un bouton reste collé sous la barre. */
   .page {
-    padding-bottom: calc(var(--nav-h) + 104px);
+    padding-bottom: calc(var(--nav-h) + 128px);
   }
 
   .bottomnav {
@@ -385,8 +417,9 @@
     border-radius: 12px;
   }
 
+  /* Les toasts se posent au-dessus de la barre flottante, pas derrière. */
   .toasts {
-    bottom: calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));
+    bottom: calc(var(--nav-h) + 34px + env(safe-area-inset-bottom));
   }
 
   .sync-pill {

@@ -49,6 +49,16 @@
   --radius-lg: 30px;
   --radius-pill: 999px;
 
+  /* Échelle de texte — fluide, pour que les niveaux restent justes
+     aussi bien sur un téléphone étroit que sur un grand écran. */
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: clamp(19px, 2.2vw, 21px);
+  --text-2xl: clamp(23px, 3.2vw, 30px);
+
   /* Espaces */
   --space-1: 4px;
   --space-2: 8px;
@@ -58,11 +68,18 @@
   --space-6: 36px;
   --space-7: 56px;
 
-  /* Ombres — plus profondes, plus floues */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 32px -24px rgba(0, 0, 0, 0.8);
-  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 26px 56px -28px rgba(0, 0, 0, 0.9);
-  --shadow-3: 0 34px 80px -30px rgba(0, 0, 0, 0.95);
-  --shadow-brand: 0 18px 40px -18px rgba(79, 217, 176, 0.55);
+  /* Ombres — deux couches : une ombre de contact courte et nette sous
+     l'objet, puis une ombre ambiante large et très douce. Sur fond sombre,
+     c'est cette superposition qui donne l'épaisseur sans aplatir. */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.42), 0 10px 24px -18px rgba(0, 0, 0, 0.85);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.38), 0 20px 44px -24px rgba(0, 0, 0, 0.9);
+  --shadow-3: 0 30px 70px -28px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-brand: 0 10px 30px -14px rgba(79, 217, 176, 0.5);
+  --shadow-brand-lg: 0 16px 40px -14px rgba(79, 217, 176, 0.62);
+
+  /* Liseré de 1 px posé sur le bord haut d'une surface : sur un fond
+     sombre, c'est ce filet qui « détache » la carte du fond. */
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.055);
 
   /* Typographie */
   --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
@@ -77,6 +94,13 @@
   /* Divers */
   --ring: 0 0 0 3px rgba(79, 217, 176, 0.25);
   --ease: cubic-bezier(0.22, 0.68, 0.32, 1);
+  /* Sortie douce : le plus rapide au début, donc sans rebond. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Ressort amorti : pour les éléments qui apparaissent (toasts, dialogues). */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 0.14s;
+  --dur: 0.22s;
+  --dur-slow: 0.34s;
 }
 
 :root[data-theme='light'] {
@@ -113,10 +137,13 @@
   --violet: #7b5ce0;
   --violet-soft: #f0ecfc;
 
-  --shadow-1: 0 1px 2px rgba(15, 28, 23, 0.05), 0 12px 28px -20px rgba(15, 28, 23, 0.18);
-  --shadow-2: 0 2px 6px rgba(15, 28, 23, 0.06), 0 24px 52px -28px rgba(15, 28, 23, 0.28);
-  --shadow-3: 0 34px 80px -30px rgba(15, 28, 23, 0.4);
-  --shadow-brand: 0 18px 40px -18px rgba(20, 121, 90, 0.8);
+  --shadow-1: 0 1px 2px rgba(15, 28, 23, 0.05), 0 10px 24px -16px rgba(15, 28, 23, 0.16);
+  --shadow-2: 0 2px 5px rgba(15, 28, 23, 0.05), 0 20px 44px -22px rgba(15, 28, 23, 0.24);
+  --shadow-3: 0 30px 70px -28px rgba(15, 28, 23, 0.34), 0 2px 6px rgba(15, 28, 23, 0.06);
+  --shadow-brand: 0 10px 26px -14px rgba(20, 121, 90, 0.55);
+  --shadow-brand-lg: 0 14px 34px -14px rgba(20, 121, 90, 0.7);
+
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 
   --ring: 0 0 0 3px rgba(20, 121, 90, 0.18);
 }

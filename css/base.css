@@ -36,22 +36,30 @@ h4 {
   margin: 0;
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.2px;
+  /* Les titres sont resserrés : à ces tailles, l'espace négatif entre
+     lettres compense la graisse et donne une silhouette plus nette. */
+  letter-spacing: -0.022em;
+  text-wrap: balance;
 }
 
 h1 {
   font-family: var(--font-head);
   font-weight: 600;
-  font-size: clamp(26px, 4.6vw, 38px);
+  font-size: var(--text-2xl);
+  line-height: 1.08;
+  letter-spacing: -0.028em;
 }
 
 h2 {
   font-family: var(--font-head);
-  font-size: clamp(19px, 2.6vw, 23px);
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  letter-spacing: -0.024em;
 }
 
 h3 {
-  font-size: 15px;
+  font-size: var(--text-md);
+  letter-spacing: -0.014em;
 }
 
 p {
@@ -100,10 +108,13 @@ button:disabled {
   opacity: 0.55;
 }
 
+/* Anneau de focus : un contour net, plus un halo large et discret. Le halo
+   fait le travail sur les surfaces sombres, où un contour seul se perd. */
 :focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 5px var(--teal-soft);
 }
 
 ::selection {
@@ -203,7 +214,7 @@ button:disabled {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -213,11 +224,24 @@ button:disabled {
 
 @keyframes pop {
   0% {
-    transform: scale(0.94);
+    transform: scale(0.96);
     opacity: 0;
   }
   100% {
     transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Entrée avec un léger dépassement : réservé aux surfaces qui arrivent
+   par-dessus le reste (dialogues, toasts). */
+@keyframes spring-in {
+  0% {
+    transform: scale(0.94) translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
     opacity: 1;
   }
 }
@@ -230,6 +254,25 @@ button:disabled {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Balayage pour les états de chargement */
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
   }
 }
 
