@@ -10,13 +10,14 @@ aucune donnée de démonstration. PWA gratuite et sans build, hébergeable sur *
 ## Sommaire
 
 1. [Démarrer](#démarrer)
-2. [Nouveautés de la version 6](#nouveautés-de-la-version-6)
-3. [Écrans & fonctionnalités](#écrans--fonctionnalités)
-4. [Structure du projet](#structure-du-projet)
-5. [Synchronisation : GitHub ou lien privé](#synchronisation--github-ou-lien-privé)
-6. [Installer sur le téléphone](#installer-sur-le-téléphone)
-7. [Données](#données)
-8. [Raccourcis clavier](#raccourcis-clavier)
+2. [Vérifier avant de publier](#vérifier-avant-de-publier)
+3. [Nouveautés de la version 6](#nouveautés-de-la-version-6)
+4. [Écrans & fonctionnalités](#écrans--fonctionnalités)
+5. [Structure du projet](#structure-du-projet)
+6. [Synchronisation : GitHub ou lien privé](#synchronisation--github-ou-lien-privé)
+7. [Installer sur le téléphone](#installer-sur-le-téléphone)
+8. [Données](#données)
+9. [Raccourcis clavier](#raccourcis-clavier)
 
 ## Démarrer
 
@@ -40,6 +41,52 @@ La liste démarre vide (aucune donnée de démonstration) : connectez GitHub ou 
 
 > Les dépôts privés nécessitent GitHub Pro pour GitHub Pages ; en gratuit, le dépôt est
 > public et le contenu de `products.json` (photos en base64) est donc accessible publiquement.
+
+## Vérifier avant de publier
+
+Après une modification, une seule commande suffit :
+
+```powershell
+node tools/check.mjs
+```
+
+Elle ne demande ni installation ni build (l'application n'en a pas). Elle fait deux
+passes et sort en code `1` dès qu'une vérification échoue :
+
+**Sur disque** — chaque module de `js/` est analysé, `version.json` est comparé à
+`APP_VERSION` / `APP_RELEASE` (sans quoi les appareils ne voient jamais la nouvelle
+version), et le lien privé est vérifié comme bien ignoré par Git.
+
+**Dans un vrai navigateur** — Edge ou Chrome est lancé sans interface, la page
+`tools/check-page.html` importe les vrais modules, rend les cartes, clique, et
+renvoie les mesures réelles. C'est là que ça compte : la largeur « pleine » d'un
+bandeau de couleur, la taille d'une boîte d'aperçu ou la position d'une étiquette
+ne se juge pas à l'œil reliably — elle se mesure.
+
+```
+Sur disque
+  ok   version.json === APP_VERSION  (7.7.0 / 7.7.0)
+  ok   syntaxe js\ui\preview.js
+  ...
+Dans le navigateur (1200px, thème dark)
+  ok   bande couleur : pleine largeur  (316 / 316)
+  ok   aperçu couleur : nom + Hex + RVB  (#efe3d3|rgb(239, 227, 211))
+  ok   aperçu couleur : la fiche ne s'ouvre pas  (0)
+  ...
+Tout passe.
+```
+
+Options utiles :
+
+| Option | Effet |
+|---|---|
+| `--width 430` | vérifie à la largeur d'un téléphone (défaut `1200`) |
+| `--shot fichier.png` | enregistre aussi une capture d'écran |
+| `--keep` | laisse le serveur ouvert pour regarder la page à la main |
+| `BROWSER=/chemin/chrome` | impose le navigateur (sinon Edge puis Chrome sont essayés) |
+
+Quand une vérification casse, elle est écrite ici plutôt que dans un rapport à
+ouvrir : c'est la seule chose à relire avant de publier.
 
 ## Nouveautés de la version 6
 
@@ -413,6 +460,9 @@ js/
     views/
       list.js  settings.js
 icons/                      icônes de l'application (PWA)
+tools/
+  check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic
+  check-page.html           banc d'essai dans le navigateur, appelé par check.mjs
 ```
 
 ## Synchronisation : GitHub ou lien privé

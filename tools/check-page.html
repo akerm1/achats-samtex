@@ -1,0 +1,212 @@
+<!doctype html>
+<!--
+  Page de vérification — sert de banc d'essai à `node tools/check.mjs`.
+
+  Elle importe les vrais modules de l'application (aucun double des styles ni
+  du rendu dans le test) et reproduit fidèlement la délégation de clic de
+  `js/main.js`, pour que les vérifications portent sur le comportement réel.
+
+  Elle ne sert à rien en production : `tools/check.mjs` la sert brièvement
+  dans un navigateur sans interface, puis lit le rapport qu'elle poste.
+-->
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vérifications</title>
+    <link rel="stylesheet" href="../css/tokens.css" />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/layout.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/views.css" />
+    <style>
+      body { padding: 24px; }
+      .chg { max-width: 1100px; margin: 0 auto; }
+    </style>
+  </head>
+  <body>
+    <div class="chg">
+      <h1 style="margin: 0 0 16px; font-size: 20px">Banc d’essai — rendu réel</h1>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <script type="module">
+      import { renderProductCard } from '../js/ui/product-card.js'
+      import { openColorPreview, openPhotoPreview } from '../js/ui/preview.js'
+
+      const results = []
+      const check = (name, pass, detail = '') => results.push({ name, pass: Boolean(pass), detail: String(detail) })
+      const near = (a, b, tol = 2) => Math.abs(a - b) <= tol
+
+      const PHOTO =
+        'data:image/svg+xml;base64,' +
+        btoa(
+          unescape(
+            encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">' +
+                '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+                '<stop offset="0" stop-color="#2b6cb0"/><stop offset="1" stop-color="#f6ad55"/>' +
+                '</linearGradient></defs><rect width="800" height="600" fill="url(#g)"/>' +
+                '<text x="400" y="310" font-family="sans-serif" font-size="46" fill="#fff" text-anchor="middle">photo</text></svg>',
+            ),
+          ),
+        )
+
+      const base = { typeLabel: 'Ceinture', priority: 'haute', status: 'todo', createdAt: '2026-09-12T09:10:00.000Z' }
+      const items = [
+        { ...base, id: 'rgb', name: 'Ceinture satin ivoire', type: 'ceinture', qty: 25, unit: 'piece', price: 1.5, hasPrice: true, lineTotal: 37.5, qtyLabel: '25 pc', color: 'ivoire', colorRgb: { r: 239, g: 227, b: 211 }, photo: PHOTO },
+        { ...base, id: 'named', name: 'Tulle rose bébé', type: 'tulle', qty: 4, unit: 'metre', qtyLabel: '4 m', color: 'rose bébé' },
+        { ...base, id: 'unknown', name: 'Fil doré', type: 'fil', qty: 6, unit: 'rouleau', qtyLabel: '6 rlt', color: 'finition inconnue', priority: 'normale' },
+        { ...base, id: 'plain', name: 'Dentelle écrue', type: 'dentelle', qty: 3, unit: 'metre', qtyLabel: '3 m' },
+        { ...base, id: 'bought', name: 'Ruban bleu roi', type: 'ruban', qty: 12, unit: 'rouleau', qtyLabel: '12 rlt', color: 'bleu roi', colorRgb: { r: 42, g: 82, b: 190 }, priority: 'basse', isBought: true, photo: PHOTO },
+        { ...base, id: 'nophoto', name: 'Fil de coton', type: 'fil', qty: 2, unit: 'rouleau', qtyLabel: '2 rlt', color: 'écru' },
+      ]
+
+      const grid = document.getElementById('grid')
+      grid.innerHTML = items.map(renderProductCard).join('')
+      const card = (id) => grid.querySelector(`article[data-id="${id}"]`)
+      const byId = (id) => items.find((item) => item.id === id) || null
+
+      /* --- Délégation de clic, calquée sur js/main.js (initActions) --------- */
+      const HANDLERS = {
+        'preview-color': (node) => openColorPreview(byId(node.dataset.id)),
+        'preview-photo': (node) => openPhotoPreview(byId(node.dataset.id)),
+      }
+      let formOpened = 0
+      document.addEventListener('click', (event) => {
+        const node = event.target.closest('[data-action]')
+        if (node) {
+          const handler = HANDLERS[node.dataset.action]
+          if (handler) {
+            event.preventDefault()
+            handler(node)
+            return
+          }
+        }
+        if (event.target.closest('[data-role="card-body"]')) formOpened += 1
+      })
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        const zoomer = event.target.closest('[data-action="preview-color"], [data-action="preview-photo"]')
+        if (zoomer) {
+          event.preventDefault()
+          HANDLERS[zoomer.dataset.action]?.(zoomer)
+          return
+        }
+        if (event.target.closest('[data-role="card-body"]')) formOpened += 1
+      })
+
+      const dialogs = () => [...document.querySelectorAll('dialog[open]')]
+      const closeAll = () => dialogs().forEach((d) => d.close())
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+      const click = (node) => node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      const enter = (node) => node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+
+      const errors = []
+      window.addEventListener('error', (e) => errors.push(`${e.message} @ ${e.filename}:${e.lineno}`))
+      window.addEventListener('unhandledrejection', (e) => errors.push(`rejet : ${e.reason}`))
+
+      const done = () => fetch('/__check/report', { method: 'POST', body: JSON.stringify({ results, errors, viewport: { w: innerWidth, h: innerHeight }, theme: document.documentElement.dataset.theme }) })
+
+      try {
+        /* --- Rendu des cartes --------------------------------------------- */
+        check('cartes rendues', grid.querySelectorAll('article.product').length === items.length, grid.querySelectorAll('article.product').length)
+
+        /* --- Bande de couleur : pleine largeur, pastille pleine ------------- */
+        const block = card('rgb').querySelector('.product-color')
+        const body = card('rgb').querySelector('.product-body')
+        const swatch = block?.querySelector('.color-swatch')
+        const chip = block?.querySelector('.color-chip')
+        const b = block?.getBoundingClientRect()
+        const bw = body?.getBoundingClientRect()
+        const s = swatch?.getBoundingClientRect()
+        const cs = getComputedStyle(body)
+        const contentW = bw.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+        check('bande couleur : pleine largeur', b && near(b.width, contentW), `${Math.round(b?.width)} / ${Math.round(contentW)}`)
+        check('bande couleur : hauteur suffisante', b && b.height >= 60, `${Math.round(b?.height)}px`)
+        check('pastille : remplit la bande', s && b && near(s.width, b.width) && near(s.height, b.height), `${Math.round(s?.width)}x${Math.round(s?.height)}`)
+        check('pastille : couleur appliquée', swatch && getComputedStyle(swatch).backgroundColor === 'rgb(239, 227, 211)', swatch && getComputedStyle(swatch).backgroundColor)
+        check('étiquette : nom de la couleur', chip?.textContent === 'ivoire', chip?.textContent)
+        check('étiquette : posée sur la bande', chip && b && chip.getBoundingClientRect().bottom <= b.bottom + 1 && chip.getBoundingClientRect().top >= b.top - 1)
+        check('curseur « zoom-in »', block && getComputedStyle(block).cursor === 'zoom-in')
+
+        /* --- Couleur nommée, sans RGB -------------------------------------- */
+        const namedSwatch = card('named').querySelector('.color-swatch')
+        check('couleur nommée : teinte déduite', namedSwatch && getComputedStyle(namedSwatch).backgroundColor === 'rgb(255, 215, 222)', namedSwatch && getComputedStyle(namedSwatch).backgroundColor)
+
+        /* --- Couleur inconnue : damier, jamais cassé ------------------------ */
+        const unknownSwatch = card('unknown').querySelector('.color-swatch')
+        check('couleur inconnue : damier', unknownSwatch?.classList.contains('is-empty'), unknownSwatch?.className)
+
+        /* --- Sans couleur : rien ne prend de place -------------------------- */
+        check('sans couleur : pas de bande', !card('plain').querySelector('.product-color'))
+        check('sans photo : pas de zone cliquable', !card('nophoto').querySelector('[data-action="preview-photo"]'))
+        check('sans photo : pas de loupe', !card('nophoto').querySelector('.product-photo .zoom-mark'))
+        check('avec photo : loupe présente', Boolean(card('rgb').querySelector('.product-photo .zoom-mark')))
+        check('sans photo : pas de tabindex', !card('nophoto').querySelector('.product-photo').getAttribute('tabindex'))
+
+        /* --- Aperçu couleur -------------------------------------------------- */
+        formOpened = 0
+        click(card('rgb').querySelector('[data-action="preview-color"]'))
+        let dlg = dialogs()[0]
+        const bigSwatch = dlg?.querySelector('.preview-color')
+        const facets = [...(dlg?.querySelectorAll('.preview-facet code') || [])].map((n) => n.textContent)
+        check('aperçu couleur : ouvert', Boolean(dlg))
+        check('aperçu couleur : grande boîte', bigSwatch && bigSwatch.getBoundingClientRect().height >= 200, `${Math.round(bigSwatch?.getBoundingClientRect().height)}px`)
+        check('aperçu couleur : teinte correcte', bigSwatch && getComputedStyle(bigSwatch).backgroundColor === 'rgb(239, 227, 211)', bigSwatch && getComputedStyle(bigSwatch).backgroundColor)
+        check('aperçu couleur : nom + Hex + RVB', dlg?.querySelector('.preview-name')?.textContent === 'ivoire' && facets.join('|') === '#efe3d3|rgb(239, 227, 211)', facets.join('|'))
+        check('aperçu couleur : la fiche ne s’ouvre pas', formOpened === 0, formOpened)
+        dlg?.querySelector('[data-close]')?.click()
+        await wait(40)
+        check('aperçu : la croix ferme', dialogs().length === 0, dialogs().length)
+
+        /* --- Aperçu photo ---------------------------------------------------- */
+        formOpened = 0
+        click(card('rgb').querySelector('[data-action="preview-photo"]'))
+        dlg = dialogs()[0]
+        const img = dlg?.querySelector('.preview-photo')
+        check('aperçu photo : ouvert', Boolean(dlg))
+        check('aperçu photo : image chargée', img && img.complete && img.naturalWidth === 800, img && `${img.naturalWidth}x${img.naturalHeight}`)
+        check('aperçu photo : texte alternatif', img?.getAttribute('alt') === 'Ceinture satin ivoire', img?.getAttribute('alt'))
+        check('aperçu photo : la fiche ne s’ouvre pas', formOpened === 0, formOpened)
+        dlg?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        await wait(40)
+        check('aperçu : clic à côté ferme', dialogs().length === 0, dialogs().length)
+
+        /* --- Clavier -------------------------------------------------------- */
+        formOpened = 0
+        const colorEl = card('rgb').querySelector('.product-color')
+        enter(colorEl)
+        check('clavier : Entrée ouvre l’aperçu couleur', dialogs().length === 1, dialogs().length)
+        check('clavier : la fiche ne s’ouvre pas', formOpened === 0, formOpened)
+        closeAll()
+        await wait(40)
+
+        /* --- Un produit acheté s’agrandit aussi ------------------------------ */
+        click(card('bought').querySelector('[data-action="preview-photo"]'))
+        check('produit acheté : aperçu photo', dialogs().length === 1, dialogs().length)
+        closeAll()
+        await wait(40)
+
+        /* --- Un seul aperçu à la fois ---------------------------------------- */
+        openColorPreview(byId('rgb'))
+        openPhotoPreview(byId('rgb'))
+        check('aperçus : pas d’empilement', dialogs().length === 1, dialogs().length)
+        closeAll()
+        await wait(40)
+
+        /* --- Le reste de la carte ouvre toujours la fiche --------------------- */
+        formOpened = 0
+        click(card('rgb').querySelector('.product-name'))
+        check('carte : le nom ouvre la fiche', formOpened === 1, formOpened)
+
+        check('aucune erreur JavaScript', errors.length === 0, errors.join(' | '))
+        await done()
+      } catch (error) {
+        results.push({ name: 'exception : ' + error.message, pass: false, detail: String(error.stack || '') })
+        errors.forEach((message) => results.push({ name: 'erreur JS : ' + message, pass: false, detail: '' }))
+        await done()
+      }
+    </script>
+  </body>
+</html>
