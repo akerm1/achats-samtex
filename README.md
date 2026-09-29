@@ -318,6 +318,20 @@ script (`UnauthorizedAccessException`), les étapes manuelles sont :
    **Tester la connexion** → **Enregistrer**. Puis **Importer depuis GitHub** pour
    récupérer la liste existante.
 
+### Version 7.6 — la couleur prend toute la place dans la carte
+
+- **La pastille de couleur n'est plus une petite puce** au milieu des métadonnées :
+  elle occupe **toute la largeur de la carte**, juste sous le nom du produit,
+  avec le nom de la couleur posé par-dessus la teinte (sur une pastille
+  translucide, donc lisible sur n'importe quel fond).
+- **La couleur est un critère de tri à l'achat** : la voir d'un coup d'œil, depuis
+  le téléphone, sans cliquer la fiche, est tout l'intérêt du changement.
+- Hauteur généreuse (84 px, 96 px sur téléphone) pour que la teinte se compare vraiment,
+  y compris les teintes très claires (ivoire, écru) qui se noyaient dans une petite pastille.
+- La couleur nommée sans valeur RGB reconnue retombe sur le damier « aucune teinte » :
+  on voit qu'il faut préciser la couleur, sans que la ligne paraisse cassée.
+- Les produits **sans couleur** ne réserve aucune place : rien ne change pour eux.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

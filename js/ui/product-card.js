@@ -8,12 +8,18 @@ import { icon } from './icons.js'
 
 const PRIORITY_CLASS = { haute: 'product--p1', normale: 'product--p2', basse: 'product--p3' }
 
+/* La couleur est le premier critère de tri à l'achat : elle occupe donc
+   toute la largeur de la carte, avec son nom posé dessus. */
 function colorBlock(item) {
   if (!item.color && !item.colorRgb) return ''
   const label = item.color ? esc(item.color) : 'Couleur'
   const css = colorCss(item)
-  const swatch = css ? `<span class="color-swatch" style="background:${css}" aria-hidden="true"></span>` : ''
-  return `<span class="color-chip">${swatch}${label}</span>`
+  const swatch = `<span class="color-swatch${css ? '' : ' is-empty'}" style="background:${css || ''}" aria-hidden="true"></span>`
+  return `
+    <div class="product-color">
+      ${swatch}
+      <span class="color-chip">${label}</span>
+    </div>`
 }
 
 function photoBlock(item, { size = 'card' } = {}) {
@@ -46,7 +52,6 @@ export function renderProductCard(item) {
       : ''
   const metaBits = [item.qtyLabel]
   const color = colorBlock(item)
-  if (color) metaBits.push(color)
   const price = priceLine(item)
   const actions = `
       <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}" aria-label="Modifier ${esc(name)}" title="Modifier">
@@ -62,6 +67,7 @@ export function renderProductCard(item) {
            aria-label="Voir les détails de ${esc(name)}"
            title="Cliquez pour voir les détails de ${esc(name)}">
         <strong class="product-name">${esc(name)}</strong>
+        ${color}
         <p class="product-line">${metaBits.join('<span class="separator">·</span>')}</p>
         ${item.supplier ? `<p class="product-line">${icon('store', 12)} ${esc(item.supplier)}</p>` : ''}
         ${price ? `<p class="product-price">${price}</p>` : '<p class="product-line u-muted">Prix à préciser</p>'}
