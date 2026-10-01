@@ -99,41 +99,48 @@
 
       document.getElementById('root').innerHTML = `
         <div class="app">
-          <header class="appbar">
+          <header class="statusbar">
             <a class="brand" href="#/liste">
               <span class="brand-mark">S<span>&amp;</span>T</span>
-              <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+              <span class="brand-screens">
+                <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+                <span class="brand-screen">Liste</span>
+              </span>
             </a>
-            <nav class="appbar-nav">
+            <nav class="statusbar-nav">
               <a class="navlink is-active" href="#/liste">Liste</a>
               <a class="navlink" href="#/reglages">Réglages</a>
             </nav>
-            <div class="appbar-actions">
+            <div class="statusbar-actions">
               <button type="button" class="sync-pill is-ready">À jour</button>
-              <button type="button" class="icon-btn" aria-label="Ajouter">+</button>
             </div>
           </header>
           <main class="page">
             <section class="view">
-              <div class="view-head">
-                <div>
-                  <h1>Ma liste d'achat</h1>
-                  <p>${items.length} produit(s) · ${label} · ≈ ${formatMoney(total.total)} dans la vue en cours.</p>
+              <div class="list-head"><div class="list-head-copy">
+                <h1>Ma liste d'achat</h1>
+                <p class="list-head-sub">${items.length} produit(s) · ${label} · ≈ ${formatMoney(total.total)} dans la vue en cours.</p>
+              </div></div>
+              <div class="filterbar">
+                <div class="filterbar-search"><input id="q" type="search" class="input" placeholder="Rechercher un produit…" /></div>
+                <div class="filterbar-tabs" role="tablist">
+                  <button type="button" class="is-active">À acheter</button>
+                  <button type="button">Achetés</button>
+                  <button type="button">Toutes</button>
                 </div>
-              </div>
-              <div class="toolbar">
-                <div class="toolbar-row">
-                  <div class="input-wrap"><input id="q" type="search" placeholder="Rechercher un produit…" /></div>
-                </div>
-                <div class="scroller">
-                  <button type="button" class="chip is-active">À acheter<span class="chip-count">7</span></button>
-                  <button type="button" class="chip">Achetés<span class="chip-count">1</span></button>
-                  <button type="button" class="chip">Toutes<span class="chip-count">8</span></button>
+                <div class="filterbar-chips scroller">
+                  <button type="button" class="chip is-active">Couture<span class="chip-count">7</span></button>
+                  <button type="button" class="chip">Tissus<span class="chip-count">1</span></button>
                 </div>
               </div>
               ${body}
             </section>
           </main>
+          <nav class="tabbar"><div class="tabbar-inner">
+            <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
+            <button type="button" class="tab tab--add"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
+            <a class="tab" href="#/reglages"><span class="tab-icon">R</span><span class="tab-label">Réglages</span></a>
+          </div></nav>
         </div>`
 
       /* --- Mesures, renvoyées en JSON ------------------------------------ */
@@ -150,7 +157,7 @@
         }
         const rows = [...document.querySelectorAll('article.product')].map((article) => {
           const name = article.querySelector('.product-name, .tile-name, .row-name')?.textContent?.trim() || '?'
-          const visual = article.querySelector('.tile-visual, .row-visual, .product-photo')
+          const visual = article.querySelector('.hero, .tile-visual, .row-visual')
           const flat = article.querySelector('.cv--color')
           const img = article.querySelector('.cv--photo img, img')
           const tag = article.querySelector('.tile-tag, .color-chip')

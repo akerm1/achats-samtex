@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Liste des produits à acheter en gros — sashes et tissus, avec photos, couleurs et prix. Synchronisée automatiquement entre tous les appareils via GitHub." />
     <!-- La couleur de la barre suit le fond réel du thème ; `theme.js` la
-         met à jour au changement, ces deux declarations couvrent le premier
+         met à jour au changement, ces deux déclarations couvrent le premier
          rendu, avant que le script ne s'exécute. -->
     <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a101c" media="(prefers-color-scheme: dark)" />
@@ -40,30 +40,43 @@
     <a class="skip-link" href="#page">Aller à la liste</a>
 
     <div class="app">
-      <header class="appbar">
+      <!--
+        Barre de statut : elle ne porte plus la navigation, seulement
+        l'identité, l'écran courant et la synchronisation. Sur téléphone,
+        la navigation est entièrement dans la barre du bas — c'est la
+        seule qui reste sous le pouce.
+      -->
+      <header class="statusbar">
         <a class="brand" href="#/liste" aria-label="Mes achats — ma liste">
           <span class="brand-mark" aria-hidden="true">S<span>&amp;</span>T</span>
-          <span class="brand-text">
-            <strong>Mes achats</strong>
-            <small>Sashes &amp; tissus · grossiste</small>
+          <span class="brand-screens">
+            <span class="brand-text">
+              <strong>Mes achats</strong>
+              <small>Sashes &amp; tissus · grossiste</small>
+            </span>
+            <!-- Nom de l'écran courant, injecté par `shell.js`. Le titre
+                 de page est ici plutôt que dans la vue : il reste visible
+                 pendant que la liste défile. -->
+            <span class="brand-screen" id="screen-title" aria-live="polite">Liste</span>
           </span>
         </a>
 
-        <nav class="appbar-nav" id="appbar-nav" aria-label="Navigation principale"></nav>
+        <nav class="statusbar-nav" id="appbar-nav" aria-label="Navigation principale"></nav>
 
-        <div class="appbar-actions">
+        <div class="statusbar-actions">
           <button type="button" class="sync-pill" id="sync-pill" data-action="sync-now"
                   aria-live="polite" title="Synchroniser maintenant">Connexion…</button>
           <button type="button" class="icon-btn" id="install-btn" data-action="install-app"
                   aria-label="Installer l'application" title="Installer l'application" hidden>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v13" /><path d="m6 11 6 6 6-6" /><path d="M5 21h14" />  
+              <path d="M12 3v13" /><path d="m6 11 6 6 6-6" /><path d="M5 21h14" />
             </svg>
           </button>
-          <button type="button" class="icon-btn" id="add-btn" data-action="open-form" aria-label="Ajouter un produit" title="Ajouter un produit (N)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="icon-btn icon-btn--accent" id="add-btn" data-action="open-form"
+                  aria-label="Ajouter un produit" title="Ajouter un produit (N)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14" /><path d="M12 5v14" />
             </svg>
           </button>
@@ -77,8 +90,10 @@
         </div>
       </main>
 
-      <nav class="bottomnav" id="bottomnav" aria-label="Navigation">
-        <div class="bottomnav-inner" id="bottomnav-inner"></div>
+      <!-- Navigation principale. Toujours présente : sur téléphone c'est
+           la seule barre visible en permanence. -->
+      <nav class="tabbar" id="bottomnav" aria-label="Navigation principale">
+        <div class="tabbar-inner" id="bottomnav-inner"></div>
       </nav>
 
       <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>

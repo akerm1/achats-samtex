@@ -204,53 +204,78 @@
         /* --- Rendu des cartes --------------------------------------------- */
         check('cartes rendues', grid.querySelectorAll('article.product').length === items.length, grid.querySelectorAll('article.product').length)
 
-        /* --- Bande de couleur : pleine largeur, pastille pleine ------------- */
-        const block = card('rgb').querySelector('.product-color')
-        const body = card('rgb').querySelector('.product-body')
-        const swatch = block?.querySelector('.color-swatch')
-        const chip = block?.querySelector('.color-chip')
-        const b = block?.getBoundingClientRect()
-        const bw = body?.getBoundingClientRect()
-        const s = swatch?.getBoundingClientRect()
-        const cs = getComputedStyle(body)
-        const contentW = bw.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
-        check('bande couleur : pleine largeur', b && near(b.width, contentW), `${Math.round(b?.width)} / ${Math.round(contentW)}`)
-        check('bande couleur : hauteur suffisante', b && b.height >= 60, `${Math.round(b?.height)}px`)
-        check('pastille : remplit la bande', s && b && near(s.width, b.width) && near(s.height, b.height), `${Math.round(s?.width)}x${Math.round(s?.height)}`)
-        check('pastille : couleur appliquée', swatch && getComputedStyle(swatch).backgroundColor === 'rgb(239, 227, 211)', swatch && getComputedStyle(swatch).backgroundColor)
-        check('étiquette : nom de la couleur', chip?.textContent === 'ivoire', chip?.textContent)
-        check('étiquette : posée sur la bande', chip && b && chip.getBoundingClientRect().bottom <= b.bottom + 1 && chip.getBoundingClientRect().top >= b.top - 1)
-        check('curseur « zoom-in »', block && getComputedStyle(block).cursor === 'zoom-in')
+        /* --- Fiche : UN seul visuel, en pleine largeur ------------------- */
+        /* La 8.3 empilait photo puis bande de couleur, soit deux bandeaux
+           successifs et une carte de 490 px. On vérifie qu'il n'y a plus
+           qu'une zone de visuel, et qu'elle occupe toute la largeur utile. */
+        const article = card('rgb')
+        const hero = article.querySelector('.hero')
+        const artStyle = getComputedStyle(article)
+        const artContent = article.clientWidth - parseFloat(artStyle.paddingLeft) - parseFloat(artStyle.paddingRight)
+        const heroBox = hero?.getBoundingClientRect()
+        check('fiche : un seul visuel', hero && article.querySelectorAll('.hero').length === 1)
+        check("fiche : plus de double bande", !article.querySelector('.product-color'))
+        check('fiche : le visuel est en tête', article.firstElementChild === hero, article.firstElementChild?.className)
+        check('fiche : le visuel occupe la largeur', heroBox && near(heroBox.width, artContent, 2), `${Math.round(heroBox?.width)} / ${Math.round(artContent)}`)
+        check('fiche : le visuel a de la hauteur', heroBox && heroBox.height >= 140, `${Math.round(heroBox?.height)}px`)
 
-        /* --- Couleur nommée, sans RGB -------------------------------------- */
-        const namedSwatch = card('named').querySelector('.color-swatch')
-        check('couleur nommée : teinte déduite', namedSwatch && getComputedStyle(namedSwatch).backgroundColor === 'rgb(255, 215, 222)', namedSwatch && getComputedStyle(namedSwatch).backgroundColor)
+        /* La photo remplit le visuel, pas seulement une bande de celui-ci. */
+        const photoInHero = hero?.querySelector('img')
+        check('fiche : la photo remplit le visuel', photoInHero && near(photoInHero.getBoundingClientRect().height, heroBox.height, 2), `${Math.round(photoInHero?.getBoundingClientRect().height)} / ${Math.round(heroBox?.height)}`)
 
-        /* --- Couleur inconnue : damier, jamais cassé ------------------------ */
-        const unknownSwatch = card('unknown').querySelector('.color-swatch')
-        check('couleur inconnue : damier', unknownSwatch?.classList.contains('is-empty'), unknownSwatch?.className)
+        /* Le prix sort de la ligne de texte : c'est la donnée qu'on relit. */
+        const price = card('rgb').querySelector('.price')
+        check('fiche : le prix est mis en avant', price && parseFloat(getComputedStyle(price).fontSize) >= 18, price && getComputedStyle(price).fontSize)
 
-        /* --- Sans couleur : rien ne prend de place -------------------------- */
-        check('sans couleur : pas de bande', !card('plain').querySelector('.product-color'))
-        check('sans photo : pas de zone cliquable', !card('nophoto').querySelector('[data-action="preview-photo"]'))
-        check('sans photo : pas de loupe', !card('nophoto').querySelector('.product-photo .zoom-mark'))
-        check('avec photo : loupe présente', Boolean(card('rgb').querySelector('.product-photo .zoom-mark')))
-        check('sans photo : pas de tabindex', !card('nophoto').querySelector('.product-photo').getAttribute('tabindex'))
+        /* --- Couleur nommée : teinte déduite, nom écrit dessus ---------- */
+        const namedHero = card('named').querySelector('.hero')
+        const namedFill = namedHero?.querySelector('.hero-fill')
+        check('couleur nommée : teinte déduite', namedFill && getComputedStyle(namedFill).backgroundColor === 'rgb(255, 215, 222)', namedFill && getComputedStyle(namedFill).backgroundColor)
+        const namedColor = card('named').querySelector('.hero-color')
+        check('fiche : le nom de la couleur est écrit', namedColor?.textContent.trim() === 'rose bébé', namedColor?.textContent)
+
+        /* --- Couleur inconnue : le damier, jamais un noir inventé --------- */
+        check("couleur inconnue : damier", Boolean(card('unknown').querySelector('.hero-fill--empty')))
+        check("sans couleur : pas d'étiquette", !card('plain').querySelector('.hero-color'))
+        check('sans photo ni couleur : un aplat neutre', Boolean(card('plain').querySelector('.hero-fill--blank')))
+
+        /* --- Cibles tactiles : le visuel mène à son aperçu ---------------- */
+        check('sans photo : pas de zone photo', !card('nophoto').querySelector('[data-action="preview-photo"]'))
+        check('sans photo : pas d’image', !card('nophoto').querySelector('img'))
+        check('avec photo : loupe présente', Boolean(card('rgb').querySelector('.hero .zoom-mark')))
+        check('avec photo : aperçu au clic', Boolean(card('rgb').querySelector('.hero[data-action="preview-photo"]')))
+        check('avec couleur : aperçu au clic', Boolean(card('named').querySelector('.hero[data-action="preview-color"]')))
+        check('le visuel est-il joignable', getComputedStyle(card('named').querySelector('.hero')).cursor === 'zoom-in')
+        check('le visuel se parcourt au clavier', card('named').querySelector('.hero').getAttribute('tabindex') === '0')
 
         /* --- Aperçu couleur -------------------------------------------------- */
+        /* Sur `rgb`, la photo l'emporte : le visuel ouvre l'aperçu photo.
+           L'aperçu couleur se teste donc sur `named`, dont le visuel est
+           un aplat. */
         formOpened = 0
-        click(card('rgb').querySelector('[data-action="preview-color"]'))
+        click(card('named').querySelector('.hero'))
         let dlg = dialogs()[0]
         const bigSwatch = dlg?.querySelector('.preview-color')
         const facets = [...(dlg?.querySelectorAll('.preview-facet code') || [])].map((n) => n.textContent)
         check('aperçu couleur : ouvert', Boolean(dlg))
         check('aperçu couleur : grande boîte', bigSwatch && bigSwatch.getBoundingClientRect().height >= 200, `${Math.round(bigSwatch?.getBoundingClientRect().height)}px`)
-        check('aperçu couleur : teinte correcte', bigSwatch && getComputedStyle(bigSwatch).backgroundColor === 'rgb(239, 227, 211)', bigSwatch && getComputedStyle(bigSwatch).backgroundColor)
-        check('aperçu couleur : nom + Hex + RVB', dlg?.querySelector('.preview-name')?.textContent === 'ivoire' && facets.join('|') === '#efe3d3|rgb(239, 227, 211)', facets.join('|'))
+        check('aperçu couleur : teinte correcte', bigSwatch && getComputedStyle(bigSwatch).backgroundColor === 'rgb(255, 215, 222)', bigSwatch && getComputedStyle(bigSwatch).backgroundColor)
+        /* Une teinte déduite du nom n'a qu'un Hex : afficher un RVB
+           calculé à partir de lui ferait croire à une valeur saisie. */
+        check('aperçu couleur : nom + Hex', dlg?.querySelector('.preview-name')?.textContent === 'rose bébé' && facets.join('|') === '#ffd7de', facets.join('|'))
         check('aperçu couleur : la fiche ne s’ouvre pas', formOpened === 0, formOpened)
         dlg?.querySelector('[data-close]')?.click()
         await wait(40)
         check('aperçu : la croix ferme', dialogs().length === 0, dialogs().length)
+
+        /* En revanche, une couleur saisie apporte les deux : le RVB doit
+           alors être affiché, sinon la valeur saisie est perdue. */
+        openColorPreview(byId('rgb'))
+        dlg = dialogs()[0]
+        const rgbFacets = [...(dlg?.querySelectorAll('.preview-facet code') || [])].map((n) => n.textContent)
+        check('aperçu couleur saisie : nom + Hex + RVB', dlg?.querySelector('.preview-name')?.textContent === 'ivoire' && rgbFacets.join('|') === '#efe3d3|rgb(239, 227, 211)', rgbFacets.join('|'))
+        closeAll()
+        await wait(40)
 
         /* --- Aperçu photo ---------------------------------------------------- */
         formOpened = 0
@@ -267,7 +292,7 @@
 
         /* --- Clavier -------------------------------------------------------- */
         formOpened = 0
-        const colorEl = card('rgb').querySelector('.product-color')
+        const colorEl = card('named').querySelector('.hero')
         enter(colorEl)
         check('clavier : Entrée ouvre l’aperçu couleur', dialogs().length === 1, dialogs().length)
         check('clavier : la fiche ne s’ouvre pas', formOpened === 0, formOpened)
@@ -311,8 +336,8 @@
            voient tous ceux qui n'ont jamais touché au réglage. */
         check(
           'mode par défaut : la fiche complète',
-          renderProductCard(items[0]).includes('product-foot'),
-          'product-foot absent',
+          renderProductCard(items[0]).includes('product-actions'),
+          'product-actions absent',
         )
 
         for (const layout of LAYOUTS) {
@@ -343,6 +368,11 @@
         const tileBoxes = [...mosaic.querySelectorAll('.tile')].map((node) => node.getBoundingClientRect())
         const skewed = tileBoxes.filter((b) => !near(b.width, b.height, 3))
         check('mosaïque : les tuiles sont carrées', skewed.length === 0, skewed.map((b) => `${Math.round(b.width)}x${Math.round(b.height)}`).join(' '))
+        /* La case de la mosaïque et la ligne de réglage ne doivent pas
+           partager le nom `.tile` : sinon la ligne de réglage impose sa
+           marge et son centrage à chaque case, et la photo rétrécit. */
+        const firstTileStyle = getComputedStyle(mosaic.querySelector('.tile'))
+        check('mosaïque : aucune marge injectée par un réglage', parseFloat(firstTileStyle.paddingTop) === 0, firstTileStyle.padding)
         const mosaicCols = getComputedStyle(mosaic).gridTemplateColumns.split(' ').filter(Boolean).length
         check('mosaïque : quatre colonnes sur grand écran', innerWidth > 720 ? mosaicCols === 4 : mosaicCols === 3, `${mosaicCols} colonnes à ${innerWidth}px`)
 
@@ -404,70 +434,118 @@
         check('liste : la couleur est écrite dans la ligne', rowMetaColor.includes('rose bébé'), rowMetaColor)
         const rowMetaPhoto = rows.querySelector('article[data-id="rgb"] .row-meta')?.textContent || ''
         check('liste : la couleur survit à la photo', rowMetaPhoto.includes('ivoire'), rowMetaPhoto)
-        check('liste : rien n’est écrit dans la vignette', !rows.querySelector('.row-visual .color-chip') && !rows.querySelector('.row-visual .product-color'))
+        check('liste : rien n’est écrit dans la vignette', !rows.querySelector('.row-visual .color-chip') && !rows.querySelector('.row-visual .hero'))
 
         /* --- Aucun mode ne doit produire une case sans visuel ---------------- */
         /* Sans photo ni couleur, la case reste un aplat neutre : ce qui
            compte, c'est qu'elle ne soit pas vide de 0 px de haut. */
         for (const layout of LAYOUTS) {
           const blank = layouts.querySelector(`[data-layout="${layout}"] article[data-id="plain"]`)
-          const blankVisual = blank.querySelector('.tile-visual, .row-visual, .product-photo')
+          const blankVisual = blank.querySelector('.hero, .tile-visual, .row-visual')
           const b = blankVisual?.getBoundingClientRect()
           check(`${layout} : la case garde un visuel`, b && b.width >= 40 && b.height >= 40, b && `${Math.round(b.width)}x${Math.round(b.height)}`)
         }
 
 
-        /* --- Coque de l'application : bandeau, en-tête, barre, état vide --- */
-        /* Ces blocs sont en largeur de colonne, et un titre en gros
-           serif déborde plus vite qu'une carte. On mesure donc la coque
-           entière, pas seulement son conteneur. */
+        /* --- Coque : barre de statut + barre d'onglets ------------------ */
+        /* On reconstruit la coque réelle (index.html + shell.js) plutôt que
+           de la mesurer dans l'application : elle est ainsi vérifiée même
+           quand la liste de produits est vide. */
         const shell = document.getElementById('shell')
         shell.innerHTML = `
           <div class="app">
-            <header class="appbar">
+            <header class="statusbar">
               <a class="brand" href="#/liste">
                 <span class="brand-mark">S<span>&amp;</span>T</span>
-                <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+                <span class="brand-screens">
+                  <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
+                  <span class="brand-screen">Liste</span>
+                </span>
               </a>
-              <nav class="appbar-nav">
+              <nav class="statusbar-nav">
                 <a class="navlink is-active" href="#/liste">Liste</a>
                 <a class="navlink" href="#/reglages">Réglages</a>
               </nav>
-              <div class="appbar-actions">
+              <div class="statusbar-actions">
                 <button type="button" class="sync-pill is-ready">À jour</button>
-                <button type="button" class="icon-btn" aria-label="Ajouter">+</button>
               </div>
             </header>
             <main class="page">
               <section class="view">
-                <div class="view-head">
-                  <div><h1>Ma liste</h1><p>Ce que je dois acheter chez le grossiste.</p></div>
-                </div>
-                <div class="toolbar"><div class="toolbar-row">
-                  <div class="input-wrap"><input class="search" placeholder="Rechercher" /></div>
-                  <button type="button" class="chip is-active">Toutes</button>
-                  <button type="button" class="chip">À acheter</button>
+                <div class="list-head"><div class="list-head-copy">
+                  <h1>Ma liste</h1><p class="list-head-sub">Ce que je dois acheter chez le grossiste.</p>
                 </div></div>
+                <div class="filterbar">
+                  <div class="filterbar-search"><input class="input" placeholder="Rechercher" /></div>
+                  <div class="filterbar-tabs" role="tablist">
+                    <button type="button" class="is-active">Toutes</button>
+                    <button type="button">À acheter</button>
+                  </div>
+                  <div class="filterbar-chips scroller">
+                    <button type="button" class="chip is-active">Couture</button>
+                    <button type="button" class="chip">Tissus</button>
+                  </div>
+                </div>
                 <div class="empty">
-                  <strong>Votre liste est vide</strong>
-                  <span>Ajoutez un article pour commencer.</span>
+                  <span class="empty-mark"></span>
+                  <div class="empty-copy">
+                    <strong>Votre liste est vide</strong>
+                    <p>Ajoutez un article pour commencer.</p>
+                  </div>
                 </div>
               </section>
             </main>
+            <nav class="tabbar"><div class="tabbar-inner">
+              <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
+              <button type="button" class="tab tab--add"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
+              <a class="tab" href="#/reglages"><span class="tab-icon">R</span><span class="tab-label">Réglages</span></a>
+            </div></nav>
           </div>`
+
         const shellBox = shell.getBoundingClientRect()
         check('coque : rendue', shellBox.width > 0, `${Math.round(shellBox.width)}px`)
         check('coque : pas de débordement', shell.scrollWidth <= shell.clientWidth + 1, `${shell.scrollWidth} / ${shell.clientWidth}`)
         const shellWide = [...shell.querySelectorAll('*')].filter((n) => n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX === 'visible')
         check('coque : aucun bloc trop large', shellWide.length === 0, shellWide.map((n) => n.className || n.tagName).join(','))
 
-        const emptyTitle = shell.querySelector('.empty strong')
-        const emptyBox = emptyTitle.getBoundingClientRect()
-        const shellPad = shell.querySelector('.page').getBoundingClientRect()
-        check('état vide : titre dans la colonne', emptyBox.width <= shellPad.width + 1, `${Math.round(emptyBox.width)} / ${Math.round(shellPad.width)}`)
+        /* Barre de statut : elle dit où l'on est, elle ne navigue pas sur
+           téléphone — sinon la même liste d'onglets apparaît deux fois. */
+        const statusbar = shell.querySelector('.statusbar')
+        const statusNav = shell.querySelector('.statusbar-nav')
+        check('barre de statut : collante', statusbar && getComputedStyle(statusbar).position === 'sticky', statusbar && getComputedStyle(statusbar).position)
+        const navShown = statusNav && getComputedStyle(statusNav).display !== 'none'
+        check('barre de statut : navigation réservée au grand écran', navShown === (innerWidth > 820), `${innerWidth}px → ${navShown ? 'visible' : 'masquée'}`)
+
+        /* Barre d'onglets : la navigation permanente, et le bouton d'ajout
+           au centre, à portée du pouce. */
+        const tabbar = shell.querySelector('.tabbar')
+        const tabs = [...shell.querySelectorAll('.tab')]
+        check('onglets : la barre est posée en bas', tabbar && getComputedStyle(tabbar).position === 'fixed', tabbar && getComputedStyle(tabbar).position)
+        check('onglets : trois entrées', tabs.length === 3, tabs.length)
+        check('onglets : l’ajout est au centre', tabs[1]?.classList.contains('tab--add'), tabs.map((t) => t.className).join(' | '))
+        check('onglets : cibles d’au moins 44 px', tabs.every((t) => t.getBoundingClientRect().height >= 44), tabs.map((t) => Math.round(t.getBoundingClientRect().height)).join('/'))
+
+        /* Barre de filtres : collante, et empilée recherche / statut /
+           catégories — trois questions distinctes, trois lignes. */
+        const filterBar = shell.querySelector('.filterbar')
+        const barSearch = filterBar?.querySelector('.filterbar-search')?.getBoundingClientRect()
+        const barTabs = filterBar?.querySelector('.filterbar-tabs')?.getBoundingClientRect()
+        const barChips = filterBar?.querySelector('.filterbar-chips')?.getBoundingClientRect()
+        check('filtres : la barre est collante', filterBar && getComputedStyle(filterBar).position === 'sticky', filterBar && getComputedStyle(filterBar).position)
+        check('filtres : les trois couches existent', Boolean(barSearch && barTabs && barChips))
+        check('filtres : recherche au-dessus du statut', barSearch && barTabs && barSearch.bottom <= barTabs.top + 1, `${Math.round(barSearch?.bottom)} / ${Math.round(barTabs?.top)}`)
+        check('filtres : statut au-dessus des catégories', barTabs && barChips && barTabs.bottom <= barChips.top + 1, `${Math.round(barTabs?.bottom)} / ${Math.round(barChips?.top)}`)
+        check('filtres : le statut partage la largeur', barTabs && barSearch && near(barTabs.width, barSearch.width, 2), `${Math.round(barTabs?.width)} / ${Math.round(barSearch?.width)}`)
+
+        /* État vide : le titre reste dans la colonne, et le repère est bien
+           posé — c'est lui qui remplace la boîte vide. */
+        check('état vide : repère présent', Boolean(shell.querySelector('.empty .empty-mark')))
+        const emptyBox = shell.querySelector('.empty-copy strong')?.getBoundingClientRect()
+        const pageBox = shell.querySelector('.page').getBoundingClientRect()
+        check('état vide : titre dans la colonne', emptyBox && emptyBox.width <= pageBox.width + 1, `${Math.round(emptyBox?.width)} / ${Math.round(pageBox.width)}`)
         const brandMark = shell.querySelector('.brand-mark')
         const brandText = shell.querySelector('.brand-text strong')
-        check('bandeau : marque et titre visibles', brandMark.getBoundingClientRect().width > 0 && brandText.getBoundingClientRect().width > 0, `${Math.round(brandMark.getBoundingClientRect().width)} / ${Math.round(brandText.getBoundingClientRect().width)}`)
+        check('barre de statut : marque et titre visibles', brandMark.getBoundingClientRect().width > 0 && brandText.getBoundingClientRect().width > 0, `${Math.round(brandMark.getBoundingClientRect().width)} / ${Math.round(brandText.getBoundingClientRect().width)}`)
 
         check('aucune erreur JavaScript', errors.length === 0, errors.join(' | '))
 

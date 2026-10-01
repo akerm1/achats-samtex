@@ -190,6 +190,10 @@ const ACTIONS = {
   },
   'set-filter': (node) => setPrefs({ filter: node.dataset.value }),
   'set-category': (node) => setPrefs({ category: node.dataset.value }),
+  'clear-search': () => {
+    listView.clearSearch()
+    listView.focusSearch()
+  },
   'share-list': () => shareList(),
   'go-settings': () => navigate('reglages'),
   'sync-now': async () => {

@@ -173,12 +173,12 @@ async function inspectLayout(layout) {
   check(`${layout} : rien ne déborde horizontalement`, grid ? grid.scrollWidth <= grid.clientWidth + 1 : false, grid ? `${grid.scrollWidth} / ${grid.clientWidth}` : 'pas de grille')
   check(`${layout} : les colonnes sont réparties`, style ? style.gridTemplateColumns.split(' ').filter(Boolean).length >= 1 : false, style ? `${style.gridTemplateColumns}` : '—')
 
-  /* La couleur doit être là : c'est le défaut reproché. Dans la fiche, la
-     teinte est sur la pastille (`.color-swatch`) et non sur la bande, qui est
-     transparente et porte le voile. */
-  const rgbTile = d.querySelector('[data-id="e2e-rgb"] .cv--color, [data-id="e2e-rgb"] .color-swatch')
+  /* La couleur doit être là : c'est le défaut reproché. En 8.4 elle est un
+     aplat nu, dans la fiche comme dans les vues denses : `.hero-fill` dans
+     la fiche, `.cv--color` dans la mosaïque et la ligne. */
+  const rgbTile = d.querySelector('[data-id="e2e-rgb"] .cv--color, [data-id="e2e-rgb"] .hero-fill')
   const rgbBg = rgbTile ? w.getComputedStyle(rgbTile).backgroundColor : null
-  check(`${layout} : la couleur est un aplat pur`, rgbBg === 'rgb(239, 227, 211)', `${rgbBg}${rgbTile ? '' : ' (pastille absente)'}`)
+  check(`${layout} : la couleur est un aplat pur`, rgbBg === 'rgb(239, 227, 211)', `${rgbBg}${rgbTile ? '' : ' (aplat absent)'}`)
 
   const named = d.querySelector('[data-id="e2e-named"]')
   const namedText = named ? named.textContent.replace(/\s+/g, ' ') : ''
@@ -193,10 +193,16 @@ async function inspectLayout(layout) {
   const tile = photo?.getBoundingClientRect()
   const share = box && tile && tile.height ? Math.round((box.height / tile.height) * 100) : 0
   check(`${layout} : la photo est présente`, share > 0, share ? `${share} % de la case` : 'aucune image')
-  /* La fiche garde sa bande de couleur sous l'image : la photo n'y occupe que
-     la moitié, c'est voulu. La contrainte ne vaut que pour les vues denses. */
+  /* La fiche ne superpose plus deux bandeaux : c'est la correction même de
+     la 8.4. Un produit montre soit sa photo, soit sa teinte, jamais les deux
+     à la fois — et la photo occupe alors tout le visuel. */
   if (layout === 'card') {
-    check(`${layout} : la photo et la couleur cohabitent`, share >= 40 && share <= 60, `${share} % de la case`)
+    const hero = photo?.querySelector('.hero')
+    const heroBox = hero?.getBoundingClientRect()
+    const visuals = hero ? hero.querySelectorAll('img, .hero-fill').length : 0
+    check(`${layout} : un seul visuel par fiche`, visuals === 1, `${visuals} visuels`)
+    const heroShare = box && heroBox && heroBox.height ? Math.round((box.height / heroBox.height) * 100) : 0
+    check(`${layout} : la photo remplit son visuel`, heroShare >= 95, `${heroShare} % du visuel (${share} % de la case)`)
   } else {
     check(`${layout} : la photo remplit son cadre`, share >= 70, `${share} % de la case`)
   }

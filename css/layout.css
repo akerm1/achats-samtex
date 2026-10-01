@@ -1,10 +1,19 @@
 /* ------------------------------------------------------------------ */
-/* Layout — coquille, barre du haut, navigation bas, toasts             */
+/* Layout — coquille, barre de statut, barre d'onglets, toasts         */
 /*                                                                      */
-/* Le principe directeur est mobile-first : la barre du bas existe     */
-/* d'abord, la barre du haut se replie, et les deux se partagent la     */
-/* hauteur d'une barre d'état système. Sur téléphone, rien d'important  */
-/* ne vit dans un coin : tout ce qui compte est dans le pouce.         */
+/* Le changement de structure le plus visible de la 8.4 :              */
+/*                                                                      */
+/*   AVANT  barre du haut = navigation + identité                       */
+/*         barre du bas  = navigation (mobile seulement)                */
+/*                                                                      */
+/*   APRÈS  barre de statut = identité + écran + synchronisation       */
+/*         barre d'onglets = navigation, toujours                      */
+/*                                                                      */
+/* La navigation n'a donc plus deux Points d'entrée. Avant, sur       */
+/* téléphone, l'ajout vivait dans l'onglet central de la barre du bas   */
+/* et la pastille de synchro dans la barre du haut — deux barres        */
+/* pour deux informations, et la moitié de l'écran mangée par des       */
+/* éléments permanents.                                                 */
 /* ------------------------------------------------------------------ */
 
 .app {
@@ -12,34 +21,33 @@
   display: flex;
   flex-direction: column;
   /* Deux halos très diffus, opposés. Ils réchauffent la base froide
-     sans qu'aucun aplat ne se voie : c'est de la profondeur, pas
-     un décor. */
+     sans qu'aucun aplat ne se voie : c'est de la profondeur, pas un
+     décor. */
   background:
     radial-gradient(1000px 460px at 88% -12%, var(--bg-accent-1), transparent 60%),
     radial-gradient(880px 420px at -12% 106%, var(--bg-accent-2), transparent 60%),
     var(--bg);
 }
 
-/* Barre du haut --------------------------------------------------- */
+/* Barre de statut -------------------------------------------------- */
 
-/* Sur téléphone, la barre du haut ne garde que la marque, la pastille
-   de synchro et l'ajout. La navigation part dans la barre du bas, et
-   le titre de la vue — pas la marque — sert de repère. */
-.appbar {
+/* Compacte, translucide, et sans navigation. Elle ne sert qu'à dire
+   « où l'on est » et « où en est la synchronisation » ; tout le reste
+   vit dans les onglets. */
+.statusbar {
   position: sticky;
   top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  min-height: calc(var(--appbar-h) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) clamp(16px, 5vw, 40px) 0;
-  /* Le verre est posé cette fois sur un fond déjà uni : l'appbar est
-     posée sur la même base que la page, donc le flou ne déforme rien
-     et ne ternit pas le texte. Il ne sert qu'à marquer le passage. */
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(1.6) blur(14px);
-  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  gap: var(--space-3);
+  min-height: calc(var(--statusbar-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) clamp(14px, 4vw, 32px) 0;
+  /* Le verre est posé sur un fond déjà uni : il ne déforme rien et ne
+     ternit pas le texte, il marque seulement le passage. */
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: saturate(1.6) blur(16px);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px);
   border-bottom: 1px solid var(--line);
 }
 
@@ -52,9 +60,9 @@
   min-width: 0;
 }
 
-/* Le monogramme redevient un carré de marque : c'est le repère visuel
-   le plus rapide sur un écran de 6 pouces, et il donne à la barre du
-   haut une masse que le titre seul n'a pas. */
+/* Le monogramme est un carré de marque : le repère le plus rapide sur
+   un écran de 6 pouces, et il donne à la barre une masse que le titre
+   seul n'a pas. */
 .brand-mark {
   display: grid;
   place-items: center;
@@ -68,9 +76,8 @@
   font-size: 15px;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.02em;
   box-shadow: var(--shadow-brand);
-  transition: transform var(--dur) var(--ease-spring), background-color var(--dur) var(--ease);
+  transition: transform var(--dur) var(--ease-spring);
 }
 
 .brand:hover .brand-mark {
@@ -81,41 +88,52 @@
   opacity: 0.72;
 }
 
-.brand-text {
+/* Les deux libellés superposés : le nom de la marque, et en dessous le
+   nom de l'écran courant. Sur téléphone c'est le second qui sert — la
+   marque, on la reconnaît à la forme sans la lire. */
+.brand-screens {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-.brand-text strong {
-  display: block;
+.brand-text strong,
+.brand-screen {
   font-family: var(--font-head);
-  font-size: 19px;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.022em;
-  font-variation-settings: 'opsz' 40;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.brand-text strong {
+  font-size: 19px;
+  line-height: 1.1;
+  font-variation-settings: 'opsz' 40;
 }
 
 .brand-text small {
-  display: block;
-  color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
-/* Navigation de bureau : un sommaire horizontal, l'onglet actif posé
-   sur un aplat d'accent plutôt que souligné. Sur fond clair, un simple
-   filet ne se voit pas assez loin. */
-.appbar-nav {
-  display: flex;
+/* Le nom de l'écran est en petites capitales espacées : il se lit
+   differently du titre de marque, et il tient sur une ligne. */
+.brand-screen {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-top: 1px;
+}
+
+/* Sur téléphone, la navigation du haut est retirée : la barre du bas la
+   porte déjà, et deux fois la même liste sur un écran de 360 px mange la
+   place du titre. Elle revient en sommaire à partir de 821 px. */
+.statusbar-nav {
+  display: none;
   align-items: center;
   gap: var(--space-2);
   margin: 0 auto;
@@ -154,7 +172,7 @@
   opacity: 1;
 }
 
-.appbar-actions {
+.statusbar-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -164,9 +182,8 @@
 
 /* Pastille de synchronisation ------------------------------------- */
 
-/* Elle porte un mot, pas un point : « Hors ligne » ou « Erreur » se
-   lit sans effort, et le point de couleur ne sert plus que de repère
-   secondaire. C'est la lisibilité de l'état qui compte ici. */
+/* Elle porte un mot, pas un point : « Hors ligne » ou « Erreur » se lit
+   sans effort. Le point de couleur n'est plus qu'un repère secondaire. */
 .sync-pill {
   display: inline-flex;
   align-items: center;
@@ -238,24 +255,26 @@
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
-  /* Respiration en haut : l'en-tête a besoin d'air pour se lire comme
-     un titre, pas comme un bandeau collé. */
-  padding: clamp(28px, 5vw, 56px) clamp(16px, 5vw, 40px) 140px;
+  padding: clamp(20px, 4vw, 40px) clamp(14px, 4vw, 32px) 140px;
 }
 
 .view {
   display: flex;
   flex-direction: column;
-  gap: clamp(22px, 3.5vw, 36px);
+  gap: clamp(18px, 3vw, 28px);
   animation: rise var(--dur-slow) var(--ease-out) both;
+  /* La barre de filtres sort de la colonne par des marges négatives, pour
+     poser son fond d'un bord à l'autre de l'écran. Ces marges élargissent
+     aussi la boîte de `.view`, qui emporte alors un peu de largeur en
+     trop. `clip` la rogne sans créer de conteneur de défilement — donc
+     sans casser le `position: sticky` de la barre, que `hidden` casserait. */
+  overflow-x: clip;
 }
 
 .view-head {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .view-head h1 {
@@ -265,8 +284,8 @@
   letter-spacing: -0.032em;
 }
 
+.view-head-sub,
 .view-head p {
-  margin-top: 10px;
   color: var(--ink-3);
   font-size: var(--text-base);
   line-height: 1.55;
@@ -280,8 +299,6 @@
   flex-wrap: wrap;
 }
 
-/* En-tête de section : un filet fin qui court jusqu'au bout de la
-   colonne, comme la ligne de séparation d'un sommaire. */
 .section-head {
   display: flex;
   align-items: center;
@@ -299,38 +316,37 @@
   margin-bottom: var(--space-4);
 }
 
-/* Navigation mobile ---------------------------------------------- */
+/* Barre d'onglets -------------------------------------------------- */
 
-/* Barre flottante, centrée, au-dessus de tout. Le contenu passe
-   dessous, la barre garde ses coins arrondis et son ombre : c'est le
-   geste le plus lisible vers « application » sans quitter le web, et
-   il se contente de marges. */
-.bottomnav {
-  display: none;
+/* La navigation principale. Sur téléphone c'est la seule barre visible
+   en permanence, et elle est posée à plat sur le bord bas plutôt que
+   flottante : au bord, elle ne masque aucun contenu et le pouce
+   l'atteint sans viser. Sur grand écran elle devient une barre centrée
+   classique. */
+.tabbar {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 45;
-  width: min(520px, calc(100vw - 20px));
-  padding: 6px;
-  border-radius: var(--radius-xl);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: saturate(1.6) blur(18px);
-  -webkit-backdrop-filter: saturate(1.6) blur(18px);
-  border: 1px solid var(--line-strong);
-  box-shadow: var(--shadow-3), var(--hairline);
+  backdrop-filter: saturate(1.6) blur(20px);
+  -webkit-backdrop-filter: saturate(1.6) blur(20px);
+  border-top: 1px solid var(--line);
 }
 
-.bottomnav-inner {
+.tabbar-inner {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
-.navtab {
+.tab {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -338,7 +354,7 @@
   justify-content: center;
   gap: 3px;
   min-height: 52px;
-  padding: 8px 4px 7px;
+  padding: 6px 4px;
   border-radius: var(--radius);
   font-size: 11.5px;
   font-weight: 600;
@@ -347,20 +363,34 @@
     transform var(--dur-fast) var(--ease);
 }
 
-.navtab:active {
+.tab:active {
   transform: scale(0.94);
 }
 
-.navtab.is-active {
+.tab-icon {
+  display: grid;
+  place-items: center;
+  height: 24px;
+}
+
+.tab.is-active {
   color: var(--teal);
   background: var(--teal-soft);
 }
 
-.navtab-badge {
+.tab.is-active .tab-icon {
+  transform: translateY(-1px);
+}
+
+.tab-label {
+  line-height: 1.1;
+}
+
+.tab-badge {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 50%;
-  transform: translateX(8px);
+  transform: translateX(6px);
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -373,35 +403,26 @@
   place-items: center;
 }
 
-/* Onglet central Ajouter : un disque d'accent cerclé de la surface de
-   la barre, pour rester détaché même sur un fond coloré. */
-.navtab--add {
-  justify-content: center;
-  color: var(--teal);
-}
-
-.navtab--add svg {
-  width: 50px;
-  height: 50px;
-  margin-top: -18px;
-  padding: 13px;
+/* Onglet central Ajouter : un disque d'accent cerclé du fond de la
+   barre, pour rester détaché même sur un aplat coloré. */
+.tab--add .tab-icon {
+  width: 52px;
+  height: 52px;
+  margin-top: -20px;
   border-radius: 50%;
   background: var(--teal);
   color: #ffffff;
-  box-shadow: var(--shadow-brand-lg), 0 0 0 5px var(--surface);
+  box-shadow: var(--shadow-brand-lg), 0 0 0 4px var(--surface);
   transition: transform 0.3s var(--ease-spring);
 }
 
-.navtab--add:active svg {
+.tab--add:active .tab-icon {
   transform: scale(0.9);
 }
 
-.navtab--add span {
-  color: var(--ink-3);
-}
-
-.navtab--add.is-active span {
+.tab--add .tab-label {
   color: var(--teal);
+  margin-top: 1px;
 }
 
 /* Notifications --------------------------------------------------- */
@@ -409,7 +430,7 @@
 .toasts {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  bottom: calc(var(--tabbar-h) + 28px + env(safe-area-inset-bottom));
   z-index: 60;
   width: min(460px, calc(100vw - 20px));
   transform: translateX(-50%);
@@ -425,74 +446,71 @@
 
 /* Responsive ------------------------------------------------------ */
 
-/* Le point de bascule n'est pas 1020 px mais 820 : en dessous, il y a
-   la place pour une barre du haut à trois éléments et une navigation
-   latérale de plus. */
-@media (max-width: 820px) {
-  .appbar-nav {
-    display: none;
+@media (min-width: 721px) {
+  /* Sur grand écran, la navigation du haut réapparaît. La barre du bas
+     reste : elle porte l'ajout, qui est l'action la plus fréquente. */
+  .statusbar {
+    min-height: calc(var(--statusbar-h) + 8px + env(safe-area-inset-top));
+    gap: var(--space-4);
+  }
+
+  .brand-text small {
+    display: block;
+    color: var(--ink-3);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tabbar {
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .tab {
+    flex-direction: row;
+    gap: 8px;
+    min-height: 44px;
+    font-size: var(--text-sm);
+  }
+
+  .tab--add .tab-icon {
+    width: 44px;
+    height: 44px;
+    margin-top: 0;
   }
 }
 
-@media (max-width: 720px) {
-  :root {
-    --appbar-h: 60px;
-    --nav-h: 64px;
+@media (min-width: 821px) {
+  /* Assez de place pour une navigation horizontale dans la barre de
+     statut : elle devient un sommaire, et l'onglet correspondant y est
+     mis en avant. */
+  .brand-screen {
+    display: none;
   }
 
-  /* La barre flottante occupe ~76 px, plus sa marge au bord du bas :
-     on réserve cette hauteur pour que le dernier produit reste
-     atteignable au pouce, sans qu'un bouton reste collé dessous. */
+  .statusbar-nav {
+    display: flex;
+  }
+
   .page {
-    padding-left: 14px;
-    padding-right: 14px;
-    padding-bottom: calc(var(--nav-h) + 132px);
-  }
-
-  .bottomnav {
-    display: block;
-  }
-
-  /* L'ajout se fait par l'onglet central de la barre du bas. */
-  #add-btn {
-    display: none;
-  }
-
-  /* Le sous-titre de marque disparaît : à 320 px de large, il pousse le
-     titre à la troncature alors qu'il n'apporte rien une fois lu. */
-  .brand-text small {
-    display: none;
-  }
-
-  .brand-mark {
-    width: 34px;
-    height: 34px;
-    font-size: 14px;
-  }
-
-  .brand-text strong {
-    font-size: 18px;
-  }
-
-  /* Les toasts se posent au-dessus de la barre flottante, pas derrière. */
-  .toasts {
-    bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom));
-  }
-
-  .view-head {
-    align-items: flex-start;
+    padding-bottom: 120px;
   }
 }
 
 @media (max-width: 480px) {
-  .appbar {
+  .statusbar {
     gap: var(--space-2);
     padding-right: 12px;
     padding-left: 12px;
   }
 
-  /* La pastille de synchro devient un simple point de 40 px : à cette
-     largeur, un mot de plus ferait déborder la marque. */
+  /* La pastille de synchro devient un point de 40 px : à cette largeur,
+     un mot de plus ferait déborder la marque. */
   .sync-pill {
     width: 40px;
     height: 40px;
@@ -509,10 +527,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {

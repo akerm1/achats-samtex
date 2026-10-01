@@ -8,8 +8,8 @@ import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 
 export const NAV_ITEMS = [
-  { route: 'liste', label: 'Liste', icon: 'cart' },
-  { route: 'reglages', label: 'Réglages', icon: 'sliders' },
+  { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
+  { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' },
 ]
 
 const shell = {
@@ -30,14 +30,44 @@ export function setActiveRoute(route) {
   renderNav()
 }
 
+/**
+ * Les onglets de la barre du bas. L'ajout est intercalé au milieu, pas
+ * placé à la fin : c'est l'action la plus fréquente, et le pouce porte
+ * naturellement au centre de l'écran.
+ */
+function tabItems() {
+  const items = []
+  NAV_ITEMS.forEach((item, index) => {
+    if (index === 1) {
+      items.push({
+        route: '__add',
+        label: 'Ajouter',
+        icon: 'plus',
+        action: 'open-form',
+      })
+    }
+    items.push(item)
+  })
+  return items
+}
+
 function renderNav() {
+  const title = document.getElementById('screen-title')
+  if (title) {
+    const current = NAV_ITEMS.find((item) => item.route === shell.activeRoute)
+    title.textContent = current ? current.label : ''
+    document.title = current ? `${current.label} — Mes achats` : 'Mes achats'
+  }
+
+  /* Navigation du haut : absente sur téléphone, où la barre du bas suffit.
+     Le CSS s'en charge ; on ne la remplit que si elle est visible. */
   const top = $('#appbar-nav')
   if (top) {
     top.innerHTML = NAV_ITEMS.map(
       (item) => `
         <a class="navlink ${item.route === shell.activeRoute ? 'is-active' : ''}" href="#/${item.route}"
            aria-current="${item.route === shell.activeRoute ? 'page' : 'false'}">
-          ${icon(item.icon, 14)}<span>${esc(item.label)}</span>
+           ${icon(item.icon, 15)}<span>${esc(item.label)}</span>
         </a>`,
     ).join('')
   }
@@ -45,21 +75,23 @@ function renderNav() {
   const bottom = $('#bottomnav-inner')
   if (!bottom) return
   const { pendingCount } = getState()
-  const tabs = NAV_ITEMS.map((item) => {
-    const active = item.route === shell.activeRoute
-    const badge =
-      item.route === 'liste' && pendingCount ? `<span class="navtab-badge">${pendingCount}</span>` : ''
-    return `
-      <a class="navtab ${active ? 'is-active' : ''}" href="#/${item.route}"
-         aria-current="${active ? 'page' : 'false'}">
-        ${icon(item.icon, 19)}<span>${esc(item.label)}</span>${badge}
-      </a>`
-  })
-  tabs.splice(1, 0, `
-    <button type="button" class="navtab navtab--add" data-action="open-form" aria-label="Ajouter un produit">
-      ${icon('plus', 22)}<span>Ajouter</span>
-    </button>`)
-  bottom.innerHTML = tabs.join('')
+  bottom.innerHTML = tabItems()
+    .map((item) => {
+      const isAdd = item.route === '__add'
+      const active = !isAdd && item.route === shell.activeRoute
+      const badge =
+        item.route === 'liste' && pendingCount ? `<span class="tab-badge">${pendingCount}</span>` : ''
+      const attrs = isAdd
+        ? `type="button" class="tab tab--add" data-action="open-form"`
+        : `class="tab ${active ? 'is-active' : ''}" href="#/${item.route}"
+           aria-current="${active ? 'page' : 'false'}"`
+      return `
+        <${isAdd ? 'button' : 'a'} ${attrs} aria-label="${isAdd ? 'Ajouter un produit' : esc(item.label)}">
+          <span class="tab-icon">${icon(item.icon, 21)}</span>
+          <span class="tab-label">${esc(item.short || item.label)}</span>${badge}
+        </${isAdd ? 'button' : 'a'}>`
+    })
+    .join('')
 }
 
 /* Pastille de synchronisation ------------------------------------- */

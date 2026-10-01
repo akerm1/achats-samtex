@@ -1,5 +1,16 @@
 /* ------------------------------------------------------------------ */
 /* Vue Réglages — thème, partage entre appareils, données, à propos    */
+/*                                                                      */
+/* Refonte 8.4 : les réglages ne sont plus une liste de définitions    */
+/* (`libellé à gauche, contrôle à droite`), mais des **tuiles         */
+/* regroupées par thème**. Sur téléphone, un contrôle aligné à droite  */
+/* d'un libellé long est hors de portée du pouce : le libellé se replie */
+/* sur plusieurs lignes et le contrôle passe tout seul sur sa ligne.    */
+/*                                                                      */
+/*   .tilegroup — un groupe, avec son sur-titre                        */
+/*     .setting         une ligne de réglage                            */
+/*       .setting-copy     libellé + aide                             */
+/*       .setting-control  le contrôle                                */
 /* ------------------------------------------------------------------ */
 
 import { $, esc, formatRelative, readableBytes } from '../../core/utils.js'
@@ -44,47 +55,64 @@ const STATUS_CLASS = {
   error: 'badge--orange',
 }
 
-function themeBlock() {
-  const preference = getThemePreference()
+/**
+ * Une ligne de réglage. `wide` empile le contrôle sous le libellé : c'est
+ * le cas de tout ce qui dépasse deux ou trois mots (un formulaire, une
+ * range de boutons, une série d'actions).
+ */
+function tile(title, help, control, { wide = false, iconName = '' } = {}) {
   return `
-    <div class="setting-block">
+    <div class="setting${wide ? ' setting--wide' : ''}">
       <div class="setting-copy">
-        <strong>Apparence</strong>
-        <p>Thème clair, sombre, ou aligné sur les réglages de votre appareil. Le thème est partagé entre tous vos appareils via GitHub.</p>
+        <strong>${iconName ? icon(iconName, 15) : ''}${esc(title)}</strong>
+        ${help ? `<p>${help}</p>` : ''}
       </div>
-      <div class="setting-side">
-        <div class="segmented" role="group" aria-label="Thème">
-          ${THEMES.map(
-            (item) => `
-            <button type="button" data-theme-choice="${item.value}" class="${item.value === preference ? 'is-active' : ''}">
-              ${icon(item.icon, 14)} ${esc(item.label)}
-            </button>`,
-          ).join('')}
-        </div>
-      </div>
+      <div class="setting-control">${control}</div>
     </div>`
 }
 
-function layoutBlock() {
+/** Un groupe de réglages : un sur-titre, puis une ou plusieurs tuiles. */
+function group(title, body) {
+  return `
+    <section class="tilegroup">
+      <h2 class="tilegroup-title">${esc(title)}</h2>
+      <div class="tilegroup-body">${body}</div>
+    </section>`
+}
+
+function themeTile() {
+  const preference = getThemePreference()
+  return tile(
+    'Apparence',
+    'Thème clair, sombre, ou aligné sur les réglages de votre appareil. Partagé entre vos appareils.',
+    `<div class="segmented" role="group" aria-label="Thème">
+      ${THEMES.map(
+        (item) => `
+        <button type="button" data-theme-choice="${item.value}" class="${item.value === preference ? 'is-active' : ''}">
+          ${icon(item.icon, 15)} ${esc(item.label)}
+        </button>`,
+      ).join('')}
+    </div>`,
+    { iconName: 'sun' },
+  )
+}
+
+function layoutTile() {
   const prefs = getPrefs()
   const current = CARD_LAYOUTS.find((item) => item.value === prefs.layout) || CARD_LAYOUTS[0]
-  return `
-    <div class="setting-block">
-      <div class="setting-copy">
-        <strong>Présentation de la liste</strong>
-        <p>${esc(current.hint)} Ce réglage est partagé entre tous vos appareils.</p>
-      </div>
-      <div class="setting-side">
-        <div class="segmented" role="group" aria-label="Présentation de la liste">
-          ${CARD_LAYOUTS.map(
-            (item) => `
-            <button type="button" data-layout-choice="${item.value}" class="${item.value === current.value ? 'is-active' : ''}">
-              ${icon(item.icon, 14)} ${esc(item.label)}
-            </button>`,
-          ).join('')}
-        </div>
-      </div>
-    </div>`
+  return tile(
+    'Présentation de la liste',
+    esc(current.hint),
+    `<div class="segmented" role="group" aria-label="Présentation de la liste">
+      ${CARD_LAYOUTS.map(
+        (item) => `
+        <button type="button" data-layout-choice="${item.value}" class="${item.value === current.value ? 'is-active' : ''}">
+          ${icon(item.icon, 15)} ${esc(item.label)}
+        </button>`,
+      ).join('')}
+    </div>`,
+    { iconName: 'grid' },
+  )
 }
 
 /* Onglet d'édition affiché (le plus souvent celui de la config enregistrée). */
@@ -156,131 +184,119 @@ function readOnlyNote(config) {
   return "Lecture seule : vous voyez la liste publiée sur GitHub, mais vos modifications restent sur cet appareil. Pour les partager, utilisez un lien privé."
 }
 
-function shareBlock() {
+function shareTile() {
   const config = getConfig()
-  const { status, message, messageKind, readOnly } = getState()
+  const { status, statusLabel, message, messageKind, readOnly } = getState()
   const lastSyncAt = getLastSyncAt()
   const tab = tabValue(config)
   const isWorker = tab === 'worker'
   return `
-    <div class="setting-block" style="display:block">
-      <div class="setting-copy" style="max-width:none">
-        <strong>Partage entre appareils</strong>
+    <div class="setting setting--wide">
+      <div class="setting-copy">
+        <strong>${icon('cloud', 15)} Partage entre appareils</strong>
         <p>
           Choisissez où la liste est enregistrée. Les deux options affichent la même liste sur tous vos
-          appareils : au rafraîchissement de la page, ou d'un clic sur « Synchroniser » — jamais tout seuls
-          en arrière-plan. Le thème, le tri et les filtres sont partagés.
+          appareils : au rafraîchissement de la page, ou d'un clic sur « Synchroniser ».
           ${
             config?.provider === 'worker'
               ? `Connecté à votre <strong>lien privé</strong>.`
               : config?.owner
                 ? `Connecté à <strong>${esc(config.owner)}/${esc(config.repo)}</strong> (branche ${esc(config.branch)}).`
-                : "Aucun partage connecté : la liste reste sur cet appareil."
+                : 'Aucun partage connecté : la liste reste sur cet appareil.'
           }
         </p>
       </div>
 
-      <div class="segmented" role="group" aria-label="Emplacement de la liste" style="margin-top:16px">
-        ${SHARE_TABS.map(
-          (item) => `
+      <div class="setting-control">
+        <div class="segmented segmented--block" role="group" aria-label="Emplacement de la liste">
+          ${SHARE_TABS.map(
+            (item) => `
             <button type="button" data-share-tab="${item.value}" class="${item.value === tab ? 'is-active' : ''}">
-              ${item.label}
+              ${esc(item.label)}
             </button>`,
-        ).join('')}
-      </div>
+          ).join('')}
+        </div>
 
-      <form id="share-form" class="u-stack" style="margin-top:16px">
-        ${isWorker ? workerFields(config) : githubFields(config)}
-        <div class="u-row u-wrap">
-          <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
-          ${
-            isWorker
-              ? `<button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>`
-              : `<button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>`
-          }
-          <button type="button" class="btn btn--ghost btn--sm" data-action="test-share">${icon('link', 13)} Tester la connexion</button>
-          <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
-          ${
-            config
-              ? `<button type="button" class="btn btn--ghost btn--sm" data-action="sync-now">${icon('refresh', 13)} Synchroniser</button>
-                 <button type="button" class="btn btn--danger btn--sm" data-action="disconnect-github">${icon('x', 13)} Déconnecter</button>`
-              : ''
-          }
-        </div>
-      </form>
+        <form id="share-form" class="u-stack share-form">
+          ${isWorker ? workerFields(config) : githubFields(config)}
+          <div class="u-row u-wrap">
+            <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
+            ${
+              isWorker
+                ? `<button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>`
+                : `<button type="button" class="btn btn--secondary btn--sm" data-action="auto-config">${icon('sparkles', 13)} Configurer automatiquement</button>`
+            }
+            <button type="button" class="btn btn--ghost btn--sm" data-action="test-share">${icon('link', 13)} Tester la connexion</button>
+            <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
+            ${
+              config
+                ? `<button type="button" class="btn btn--ghost btn--sm" data-action="sync-now">${icon('refresh', 13)} Synchroniser</button>
+                   <button type="button" class="btn btn--danger btn--sm" data-action="disconnect-github">${icon('x', 13)} Déconnecter</button>`
+                : ''
+            }
+          </div>
+        </form>
 
-      <div class="kv" style="margin-top:16px">
-        <div class="kv-item">
-          <small>État</small>
-          <strong><span class="badge ${STATUS_CLASS[status] || ''}" data-role="github-state">${esc(getState().statusLabel)}</span></strong>
+        <div class="kv">
+          <div class="kv-item">
+            <small>État</small>
+            <strong><span class="badge ${STATUS_CLASS[status] || ''}" data-role="github-state">${esc(statusLabel)}</span></strong>
+          </div>
+          <div class="kv-item">
+            <small>Dernière synchro</small>
+            <strong>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : '—'}</strong>
+          </div>
+          <div class="kv-item">
+            <small>Produits partagés</small>
+            <strong>${getProducts().length}</strong>
+          </div>
+          <div class="kv-item">
+            <small>${config?.provider === 'worker' ? 'Lien privé' : 'Accès GitHub'}</small>
+            <strong><span class="badge ${readOnly ? 'badge--orange' : 'badge--teal'}" data-role="github-access">${
+              readOnly ? 'Lecture seule' : 'Lecture + écriture'
+            }</span></strong>
+          </div>
         </div>
-        <div class="kv-item">
-          <small>Dernière synchro</small>
-          <strong>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : '—'}</strong>
-        </div>
-        <div class="kv-item">
-          <small>Produits partagés</small>
-          <strong>${getProducts().length}</strong>
-        </div>
-        <div class="kv-item">
-          <small>${config?.provider === 'worker' ? 'Lien privé' : 'Accès GitHub'}</small>
-          <strong><span class="badge ${readOnly ? 'badge--orange' : 'badge--teal'}" data-role="github-access">${
-            readOnly ? 'Lecture seule' : 'Lecture + écriture'
-          }</span></strong>
-        </div>
-      </div>
-    </div>`
-}
-
-function dataBlock() {
-  return `
-    <div class="setting-block" style="display:block">
-      <div class="setting-copy" style="max-width:none">
-        <strong>Sauvegarde &amp; export</strong>
-        <p>
-          Enregistrez la liste dans un fichier, à ouvrir ensuite dans Excel (CSV) ou à réimporter dans l'application (JSON).
-          L'import en mode « fusion » met à jour les produits existants et ajoute les nouveaux.
-        </p>
-      </div>
-      <div class="u-row u-wrap" style="margin-top:14px">
-        <button type="button" class="btn btn--secondary btn--sm" data-action="export-json">${icon('save', 13)} Sauvegarde JSON</button>
-        <button type="button" class="btn btn--secondary btn--sm" data-action="export-csv">${icon('download', 13)} Export CSV</button>
-        <button type="button" class="btn btn--secondary btn--sm" data-action="import-json">${icon('upload', 13)} Importer</button>
-        <select class="select" data-role="import-mode" style="max-width:230px" aria-label="Mode d'import">
-          <option value="merge">Fusionner avec la liste</option>
-          <option value="replace">Remplacer toute la liste</option>
-        </select>
-        <input type="file" accept=".json,application/json" data-role="import-file" hidden>
       </div>
     </div>`
 }
 
-function dangerBlock() {
+function dataTile() {
+  return tile(
+    'Sauvegarde & export',
+    'Enregistrez la liste dans un fichier, à ouvrir ensuite dans Excel (CSV) ou à réimporter dans l\'application (JSON). L\'import en mode « fusion » met à jour les produits existants et ajoute les nouveaux.',
+    `<div class="u-row u-wrap">
+      <button type="button" class="btn btn--secondary btn--sm" data-action="export-json">${icon('save', 13)} Sauvegarde JSON</button>
+      <button type="button" class="btn btn--secondary btn--sm" data-action="export-csv">${icon('download', 13)} Export CSV</button>
+      <button type="button" class="btn btn--secondary btn--sm" data-action="import-json">${icon('upload', 13)} Importer</button>
+      <select class="select" data-role="import-mode" aria-label="Mode d'import">
+        <option value="merge">Fusionner avec la liste</option>
+        <option value="replace">Remplacer toute la liste</option>
+      </select>
+      <input type="file" accept=".json,application/json" data-role="import-file" hidden>
+    </div>`,
+    { wide: true, iconName: 'download' },
+  )
+}
+
+function dangerTile() {
   const total = getProducts().length
-  return `
-    <div class="setting-block">
-      <div class="setting-copy">
-        <strong>Vider la liste</strong>
-        <p>Supprime les ${total} produits de cet appareil ${getConfig() ? 'et du fichier GitHub' : ''}. Pensez à exporter une sauvegarde avant.</p>
-      </div>
-      <div class="setting-side">
-        <button type="button" class="btn btn--danger btn--sm" data-action="clear-all">${icon('trash', 13)} Tout supprimer</button>
-      </div>
-    </div>`
+  return tile(
+    'Vider la liste',
+    `Supprime les ${total} produits de cet appareil ${getConfig() ? 'et du fichier de partage' : ''}. Pensez à exporter une sauvegarde avant.`,
+    `<button type="button" class="btn btn--danger btn--sm" data-action="clear-all">${icon('trash', 13)} Tout supprimer</button>`,
+    { iconName: 'trash' },
+  )
 }
 
-function installBlock() {
+function installTile() {
   if (isInstalled()) return ''
-  return `
-    <div class="setting-block">
-      <div class="setting-copy">
-        <strong>Installer sur le téléphone</strong>
-        <p>Téléchargez l'application sur votre écran d'accueil : icône dédiée, démarrage sans navigateur et utilisation hors-ligne.</p>
-      </div>
-      <div class="setting-side">
-        <button type="button" class="btn btn--primary btn--sm" data-action="install-app">${icon('download', 14)} Installer l'application</button>
-      </div>
-    </div>`
+  return tile(
+    'Installer sur le téléphone',
+    "Téléchargez l'application sur votre écran d'accueil : icône dédiée, démarrage sans navigateur et utilisation hors-ligne.",
+    `<button type="button" class="btn btn--primary btn--sm" data-action="install-app">${icon('download', 14)} Installer</button>`,
+    { iconName: 'download' },
+  )
 }
 
 /**
@@ -288,7 +304,7 @@ function installBlock() {
  * Un clic cherche sur GitHub ; si une version plus récente existe, le bouton
  * devient « Installer la mise à jour » et c'est le second clic qui installe.
  */
-function updateBlock() {
+function updateTile() {
   const { current, published, available, checking, installing, offline } = getUpdateState()
   const busy = checking || installing
   const label = installing
@@ -298,32 +314,23 @@ function updateBlock() {
       : available
         ? `Installer la mise à jour ${esc(published)}`
         : 'Rechercher une mise à jour'
-  return `
-    <div class="setting-block">
-      <div class="setting-copy">
-        <strong>Mise à jour de l'application</strong>
-        <p>
-          Version installée <strong>${current}</strong>${
-            published ? ` · version publiée <strong>${esc(published)}</strong>` : ''
-          }
-          (${APP_RELEASE}).
-          ${
-            available
-              ? 'Nouvelle version disponible : cliquez pour l\'installer et recharger l\'application.'
-              : 'Cliquez pour interroger GitHub ; si une version plus récente est publiée, le bouton devient « Installer la mise à jour ».'
-          }
-          ${offline ? ' Vérification impossible hors ligne.' : ''}
-        </p>
-      </div>
-      <div class="setting-side">
-        <button type="button" class="btn btn--${available ? 'primary' : 'secondary'} btn--sm" data-action="check-update" ${busy ? 'disabled' : ''}>
-          ${icon('refresh', 14)} ${label}
-        </button>
-      </div>
-    </div>`
+  return tile(
+    'Mise à jour de l\'application',
+    `Version installée <strong>${current}</strong>${
+      published ? ` · version publiée <strong>${esc(published)}</strong>` : ''
+    } (${APP_RELEASE}). ${
+      available
+        ? 'Nouvelle version disponible : cliquez pour l\'installer et recharger l\'application.'
+        : 'Cliquez pour interroger GitHub ; si une version plus récente est publiée, le bouton devient « Installer la mise à jour ».'
+    } ${offline ? ' Vérification impossible hors ligne.' : ''}`,
+    `<button type="button" class="btn btn--${available ? 'primary' : 'secondary'} btn--sm" data-action="check-update" ${busy ? 'disabled' : ''}>
+      ${icon('refresh', 14)} ${label}
+    </button>`,
+    { iconName: 'refresh' },
+  )
 }
 
-function aboutBlock() {
+function aboutTile() {
   const persistent = storage.isPersistent()
   const state = getState()
   const { bytes = 0, photos = 0, photoBytes = 0, separated = false } = state.usage || {}
@@ -338,51 +345,52 @@ function aboutBlock() {
   return `
     ${
       full
-        ? `<div class="form-message is-error" data-role="storage-warning" style="margin-bottom:12px">
+        ? `<div class="form-message is-error" data-role="storage-warning">
              <strong>Stockage du navigateur plein.</strong> Vos photos ne sont plus enregistrées sur cet appareil :
              la liste s'affiche encore, mais elle sera perdue à la fermeture.
              Exportez une sauvegarde JSON, puis retirez des photos.
            </div>`
         : ''
     }
-    <div class="setting-block">
-      <div class="setting-copy">
-        <strong>Application</strong>
-        <p>
-          Version <strong>${APP_VERSION}</strong> · PWA statique, sans dépendance ni build.
-          ${isInstalled() ? 'Installée sur cet appareil.' : 'Ouvrez-la dans le navigateur du téléphone pour l’installer.'}
-        </p>
-        <p data-role="storage-usage">
-          ${total} produit${total > 1 ? 's' : ''} · ${photos} photo${photos > 1 ? 's' : ''}
-          ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
-        </p>
-        <p data-role="storage-detail">
-          ${
-            separated
-              ? `Liste : ${readableBytes(bytes)}${hasPhotos ? ` · photos : ${readableBytes(photoBytes)} stockées à part, hors de la limite du navigateur.` : ''}`
-              : `Liste : ${readableBytes(bytes)} sur cet appareil${hasPhotos ? `, photos comprises.` : '.'} ${
-                  full ? '' : `Environ ${ceiling} % de marge restante.`
-                }`
-          }
-        </p>
-      </div>
-      <div class="setting-side">
+    ${tile(
+      'Application',
+      `Version <strong>${APP_VERSION}</strong> · PWA statique, sans dépendance ni build.
+       ${isInstalled() ? 'Installée sur cet appareil.' : 'Ouvrez-la dans le navigateur du téléphone pour l’installer.'}`,
+      `<div class="u-row u-wrap">
         <span class="badge ${isInstalled() ? 'badge--teal' : ''}">${isInstalled() ? 'Installée' : 'Navigateur'}</span>
         <span class="badge ${full ? 'badge--orange' : persistent ? 'badge--teal' : 'badge--orange'}">
           ${full ? 'Stockage plein' : persistent ? 'Stockage local actif' : 'Stockage limité'}
         </span>
-      </div>
-    </div>
+      </div>`,
+      { iconName: 'shield' },
+    )}
 
-    <div class="setting-block" style="display:block">
-      <div class="setting-copy" style="max-width:none">
-        <strong>Raccourcis clavier</strong>
-        <p>
-          <code>N</code> nouveau produit · <code>/</code> rechercher · <code>Échap</code> fermer une fenêtre ·
-          <code>1</code><code>2</code> changer de vue · <code>S</code> synchroniser.
-        </p>
-      </div>
-    </div>`
+    ${tile(
+      'Stockage sur cet appareil',
+      `<span data-role="storage-usage">
+         ${total} produit${total > 1 ? 's' : ''} · ${photos} photo${photos > 1 ? 's' : ''}
+         ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
+       </span>
+       <span class="setting-sub" data-role="storage-detail">
+         ${
+           separated
+             ? `Liste : ${readableBytes(bytes)}${hasPhotos ? ` · photos : ${readableBytes(photoBytes)} stockées à part, hors de la limite du navigateur.` : ''}`
+             : `Liste : ${readableBytes(bytes)} sur cet appareil${hasPhotos ? `, photos comprises.` : '.'} ${
+                 full ? '' : `Environ ${ceiling} % de marge restante.`
+               }`
+         }
+       </span>`,
+      '',
+      { iconName: 'chart' },
+    )}
+
+    ${tile(
+      'Raccourcis clavier',
+      `<code>N</code> nouveau produit · <code>/</code> rechercher · <code>Échap</code> fermer une fenêtre ·
+       <code>1</code><code>2</code> changer de vue · <code>S</code> synchroniser.`,
+      '',
+      { wide: true, iconName: 'sparkles' },
+    )}`
 }
 
 /** Met à jour la ligne d'état et le badge sans redessiner la vue entière. */
@@ -403,18 +411,17 @@ function paintStatus() {
 
 function template() {
   return `
-    <section class="view">
-      <div class="view-head">
-        <div>
-          <h1>Réglages</h1>
-          <p>Apparence, partage entre appareils, sauvegardes et informations sur l'application.</p>
-        </div>
-      </div>
+    <section class="view view--settings">
+      <header class="view-head">
+        <h1>Réglages</h1>
+        <p class="view-head-sub">Apparence, partage entre appareils, sauvegardes et informations.</p>
+      </header>
 
-      <div class="panel">${themeBlock()}${layoutBlock()}</div>
-      <div class="panel">${shareBlock()}</div>
-      <div class="panel">${dataBlock()}${dangerBlock()}</div>
-      <div class="panel">${installBlock()}${updateBlock()}${aboutBlock()}</div>
+      ${group('Affichage', themeTile() + layoutTile())}
+      ${group('Partage', shareTile())}
+      ${group('Données', dataTile() + dangerTile())}
+      ${group('Application', installTile() + updateTile() + aboutTile())}
+
     </section>`
 }
 
@@ -590,8 +597,8 @@ function bind() {
       /* Le texte d'aide décrit le mode choisi. On le remplace sur place :
          redessiner la vue effacerait les saisies de la section suivante. */
       const chosen = CARD_LAYOUTS.find((item) => item.value === button.dataset.layoutChoice)
-      const copy = button.closest('.setting-block')?.querySelector('.setting-copy p')
-      if (chosen && copy) copy.textContent = `${chosen.hint} Ce réglage est partagé entre tous vos appareils.`
+      const copy = button.closest('.setting')?.querySelector('.setting-copy p')
+      if (chosen && copy) copy.textContent = chosen.hint
     })
   })
 

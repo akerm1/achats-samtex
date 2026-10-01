@@ -40,7 +40,7 @@
 .btn--primary {
   background: var(--teal);
   color: #ffffff;
-  box-shadow: var(--shadow-brand);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, var(--shadow-brand);
 }
 
 @media (hover: hover) {
@@ -62,10 +62,10 @@
 }
 
 .btn--secondary {
-  background: var(--surface);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 2%) 0%, var(--surface) 100%);
   color: var(--ink);
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-1);
+  border-color: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, var(--shadow-1);
 }
 
 .btn--secondary:hover {
@@ -122,9 +122,10 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 2%) 0%, var(--surface) 100%);
   color: var(--ink-3);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
     border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -188,14 +189,15 @@
   min-height: 48px;
   padding: 12px 15px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--line-strong);
-  background: var(--surface);
+  border: 1.5px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 2%) 0%, var(--surface) 100%);
   color: var(--ink);
   font-size: var(--text-base);
   font-family: inherit;
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
     background-color var(--dur) var(--ease);
   appearance: none;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .input::placeholder,
@@ -208,7 +210,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--teal);
-  box-shadow: 0 0 0 4px var(--teal-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 0 0 4px var(--teal-soft);
 }
 
 .textarea {
@@ -240,7 +242,7 @@
 
 .input-wrap:focus-within {
   border-color: var(--teal);
-  box-shadow: 0 0 0 4px var(--teal-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 0 0 4px var(--teal-soft);
 }
 
 .input-wrap input {
@@ -485,120 +487,27 @@
   white-space: nowrap;
 }
 
-/* Dans la carte produit, la couleur prend toute la largeur : le nom est
-   posé par-dessus la teinte, sur un aplat sombre opaque. */
-.product-color {
-  position: relative;
-  display: block;
-  flex: none;
-  width: 100%;
-  height: 92px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
+.scroller {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  /* Le défilement horizontal au doigt doit pouvoir démarrer sans que le
+     navigateur prenne un glissé oblique pour un geste vertical : sans
+     ceci, le premier mouvement diagonal fait défiler la page au lieu de
+     la rangée de pastilles. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
 }
 
-/* Voile sombre en bas de la bande. Il sert d'abord à la lisibilité : sur
-   un ivoire ou un crème, une étiquette claire passait inaperçue. Le
-   voile est assez bas pour ne pas ternir la teinte elle-même. */
-.product-color::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 62%;
-  pointer-events: none;
-  background: linear-gradient(to top, rgba(3, 8, 16, 0.5), transparent);
+.scroller > * {
+  scroll-snap-align: start;
 }
 
-.product-color .color-swatch {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.product-color .color-swatch.is-empty {
-  background-color: var(--surface-3);
-}
-
-/* Légende de la bande de couleur : un aplat sombre opaque, pas de
-   verre. Le flou n'adoucit qu'un aplat qu'on peut poser tel quel, et il
-   rendait le texte moins net sur les teintes claires. */
-.product-color .color-chip {
-  position: absolute;
-  z-index: 1;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  display: block;
-  padding: 7px 12px;
-  border-radius: var(--radius-xs);
-  background: rgba(3, 8, 16, 0.68);
-  font-weight: 700;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Clic pour agrandir — couleur et photo ------------------------- */
-
-.product-color,
-.product-photo[data-action] {
-  cursor: zoom-in;
-}
-
-.product-color:focus-visible,
-.product-photo:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 2px;
-}
-
-/* Petit repère qui dit « ça s'agrandit » : visible au survol à la
-   souris, toujours là au doigt (pas de survol sur un écran tactile). */
-.zoom-mark {
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0d1526;
-  box-shadow: var(--shadow-1);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease-out);
-}
-
-.product-color .zoom-mark {
-  top: 10px;
-  right: 10px;
-}
-
-/* La photo porte déjà son badge (haut gauche) et son ruban « Acheté »
-   (haut droite) : le repère se pose en bas, où rien ne le recouvre. */
-.product-photo .zoom-mark {
-  right: 10px;
-  bottom: 10px;
-}
-
-@media (hover: none) {
-  .zoom-mark {
-    opacity: 0.8;
-  }
-}
-
-.product-color:hover .zoom-mark,
-.product-color:focus-visible .zoom-mark,
-.product-photo:hover .zoom-mark,
-.product-photo:focus-visible .zoom-mark {
-  opacity: 1;
-  transform: scale(1.08);
+.scroller::-webkit-scrollbar {
+  display: none;
 }
 
 /* Boîte d'aperçu ------------------------------------------------ */
@@ -975,12 +884,12 @@
   width: min(760px, calc(100vw - 20px));
   max-height: calc(100dvh - 32px);
   padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border-radius: calc(var(--radius-lg) + 4px);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: var(--shadow-3);
-  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, var(--shadow-3);
+  overscroll-behavior: contain;
 }
 
 .dialog::backdrop {
@@ -1047,19 +956,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
-.empty > * {
-  position: relative;
-}
-
-.empty svg {
+/* L'icône est dans un disque : sur fond clair, une icône seule se perd
+   au milieu de la page. */
+.empty-mark {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--teal-soft);
   color: var(--teal);
-  opacity: 0.8;
 }
 
-.empty strong {
+.empty-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 34ch;
+}
+
+.empty-copy p {
+  font-size: var(--text-base);
+  line-height: 1.55;
+}
+
+.empty-copy strong {
   display: block;
   color: var(--ink);
   font-size: var(--text-display);

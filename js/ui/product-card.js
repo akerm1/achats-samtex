@@ -1,5 +1,9 @@
 /* ------------------------------------------------------------------ */
-/* Composant partagé — carte produit (grille de la liste)              */
+/* Composant partagé — carte produit                                    */
+/*                                                                      */
+/* Trois présentations, trois anatomies. La refonte 8.4 les a séparées   */
+/* franchement : la fiche mène désormais par la couleur, la mosaïque    */
+/* reste une planche contact, et la ligne reste une ligne.              */
 /* ------------------------------------------------------------------ */
 
 import { esc, formatDate, formatMoney } from '../core/utils.js'
@@ -7,116 +11,115 @@ import { colorCss, displayName } from '../data/model.js'
 import { icon } from './icons.js'
 
 const PRIORITY_CLASS = { haute: 'product--p1', normale: 'product--p2', basse: 'product--p3' }
+const PRIORITY_LABEL = { haute: 'Urgent', normale: 'Normal', basse: 'Plus tard' }
 
-/* La couleur est le premier critère de tri à l'achat : elle occupe donc
-   toute la largeur de la carte, avec son nom posé dessus, et s'agrandit
-   d'un clic. */
-function colorBlock(item) {
-  if (!item.color && !item.colorRgb) return ''
-  const label = item.color ? esc(item.color) : 'Couleur'
-  const css = colorCss(item)
-  const swatch = `<span class="color-swatch${css ? '' : ' is-empty'}" style="background:${css || ''}" aria-hidden="true"></span>`
-  return `
-    <div class="product-color" data-action="preview-color" data-id="${esc(item.id)}"
-         role="button" tabindex="0" title="Agrandir la couleur ${label}"
-         aria-label="Agrandir la couleur ${label}">
-      ${swatch}
-      <span class="color-chip">${label}</span>
-      <span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>
-    </div>`
+const UNIT_SHORT = { metre: '/m', rouleau: '/rlt', piece: '/pc' }
+
+/** Prix ramené à une seule ligne : c'est la seule forme qui tienne dans
+    une barre de tuile ou dans une ligne de liste. */
+function shortPrice(item) {
+  if (!item.hasPrice) return 'Prix à préciser'
+  return `${formatMoney(item.price)}${UNIT_SHORT[item.unit] || '/pc'}`
 }
 
-function photoBlock(item, { size = 'card' } = {}) {
-  const label = esc(displayName(item))
-  const image = item.photo
-    ? `<img src="${esc(item.photo)}" alt="${label}" loading="lazy" decoding="async">`
-    : `<span class="placeholder">${icon('imageOff', 22)}Aucune photo</span>`
-  if (size === 'thumb') return image
-  /* Sans photo, il n'y a rien à agrandir : on n'offre pas le clic. */
-  const zoom = item.photo
+function priorityTag(item) {
+  if (item.priority !== 'haute') return ''
+  return `<span class="tag tag--urgent">${icon('star', 11)} Urgent</span>`
+}
+
+function boughtTag(item) {
+  return item.isBought ? `<span class="tag tag--bought">${icon('check', 12)} Acheté</span>` : ''
+}
+
+/**
+ * Le visuel en pleine largeur, en haut de la fiche.
+ *
+ * Avant 8.4, la fiche empilait photo puis bande de couleur, ce qui
+ * produisait deux bandeaux successifs et une carte très haute. Ici c'est
+ * **une seule zone** : la photo si elle existe, sinon la teinte — et le
+ * nom de la couleur vient se poser dessus dans les deux cas, pour qu'on
+ * sache ce qu'on regarde sans lire la carte.
+ */
+function heroBlock(item) {
+  const name = displayName(item)
+  const color = colorCss(item)
+  const hasColor = Boolean(item.color || item.colorRgb)
+  const zoomPhoto = item.photo
     ? `data-action="preview-photo" data-id="${esc(item.id)}" role="button" tabindex="0"
-       title="Agrandir la photo de ${label}" aria-label="Agrandir la photo de ${label}"`
+       title="Agrandir la photo de ${esc(name)}" aria-label="Agrandir la photo de ${esc(name)}"`
     : ''
+
+  let media
+  if (item.photo) {
+    media = `<img src="${esc(item.photo)}" alt="${esc(name)}" loading="lazy" decoding="async">`
+  } else if (color) {
+    media = `<span class="hero-fill" style="background:${esc(color)}"></span>`
+  } else if (hasColor) {
+    media = `<span class="hero-fill hero-fill--empty"></span>`
+  } else {
+    media = `<span class="hero-fill hero-fill--blank">${icon('imageOff', 26)}</span>`
+  }
+
+  const zoomColor =
+    hasColor && !item.photo
+      ? `data-action="preview-color" data-id="${esc(item.id)}" role="button" tabindex="0"
+         title="Agrandir la couleur ${esc(item.color || name)}"
+         aria-label="Agrandir la couleur ${esc(item.color || name)}"`
+      : ''
+
   return `
-    <div class="product-photo" ${zoom}>
-      ${image}
-      <span class="badge">${esc(item.typeLabel)}</span>
-      ${item.isBought ? `<span class="product-ribbon">${icon('check', 11)} Acheté</span>` : ''}
-      ${item.photo ? `<span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>` : ''}
+    <div class="hero" ${item.photo ? zoomPhoto : zoomColor}>
+      ${media}
+      <div class="hero-top">
+        <span class="tag tag--cat">${esc(item.typeLabel)}</span>
+        ${boughtTag(item)}
+      </div>
+      ${item.priority === 'haute' && !item.isBought ? priorityTag(item) : ''}
+      ${
+        hasColor
+          ? `<span class="hero-color">${item.color ? esc(item.color) : 'Couleur'}</span>`
+          : ''
+      }
+      ${
+        item.photo
+          ? `<span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>`
+          : hasColor
+            ? `<span class="zoom-mark" aria-hidden="true">${icon('search', 14)}</span>`
+            : ''
+      }
     </div>`
 }
 
-function priceLine(item) {
-  if (!item.hasPrice) return ''
+/** Le prix est la donnée qu'on relit le plus : il sort de la ligne de
+    métadonnées et tient sa propre ligne, en grand. */
+function priceBlock(item) {
+  if (!item.hasPrice) return '<span class="price price--none">Prix à préciser</span>'
   const unit = item.unit === 'metre' ? 'm' : item.unit === 'rouleau' ? 'rlt' : 'pc'
-  const detail = item.qty > 1 ? ` — ${formatMoney(item.lineTotal)}` : ''
-  return `${formatMoney(item.price)} / ${unit}${detail}`
+  const total = item.qty > 1 ? `<span class="price-total">soit ${formatMoney(item.lineTotal)}</span>` : ''
+  return `<span class="price">${formatMoney(item.price)}<span class="price-unit"> / ${unit}</span>${total}</span>`
+}
+
+function metaBlock(item) {
+  const bits = []
+  if (item.qtyLabel) bits.push(`<span class="meta-item">${esc(item.qtyLabel)}</span>`)
+  if (item.supplier) bits.push(`<span class="meta-item">${icon('store', 12)} ${esc(item.supplier)}</span>`)
+  if (!bits.length) return ''
+  return `<p class="meta">${bits.join('<span class="meta-sep">·</span>')}</p>`
 }
 
 function toggleButton(item) {
-  return `<button type="button" class="btn ${item.isBought ? 'btn--secondary' : 'btn--primary'} btn--sm" data-action="toggle" data-id="${esc(item.id)}">
-          ${item.isBought ? `${icon('undo', 13)} Remettre` : `${icon('check', 13)} Acheté`}
-        </button>`
+  return `<button type="button" class="btn ${item.isBought ? 'btn--secondary' : 'btn--primary'} btn--sm"
+                   data-action="toggle" data-id="${esc(item.id)}">
+            ${item.isBought ? `${icon('undo', 13)} Remettre` : `${icon('check', 13)} Acheté`}
+          </button>`
 }
 
-function footActions(item, name) {
+function editButton(item, name) {
   return `
-      <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}" aria-label="Modifier ${esc(name)}" title="Modifier">
-        ${icon('edit', 14)}
-      </button>
-      <button type="button" class="icon-btn is-danger" data-action="delete" data-id="${esc(item.id)}" aria-label="Supprimer ${esc(name)}" title="Supprimer">
-        ${icon('trash', 14)}
-      </button>`
-}
-
-/* Le visuel compact des deux présentations denses (mosaïque, ligne).
-   Il ne réutilise PAS `photoBlock` ni `colorBlock` : ces deux blocs sont
-   faits pour une fiche de 280 px de large — une bande de couleur haute de
-   84 px, voilée sur ses deux tiers, avec une étiquette de nom posée
-   dessus. Resservis dans une tuile de 190 px, le voile mangeait la teinte
-   et l'étiquette était rognée ; dans une vignette de 52 px, elle disparaît
-   carrément. Ici la teinte est un aplat nu qui remplit la case, et le nom
-   de la couleur est écrit en toutes lettres dans le texte voisin. */
-function compactVisual(item) {
-  const label = esc(item.color || displayName(item))
-  if (item.photo) {
-    return `<div class="cv cv--photo" data-action="preview-photo" data-id="${esc(item.id)}" role="button" tabindex="0"
-         title="Agrandir la photo de ${label}" aria-label="Agrandir la photo de ${label}">
-        <img src="${esc(item.photo)}" alt="${esc(displayName(item))}" loading="lazy" decoding="async">
-      </div>`
-  }
-  /* `colorCss` est calculé ici, comme dans `colorBlock`, et non lu dans le
-     produit de vue : un objet qui n'a pas encore passé par `productView`
-     donnerait sinon un damier au lieu de sa teinte. */
-  const css = colorCss(item)
-  if (css) {
-    return `<div class="cv cv--color" style="background:${esc(css)}"
-         data-action="preview-color" data-id="${esc(item.id)}" role="button" tabindex="0"
-         title="Agrandir la couleur ${label}" aria-label="Agrandir la couleur ${label}"></div>`
-  }
-  if (item.color || item.colorRgb) {
-    /* Couleur nommée sans teinte connue : le damier de la fiche, qui dit
-       « on ne sait pas » au lieu d'inventer un noir. */
-    return `<div class="cv cv--color is-empty" data-action="preview-color" data-id="${esc(item.id)}" role="button" tabindex="0"
-         title="Agrandir la couleur ${label}" aria-label="Agrandir la couleur ${label}"></div>`
-  }
-  return `<div class="cv cv--blank">${icon('imageOff', 18)}</div>`
-}
-
-/* Le prix tient sur une ligne : dans la barre d'une tuile ou d'une ligne,
-   le total de la ligne ne passerait pas et le prix unitaire compte plus. */
-function shortPrice(item) {
-  if (!item.hasPrice) return 'Prix à préciser'
-  const unit = item.unit === 'metre' ? '/m' : item.unit === 'rouleau' ? '/rlt' : '/pc'
-  return `${formatMoney(item.price)}${unit}`
-}
-
-/* L'étiquette posée sur la tuile : la couleur quand elle existe — c'est le
-   critère de tri à l'achat — la catégorie sinon. Elle est opaque, donc elle
-   ne ternit pas la teinte qu'elle surplombe. */
-function tileTag(item) {
-  const text = item.color || item.typeLabel
-  return `<span class="tile-tag">${esc(text)}</span>`
+      <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}"
+              aria-label="Modifier ${esc(name)}" title="Modifier">${icon('edit', 15)}</button>
+      <button type="button" class="icon-btn is-danger" data-action="delete" data-id="${esc(item.id)}"
+              aria-label="Supprimer ${esc(name)}" title="Supprimer">${icon('trash', 15)}</button>`
 }
 
 function articleClass(item, modifier) {
@@ -125,13 +128,47 @@ function articleClass(item, modifier) {
     .join(' ')
 }
 
-/* --- Mosaïque --------------------------------------------------------- */
+/* --- Fiche : la présentation par défaut ----------------------------- */
 
-/* Un carré par produit. La case est ce qu'on regarde : la photo occupe
-   presque toute la hauteur, la couleur un aplat pur, et le nom vit dans une
-   barre fine sous la case — une seule ligne, tronquée, parce que le nom
-   complet est dans la fiche. Trois gestes restent : agrandir, cocher,
-   ouvrir la fiche. */
+/**
+ * Fiche complète. Anatomie : un visuel unique en haut, un titre, le prix
+ * en grand, les métadonnées, puis une barre d'actions collée en bas.
+ * L'ancien `product-foot` disparaît au profit d'un `product-actions`
+ * qu'une seule ligne décrit.
+ */
+function renderCard(item) {
+  const name = displayName(item)
+  return `
+    <article class="${articleClass(item, 'product--card')}" data-id="${esc(item.id)}">
+      ${heroBlock(item)}
+      <div class="product-body" data-role="card-body" tabindex="0" role="button"
+           aria-label="Voir les détails de ${esc(name)}"
+           title="Cliquez pour voir les détails de ${esc(name)}">
+        <strong class="product-name">${esc(name)}</strong>
+        ${priceBlock(item)}
+        ${metaBlock(item)}
+        ${
+          item.note
+            ? `<p class="product-note">${esc(item.note)}</p>`
+            : item.isBought && item.boughtAt
+              ? `<p class="product-note">Coché le ${formatDate(item.boughtAt)}</p>`
+              : ''
+        }
+      </div>
+      <div class="product-actions">
+        ${toggleButton(item)}
+        ${editButton(item, name)}
+      </div>
+    </article>`
+}
+
+/* --- Mosaïque : planche contact -------------------------------------- */
+
+/**
+ * Un carré par produit. Le visuel remplit la case ; le nom et le prix
+ * vivent dans une barre d'une seule ligne sous la case. Le nom de la
+ * couleur est écrit dans le texte, jamais posé sur la teinte.
+ */
 function renderMosaic(item) {
   const name = displayName(item)
   return `
@@ -145,22 +182,22 @@ function renderMosaic(item) {
           <span class="tile-price">${esc(shortPrice(item))}</span>
         </div>
       </div>
-      ${tileTag(item)}
+      <span class="tile-tag">${esc(item.color || item.typeLabel)}</span>
       <button type="button" class="tile-check" data-action="toggle" data-id="${esc(item.id)}"
               aria-label="${item.isBought ? 'Remettre' : 'Marquer comme acheté'} ${esc(name)}"
               title="${item.isBought ? 'Remettre' : 'Marquer comme acheté'}">
-        ${item.isBought ? icon('undo', 14) : icon('check', 14)}
+        ${item.isBought ? icon('undo', 14) : icon('check', 15)}
       </button>
     </article>`
 }
 
-/* --- Liste ------------------------------------------------------------ */
+/* --- Ligne : la vue dense ------------------------------------------- */
 
-/* Une ligne par produit : vignette carrée à gauche, nom et détails au
-   centre, prix et coche à droite. Le nom de la couleur est écrit dans la
-   ligne elle-même, pas dans la vignette : à 56 px, une étiquette posée
-   dessus serait rognée au milieu d'un mot. Tout le reste (note,
-   boutons d'édition) se lit dans la fiche, ouverte au clic. */
+/**
+ * Une ligne par produit : vignette carrée, nom et détails, prix, coche.
+ * Le nom de la couleur est écrit dans la ligne : posé sur une vignette
+ * de 56 px, il serait rogné au milieu d'un mot.
+ */
 function renderRow(item) {
   const name = displayName(item)
   const meta = [item.qtyLabel, item.color, item.supplier].filter(Boolean).join(' · ')
@@ -178,41 +215,48 @@ function renderRow(item) {
               aria-label="${item.isBought ? 'Remettre' : 'Marquer comme acheté'} ${esc(name)}"
               title="${item.isBought ? 'Remettre' : 'Marquer comme acheté'}"
               aria-pressed="${item.isBought ? 'true' : 'false'}">
-        ${item.isBought ? icon('undo', 14) : icon('check', 14)}
+        ${item.isBought ? icon('undo', 14) : icon('check', 15)}
       </button>
     </article>`
+}
+
+/**
+ * Le visuel compact des deux présentations denses (mosaïque, ligne).
+ * Il ne réutilise pas `heroBlock` : cette bande est faite pour une fiche
+ * de 300 px de large. Resservie dans une tuile de 140 px, l'étiquette
+ * posée sur la teinte la rognerait ; dans une vignette de 56 px, elle
+ * disparaîtrait. Ici la teinte est un aplat nu qui remplit la case, et le
+ * nom de la couleur est écrit dans le texte voisin.
+ */
+function compactVisual(item) {
+  const label = esc(item.color || displayName(item))
+  if (item.photo) {
+    return `<div class="cv cv--photo" data-action="preview-photo" data-id="${esc(item.id)}" role="button" tabindex="0"
+         title="Agrandir la photo de ${label}" aria-label="Agrandir la photo de ${label}">
+        <img src="${esc(item.photo)}" alt="${esc(displayName(item))}" loading="lazy" decoding="async">
+      </div>`
+  }
+  /* `colorCss` est calculé ici, et non lu dans le produit de vue : un
+     objet qui n'a pas encore passé par `productView` donnerait sinon un
+     damier au lieu de sa teinte. */
+  const css = colorCss(item)
+  if (css) {
+    return `<div class="cv cv--color" style="background:${esc(css)}"
+         data-action="preview-color" data-id="${esc(item.id)}" role="button" tabindex="0"
+         title="Agrandir la couleur ${label}" aria-label="Agrandir la couleur ${label}"></div>`
+  }
+  if (item.color || item.colorRgb) {
+    /* Couleur nommée sans teinte connue : le damier, qui dit « on ne sait
+       pas » au lieu d'inventer un noir. */
+    return `<div class="cv cv--color is-empty" data-action="preview-color" data-id="${esc(item.id)}" role="button" tabindex="0"
+         title="Agrandir la couleur ${label}" aria-label="Agrandir la couleur ${label}"></div>`
+  }
+  return `<div class="cv cv--blank">${icon('imageOff', 18)}</div>`
 }
 
 /** Carte de la liste. `layout` : `card` (fiche), `mosaic`, `row`. */
 export function renderProductCard(item, layout = 'card') {
   if (layout === 'mosaic') return renderMosaic(item)
   if (layout === 'row') return renderRow(item)
-
-  const name = displayName(item)
-  const priorityBadge =
-    item.priority === 'haute'
-      ? `<span class="badge badge--red">${icon('star', 11)} Prioritaire</span>`
-      : ''
-  const metaBits = [item.qtyLabel]
-  const color = colorBlock(item)
-  const price = priceLine(item)
-  return `
-    <article class="${articleClass(item, '')}" data-id="${esc(item.id)}">
-      ${photoBlock(item)}
-      <div class="product-body" data-role="card-body" tabindex="0" role="button"
-           aria-label="Voir les détails de ${esc(name)}"
-           title="Cliquez pour voir les détails de ${esc(name)}">
-        <strong class="product-name">${esc(name)}</strong>
-        ${color}
-        <p class="product-line">${metaBits.join('<span class="separator">·</span>')}</p>
-        ${item.supplier ? `<p class="product-line">${icon('store', 12)} ${esc(item.supplier)}</p>` : ''}
-        ${price ? `<p class="product-price">${price}</p>` : '<p class="product-line u-muted">Prix à préciser</p>'}
-        ${item.note ? `<p class="product-note">${esc(item.note)}</p>` : ''}
-        <p class="product-flags">${item.isBought && item.boughtAt ? `<span class="u-muted">Coché le ${formatDate(item.boughtAt)}</span>` : priorityBadge}</p>
-      </div>
-      <div class="product-foot">
-        ${toggleButton(item)}
-        ${footActions(item, name)}
-      </div>
-    </article>`
+  return renderCard(item)
 }

@@ -1,29 +1,31 @@
 /* ------------------------------------------------------------------ */
 /* Design tokens — Mes achats                                          */
 /*                                                                      */
-/* Refonte 2026. La direction est « vitrine » plutôt que « papier » :   */
+/* Refonte 8.4. Trois partis pris, dans cet ordre :                    */
 /*                                                                      */
-/*   - une base froide et neutre (ardoise) plutôt qu'un crème, pour     */
-/*     que la couleur d'un tissu soit la seule chose colorée à l'écran ; */
-/*   - un texte très foncé, `--ink` à 16:1 sur le fond, et `--ink-3`   */
-/*     encore à 5,9:1 — la lisibilité passe avant l'élégance ;          */
-/*   - un seul accent (émeraude) réservé aux actions et aux chiffres   */
-/*     qui comptent : le prix, le total, l'onglet actif.                */
+/*   1. La lisibilité. Chaque couleur est choisie sur sa valeur de      */
+/*      contraste calculée sur le fond où elle sert réellement, pas    */
+/*      sur `--bg` par habitude. L'encre est à 16,8:1, le texte        */
+/*      secondaire à 5,9:1, l'accent à 6,3:1 — tout au-delà de AA.    */
+/*   2. Le pouce. Sur telephone, rien d'utile sous 44 px : c'est la    */
+/*      seule taille à laquelle on atteint un taux de réussite         */
+/*      acceptable au doigt.                                          */
+/*   3. Le pouce d'abord. La mise en page s'écrit en mobile-first et   */
+/*      gagne des colonnes ensuite, jamais l'inverse.                  */
 /*                                                                      */
-/* Le thème CLAIR est la base (`:root`). Le thème sombre est une       */
-/* variante déclarée, pas l'inverse : c'est ce qui permet de traiter le */
-/* fond comme la surface normale de l'application.                     */
+/* Base froide (ardoise) et émeraude : sur un écran d'achat, la       */
+/* couleur d'un tissu est la seule chose qui doit être colorée.        */
 /*                                                                      */
-/* Chaque valeur a été vérifiée au contraste (WCAG AA, 4,5:1) sur le   */
-/* fond où elle sert réellement — pas sur `--bg` par habitude.          */
+/* Le thème CLAIR est la base (`:root`). Le sombre est une variante   */
+/* déclarée, pas l'inverse.                                           */
 /* ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light;
 
   /* Surfaces — quatre niveaux nets. L'écart entre `--bg` et `--surface`
-     est volontairement plus franc qu'avant (gris bleuté contre blanc) :
-     une carte doit se détacher du fond sans avoir recours à l'ombre. */
+     est volontairement franc (gris bleuté contre blanc) : une carte se
+     détache du fond sans avoir recours à l'ombre. */
   --bg: #f4f6f9;
   --bg-accent-1: rgba(4, 102, 92, 0.07);
   --bg-accent-2: rgba(34, 80, 143, 0.06);
@@ -57,9 +59,9 @@
   --gold: #7a5c05;
   --gold-soft: rgba(122, 92, 5, 0.14);
 
-  /* Rayons — plus francs, plus réguliers. Un rayon généreux et constant
-     donne au telephone un rythme qui tient jusqu'au bout de l'ecran ;
-     les rayons heterogenes d'avant lisaient comme un kit d'interface. */
+  /* Rayons — plus francs et plus réguliers. Un rayon généreux et constant
+     donne au téléphone un rythme qui tient jusqu'au bout de l'écran ;
+     des rayons hétérogènes lisaient comme un kit d'interface. */
   --radius-xs: 8px;
   --radius-sm: 12px;
   --radius: 16px;
@@ -68,8 +70,8 @@
   --radius-pill: 999px;
 
   /* Échelle de texte — remonte d'un cran partout. Le corps passe de
-     15 à 16 px : sur un telephone tenu à bout de bras, 15 px est la
-     frontière sous laquelle on relit. Les titres gardent leur serif. */
+     15 à 16 px : sur un téléphone tenu à bout de bras, 15 px est la
+     frontière sous laquelle on relit. */
   --text-xs: 12px;
   --text-sm: 13.5px;
   --text-base: 16px;
@@ -79,39 +81,34 @@
   --text-2xl: clamp(28px, 4.4vw, 42px);
   --text-display: clamp(36px, 7vw, 64px);
 
-  /* Espaces — un peu plus larges. */
+  /* Espaces */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
 
-  /* Ombres — plus structurées qu'avant : une ombre courte et dense qui
-     décolle le bloc, plus une longue et très diluée qui l'inscrit dans
-     la page. C'est ce duo qui remplace l'ombre unique et plate. */
+  /* Ombres — une ombre courte et dense qui décolle le bloc, plus une
+     longue et très diluée qui l'inscrit dans la page. */
   --shadow-1: 0 1px 2px rgba(13, 21, 38, 0.06), 0 1px 3px rgba(13, 21, 38, 0.05);
   --shadow-2: 0 2px 4px rgba(13, 21, 38, 0.05), 0 12px 28px -14px rgba(13, 21, 38, 0.22);
   --shadow-3: 0 30px 70px -28px rgba(13, 21, 38, 0.4), 0 4px 12px rgba(13, 21, 38, 0.08);
   --shadow-brand: 0 6px 18px -8px rgba(4, 102, 92, 0.5);
   --shadow-brand-lg: 0 12px 30px -10px rgba(4, 102, 92, 0.55);
 
-  /* Liseré de lumière : un filet clair en haut du bloc, comme la tranche
-     d'une feuille posée à plat. Il double `--hairline` du thème sombre. */
+  /* Liseré de lumière : un filet clair en haut du bloc. */
   --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 
-  /* Typographie — Fraunces reste le serif des titres et des prix : c'est
-     lui qui donne son caractère à la page. Le corps passe sur une sans
-     neutre et plus large, lisible jusqu'à 16 px sur téléphone. */
+  /* Typographie — Fraunces garde le serif des titres et des prix : c'est
+     lui qui donne son caractère à la page. */
   --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Consolas, monospace;
 
-  /* Mise en page — la colonne s'élargit un peu : 880 px sur un écran
-     large, 440 px sur un téléphone, et rien entre les deux qui ferait
-     des cartes de 700 px. */
-  --appbar-h: 72px;
-  --page-max: 920px;
-  --nav-h: 72px;
+  /* Mise en page */
+  --statusbar-h: 64px;
+  --tabbar-h: 68px;
+  --page-max: 960px;
 
   /* Divers */
   --ease: cubic-bezier(0.22, 0.68, 0.32, 1);
@@ -126,8 +123,8 @@
   color-scheme: dark;
 
   /* Le sombre n'est pas une inversion : c'est la même base, réduite sur
-     la luminance et refroidie. Un fond bleuté évite l'effet « gris
-     sale » qu'un noir neutre donne sur un ecran OLED. */
+     la luminance et refroidie. Un fond bleuté évite l'effet « gris sale »
+     qu'un noir neutre donne sur un écran OLED. */
   --bg: #0a101c;
   --bg-accent-1: rgba(58, 217, 184, 0.07);
   --bg-accent-2: rgba(143, 179, 236, 0.06);

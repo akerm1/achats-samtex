@@ -16,10 +16,10 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
-  /* L'ancre ne doit pas finir sous la barre du haut, ni sous la barre
-     du bas : sans cela, un lien vers une rubrique la cache. */
-  scroll-padding-top: calc(var(--appbar-h) + env(safe-area-inset-top) + 16px);
-  scroll-padding-bottom: calc(var(--nav-h) + 24px);
+  /* L'ancre ne doit pas finir sous la barre de statut, ni sous la barre
+     d'onglets : sans cela, un lien vers une rubrique la cache. */
+  scroll-padding-top: calc(var(--statusbar-h) + env(safe-area-inset-top) + 16px);
+  scroll-padding-bottom: calc(var(--tabbar-h) + 24px);
 }
 
 body {
@@ -346,10 +346,11 @@ button:disabled {
 }
 
 @media print {
-  .appbar,
-  .bottomnav,
+  .statusbar,
+  .tabbar,
   .toasts,
-  .banners {
+  .banners,
+  .filterbar {
     display: none !important;
   }
 
