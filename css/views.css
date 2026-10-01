@@ -61,11 +61,8 @@
   gap: var(--space-3);
   margin: 0 calc(-1 * clamp(14px, 4vw, 32px));
   padding: calc(var(--space-3) + 2px) clamp(14px, 4vw, 32px) var(--space-3);
-  background: color-mix(in srgb, var(--bg) 96%, transparent);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02) inset, 0 6px 20px -20px rgba(0, 0, 0, 0.25);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
 }
 
 /* La recherche et son bouton d'effacement : le champ prend ce qui
@@ -905,20 +902,21 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-3);
-  padding: clamp(10px, 2vw, 12px) clamp(12px, 2vw, 14px);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 1%) 0%, var(--surface) 100%);
-  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
-  border-radius: calc(var(--radius) + 2px);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, var(--shadow-1);
-  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out),
-    border-color var(--dur) var(--ease-out);
+  padding: 8px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  transition: background-color var(--dur-fast) var(--ease);
   animation: rise var(--dur-slow) var(--ease-out) both;
 }
 
 @media (hover: hover) {
   .product--row:hover {
-    background: color-mix(in srgb, var(--surface-2) 70%, var(--surface) 30%);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, var(--shadow-1);
+    transform: none;
+    background: var(--surface);
+    box-shadow: none;
   }
 }
 
@@ -984,7 +982,7 @@
 }
 
 .product--row.is-bought {
-  background: color-mix(in srgb, var(--surface-2) 90%, var(--surface) 10%);
+  background: var(--surface-2);
   color: var(--ink-2);
 }
 
