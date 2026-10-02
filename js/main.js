@@ -411,4 +411,4 @@ async function handleDisconnect() {
   if (!confirmed) return
   clearConfig()
   toast('GitHub déconnecté — la liste reste locale.', { type: 'info' })
-}
+}//test
