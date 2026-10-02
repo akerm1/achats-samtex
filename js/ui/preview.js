@@ -88,3 +88,18 @@ export function openPhotoPreview(product) {
     tone: 'photo',
   })
 }
+
+/** Aperçu grand format d'un ticket/facture. */
+export function openReceiptPreview(product) {
+  const label = esc(displayName(product))
+  const body = `
+    <img class="preview-photo" src="${esc(product.receipt)}" alt="Ticket d'achat - ${label}" decoding="async">
+    <div class="preview-caption">
+      <strong class="preview-name">Ticket d'achat - ${label}</strong>
+    </div>`
+  return openPreview({
+    title: `${icon('imagePlus', 15)} Facture / ticket`,
+    body,
+    tone: 'photo',
+  })
+}

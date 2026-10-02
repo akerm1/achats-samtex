@@ -135,6 +135,7 @@ export function normalizeProduct(raw = {}) {
     id: String(source.id || uid('local')),
     name: String(source.name ?? '').trim(),
     photo: typeof source.photo === 'string' ? source.photo : '',
+    receipt: typeof source.receipt === 'string' ? source.receipt : '',
     note: String(source.note ?? '').trim(),
     type,
     color: String(source.color ?? '').trim(),
@@ -146,6 +147,7 @@ export function normalizeProduct(raw = {}) {
     price: price !== null && price > 0 ? round2(price) : null,
     status,
     boughtAt: status === STATUS.BOUGHT ? source.boughtAt || createdAt : null,
+    receiptAt: source.receiptAt || null,
     createdAt,
     updatedAt: source.updatedAt || createdAt,
   }

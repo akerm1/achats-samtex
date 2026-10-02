@@ -325,15 +325,13 @@ async function loadLocal() {
 /** Réinjecte les photos stockées à part dans les produits correspondants. */
 async function attachPhotos(list) {
   if (!photoStore.isAvailable()) return list
-  /* Une base qu'on n'arrive pas à ouvrir ne doit pas faire perdre les photos
-     déjà présentes dans le JSON : on ne touche à rien dans ce cas. */
   if (!(await photoStore.ensureReady())) return list
-  const photos = await photoStore.readAll()
-  if (!photos.size) return list
+  const { photos, receipts } = await photoStore.getAllWithReceipts()
   for (const product of list) {
-    /* Une photo déjà présente vient soit d'une migration, soit d'un envoi
-       distant : elle fait foi, on n'écrase pas avec une version plus vieille. */
-    if (product?.id && !product.photo) product.photo = photos.get(product.id) || ''
+    if (product?.id) {
+      if (!product.photo) product.photo = photos.get(product.id) || ''
+      if (!product.receipt) product.receipt = receipts.get(product.id) || ''
+    }
   }
   return list
 }
@@ -441,12 +439,14 @@ async function persistLocal() {
  * @returns {string} la raison de l'échec, ou une chaîne vide si tout est passé.
  */
 async function writePhotos(list) {
-  const withPhotos = list.filter((product) => product?.photo)
-  const results = await Promise.all(withPhotos.map((product) => photoStore.put(product.id, product.photo)))
-
+  const promises = []
+  for (const product of list) {
+    if (product?.photo) promises.push(photoStore.put(product.id, product.photo, 'photo'))
+    if (product?.receipt) promises.push(photoStore.put(product.id, product.receipt, 'receipt'))
+  }
+  const results = promises.length ? await Promise.all(promises) : []
   /* Les photos des produits disparus ne doivent pas rester pour toujours. */
   await photoStore.prune(list.map((product) => product?.id).filter(Boolean))
-
   if (results.every((ok) => ok)) return ''
   return photoStore.failureReason() || 'unavailable'
 }

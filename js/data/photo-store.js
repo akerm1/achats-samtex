@@ -126,10 +126,17 @@ export async function ensureReady() {
 }
 
 /** Enregistre une photo. Renvoie true si elle est à l'abri. */
-export async function put(id, dataUrl) {
-  if (!id) return false
+export async function put(id, dataUrl, type = 'photo') {
+  if (!id || !dataUrl) return false
   try {
-    await transact('readwrite', (store) => store.put({ id, photo: dataUrl }))
+    const record = await transact('readonly', (store) => store.get(id))
+    const existing = record || { id }
+    if (type === 'receipt') {
+      existing.receipt = dataUrl
+    } else {
+      existing.photo = dataUrl
+    }
+    await transact('readwrite', (store) => store.put(existing))
     lastFailure = ''
     return true
   } catch (error) {
@@ -138,14 +145,32 @@ export async function put(id, dataUrl) {
   }
 }
 
-export async function get(id) {
+export async function get(id, type = 'photo') {
   if (!id) return ''
   try {
     const record = await transact('readonly', (store) => store.get(id))
+    if (type === 'receipt') return record?.receipt || ''
     return record?.photo || ''
   } catch {
     /* Une photo illisible vaut mieux absente qu'un liste qui ne charge pas. */
     return ''
+  }
+}
+
+export async function getAllWithReceipts() {
+  try {
+    const records = await transact('readonly', (store) => store.getAll())
+    const map = new Map()
+    const receiptMap = new Map()
+    for (const record of records || []) {
+      if (record?.id) {
+        if (typeof record.photo === 'string') map.set(record.id, record.photo)
+        if (typeof record.receipt === 'string') receiptMap.set(record.id, record.receipt)
+      }
+    }
+    return { photos: map, receipts: receiptMap }
+  } catch {
+    return { photos: new Map(), receipts: new Map() }
   }
 }
 

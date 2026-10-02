@@ -115,7 +115,11 @@ function toggleButton(item) {
 }
 
 function editButton(item, name) {
+  const receiptBtn = item.receipt ? `
+      <button type="button" class="icon-btn" data-action="preview-receipt" data-id="${esc(item.id)}"
+              aria-label="Voir le ticket/facture de ${esc(name)}" title="Voir le ticket/facture">${icon('imagePlus', 15)}</button>` : ''
   return `
+      ${receiptBtn}
       <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}"
               aria-label="Modifier ${esc(name)}" title="Modifier">${icon('edit', 15)}</button>
       <button type="button" class="icon-btn is-danger" data-action="delete" data-id="${esc(item.id)}"

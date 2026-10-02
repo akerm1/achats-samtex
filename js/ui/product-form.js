@@ -5,7 +5,7 @@
 import { esc, toNumber } from '../core/utils.js'
 import { compressPhoto, readableSize } from '../core/photo.js'
 import { icon } from './icons.js'
-import { CATEGORIES, CATEGORY_VALUES, PRIORITIES, UNITS, colorHex, defaultUnitFor, displayName, knownSuppliers } from '../data/model.js'
+import { CATEGORIES, CATEGORY_VALUES, PRIORITIES, UNITS, colorHex, defaultUnitFor, displayName, knownSuppliers, STATUS } from '../data/model.js'
 import {
   colorFromText,
   hexToRgb,
@@ -45,6 +45,7 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
   let busy = false
   let priority = initialPriority
 
+  let receipt = product?.receipt || ''
   const dialog = document.createElement('dialog')
   dialog.className = 'dialog'
   dialog.innerHTML = `
@@ -533,6 +534,45 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
   })
   dialog.querySelector('[data-action="pick-camera"]')?.addEventListener('click', () => pick('camera'))
   dialog.querySelector('[data-action="pick-gallery"]')?.addEventListener('click', () => pick('gallery'))
+  
+  // Receipt handling
+  const receiptPreview = dialog.querySelector('[data-receipt-preview]')
+  const paintReceiptPreview = () => {
+    if (receiptPreview) {
+      receiptPreview.innerHTML = receipt
+        ? `<img src="${receipt}" alt="Aperçu du ticket">`
+        : `<span class="placeholder">${icon('imagePlus', 20)}Ajouter le ticket de caisse / facture</span>`
+    }
+  }
+  const handleReceiptFile = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (isStorageFull()) {
+      setMessage('Stockage du navigateur plein : impossible d\'enregistrer ce ticket.', 'error')
+      return
+    }
+    busy = true
+    submitButton.disabled = true
+    setMessage('Préparation du ticket...')
+    try {
+      receipt = await compressPhoto(file)
+      paintReceiptPreview()
+      setMessage('Ticket prêt.', 'ok')
+    } catch (error) {
+      setMessage(error.message, 'error')
+    } finally {
+      busy = false
+      submitButton.disabled = false
+    }
+  }
+  dialog.querySelectorAll('input[data-input^="receipt-"]').forEach((input) => input.addEventListener('change', handleReceiptFile))
+  dialog.querySelector('[data-action="pick-receipt-camera"]')?.addEventListener('click', () => dialog.querySelector('[data-input="receipt-camera"]')?.click())
+  dialog.querySelector('[data-action="pick-receipt-gallery"]')?.addEventListener('click', () => dialog.querySelector('[data-input="receipt-gallery"]')?.click())
+  dialog.querySelector('[data-action="clear-receipt"]')?.addEventListener('click', () => {
+    receipt = ''
+    paintReceiptPreview()
+  })
 
   const close = () => dialog.close()
   dialog.querySelectorAll('[data-action="close-form"]').forEach((button) => button.addEventListener('click', close))
@@ -544,6 +584,7 @@ export function openProductForm(product = null, { onSaved = null } = {}) {
     const payload = {
       name: String(field('name')?.value || '').trim(),
       photo,
+      receipt,
       note: field('note')?.value || '',
       type: field('type')?.value || 'autre',
       color: field('color')?.value || '',

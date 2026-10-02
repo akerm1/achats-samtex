@@ -25,7 +25,7 @@ import {
 import { checkForUpdate, installUpdate, subscribe as subscribeUpdate } from './core/update.js'
 import { exportCSV, exportJSON } from './data/backup.js'
 import { openProductForm } from './ui/product-form.js'
-import { openColorPreview, openPhotoPreview } from './ui/preview.js'
+import { openColorPreview, openPhotoPreview, openReceiptPreview } from './ui/preview.js'
 import {
   canPromptInstall,
   dismissInstall,
@@ -171,6 +171,10 @@ const ACTIONS = {
   'preview-photo': (node) => {
     const product = productById(node.dataset.id)
     if (product) openPhotoPreview(product)
+  },
+  'preview-receipt': (node) => {
+    const product = productById(node.dataset.id)
+    if (product?.receipt) openReceiptPreview(product)
   },
   toggle: (node) => {
     toggleBought(node.dataset.id)
