@@ -116,7 +116,12 @@ function probe(d) {
   if (!d) return 'document illisible'
   const count = (sel) => d.querySelectorAll(sel).length
   const first = d.querySelector('.product')
+  let where = 'inconnu'
+  try {
+    where = document.getElementById('stage')?.contentWindow?.location?.href?.slice(0, 120) || 'inconnu'
+  } catch { /* iframe d'une autre origine */ }
   return [
+    `url=« ${where} »`,
     `product=${count('.product')}`,
     `grilles=[${[...new Set([...d.querySelectorAll('*')].flatMap((el) => [...el.classList]).filter((c) => c.startsWith('grid')))].join(' ')}]`,
     first ? `structure=« ${ancestors(first).slice(0, 200)} »` : 'structure=aucun produit',
@@ -147,16 +152,33 @@ async function mount(hash, layout, readySelector) {
     await sleep(50)
     try {
       last = frame.contentDocument
+      /* La capture est reprise à chaque tour : avant la navigation,
+         `contentWindow` est encore la fenêtre `about:blank`, et c'est la
+         fenêtre réelle qu'il faut écouter. */
+      capture(frame.contentWindow)
       if (last?.querySelector(readySelector)) return { ok: true, screen: '' }
     } catch { /* iframe pas encore prêt */ }
   }
   return { ok: false, screen: probe(last) }
 }
 
+/* La capture se fait sur `console`, pas sur la fenêtre : le proxy de fenêtre
+   reste le même d'une navigation à l'autre, mais l'objet `console` est
+   reconstruit — s'y fier une seule fois laisserait tous les cadres suivants
+   sans aucune trace d'erreur. */
+const muted = new WeakSet()
+const listened = new WeakSet()
 function capture(win) {
-  win.addEventListener('error', (e) => errors.push(String(e.message)))
-  win.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
-  win.console.error = (...a) => errors.push(a.map(String).join(' '))
+  if (!win) return
+  if (win.console && !muted.has(win.console)) {
+    muted.add(win.console)
+    win.console.error = (...a) => errors.push(a.map(String).join(' '))
+  }
+  if (!listened.has(win)) {
+    listened.add(win)
+    win.addEventListener('error', (e) => errors.push(String(e.message)))
+    win.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
+  }
 }
 
 async function inspectLayout(layout) {

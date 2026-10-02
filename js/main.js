@@ -5,26 +5,32 @@
 import { copyText } from './core/utils.js'
 import { initTheme } from './core/theme.js'
 import { confirmAction, toast } from './core/feedback.js'
-import { navigate, startRouter } from './core/router.js'
+import { currentRoute, navigate, startRouter } from './core/router.js'
 import { displayName, listSummaryText } from './data/model.js'
 import {
   clearAll,
   clearBought,
   clearConfig,
   deleteProduct,
+  deleteBill,
   getProducts,
+  getBills,
   getState,
+  importBills,
   refresh,
   replaceAll,
+  restoreBill,
   restoreMany,
   restoreProduct,
   setPrefs,
   subscribe,
+  toggleBillPaid,
   toggleBought,
 } from './data/store.js'
 import { checkForUpdate, installUpdate, subscribe as subscribeUpdate } from './core/update.js'
 import { exportCSV, exportJSON } from './data/backup.js'
 import { openProductForm } from './ui/product-form.js'
+import { openBillForm } from './ui/bill-form.js'
 import { openColorPreview, openPhotoPreview, openReceiptPreview } from './ui/preview.js'
 import {
   canPromptInstall,
@@ -40,10 +46,12 @@ import {
   showInstallHelp,
 } from './ui/shell.js'
 import { listView } from './ui/views/list.js'
+import { billsView } from './ui/views/bills.js'
 import { settingsView } from './ui/views/settings.js'
 
 const VIEWS = {
   liste: listView,
+  factures: billsView,
   reglages: settingsView,
 }
 const ROUTE_ORDER = Object.keys(VIEWS)
@@ -139,10 +147,15 @@ async function handleClearBought() {
 
 async function handleClearAll() {
   const previous = [...getProducts()]
-  if (!previous.length) return
+  const previousBills = [...getBills()]
+  if (!previous.length && !previousBills.length) return
+  const counts = [
+    `${previous.length} produit(s)`,
+    `${previousBills.length} facture(s)`,
+  ].join(' et ')
   const confirmed = await confirmAction({
     title: 'Vider toute la liste ?',
-    message: `${previous.length} produit(s) seront supprimés. Exportez une sauvegarde si vous voulez les conserver.`,
+    message: `${counts} seront supprimés. Exportez une sauvegarde si vous voulez les conserver.`,
     confirmLabel: 'Tout supprimer',
     danger: true,
   })
@@ -151,7 +164,10 @@ async function handleClearAll() {
   toast('Liste vidée.', {
     type: 'info',
     actionLabel: 'Annuler',
-    onAction: () => replaceAll(previous),
+    onAction: () => {
+      replaceAll(previous)
+      if (previousBills.length) importBills(previousBills, { mode: 'merge' })
+    },
   })
 }
 
@@ -160,9 +176,20 @@ const ACTIONS = {
   'open-form': () => {
     openProductForm()
   },
+  'open-bill-form': () => {
+    openBillForm()
+  },
   edit: (node) => {
     const product = productById(node.dataset.id)
     if (product) openProductForm(product)
+  },
+  'edit-bill': (node) => {
+    const bill = getBills().find((b) => b.id === node.dataset.id)
+    if (bill) openBillForm(bill)
+  },
+  'preview-bill-photo': (node) => {
+    const bill = getBills().find((b) => b.id === node.dataset.id)
+    if (bill?.photo) openReceiptPreview({ name: bill.supplier, receipt: bill.photo })
   },
   'preview-color': (node) => {
     const product = productById(node.dataset.id)
@@ -183,8 +210,29 @@ const ACTIONS = {
   toggle: (node) => {
     toggleBought(node.dataset.id)
   },
+  'toggle-paid': (node) => {
+    toggleBillPaid(node.dataset.id)
+  },
   delete: (node) => {
     handleDelete(node.dataset.id)
+  },
+  'delete-bill': async (node) => {
+    const bill = getBills().find((b) => b.id === node.dataset.id)
+    if (!bill) return
+    const confirmed = await confirmAction({
+      title: 'Supprimer cette facture ?',
+      message: `« ${bill.supplier} » sera retirée.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!confirmed) return
+    const removed = deleteBill(bill.id)
+    if (!removed) return
+    toast(`Facture « ${bill.supplier} » supprimée.`, {
+      type: 'info',
+      actionLabel: 'Annuler',
+      onAction: () => restoreBill(removed.bill, removed.index),
+    })
   },
   'clear-bought': () => {
     handleClearBought()
@@ -193,21 +241,26 @@ const ACTIONS = {
     handleClearAll()
   },
   'reset-filters': () => {
-    listView.resetFilters()
+    if (activeRoute === 'factures') billsView.resetFilters()
+    else listView.resetFilters()
     toast('Filtres réinitialisés.', { type: 'info' })
   },
+  'reset-bill-filters': () => {
+    billsView.resetFilters()
+    toast('Filtres réinitialisés.', { type: 'info' })
+  },
+  'set-bill-status': (node) => billsView.setStatus(node.dataset.value),
+  'clear-bills-search': () => billsView.clearSearch(),
   'set-filter': (node) => setPrefs({ filter: node.dataset.value }),
   'set-category': (node) => setPrefs({ category: node.dataset.value }),
   'clear-search': () => {
-    listView.clearSearch()
-    listView.focusSearch()
+    if (activeRoute === 'factures') billsView.clearSearch()
+    else listView.clearSearch()
   },
   'share-list': () => shareList(),
   'go-settings': () => navigate('reglages'),
   'sync-now': async () => {
     const result = await refresh()
-    /* Les échecs sont déjà annoncés par le store (toast d'erreur) : on ne
-       double pas l'information, on ne confirme que ce qui a fonctionné. */
     if (!result.ok) return
     toast(
       result.status === 'local' ? 'Liste enregistrée localement.' : 'Liste actualisée depuis GitHub.',
@@ -216,7 +269,9 @@ const ACTIONS = {
   },
   'disconnect-github': () => handleDisconnect(),
   'export-json': () => {
-    exportJSON(getProducts())
+    /* Les factures voyagent avec la sauvegarde : c'est le seul endroit où
+       les deux collections sortent du navigateur. */
+    exportJSON(getProducts(), getBills())
     toast('Sauvegarde JSON générée.', { type: 'ok' })
   },
   'export-csv': () => {
@@ -389,8 +444,10 @@ function init() {
     VIEWS[activeRoute]?.update?.()
   })
 
-  /* Le premier rendu de la vue dépend du chargement (local ou GitHub). */
-  showRoute('liste')
+  /* Le premier rendu de la vue dépend du chargement (local ou GitHub).
+     La route vient du hash, pas d'un choix ici : sans cela, ouvrir ou
+     recharger l'application sur `#/factures` retombe sur la liste. */
+  showRoute(currentRoute())
 
   /* Une seule vérification silencieuse au démarrage : elle n'installe rien. */
   checkUpdateInBackground()
@@ -411,4 +468,4 @@ async function handleDisconnect() {
   if (!confirmed) return
   clearConfig()
   toast('GitHub déconnecté — la liste reste locale.', { type: 'info' })
-}//test
+}

@@ -20,9 +20,14 @@
 /*      pas juger une largeur « pleine » à l'œil reliably.             */
 /*                                                                     */
 /*   3. Avec `--e2e`, `tools/e2e.html` va plus loin : il lance l'appli-  */
-/*      cation elle-même dans un iframe, règle une présentation, et lit */
-/*      son DOM. Une passe qui rend juste les composants ne prouve pas   */
-/*      que le réglage atteint l'écran.                                 */
+  /*      cation elle-même dans un iframe, règle une présentation, et lit */
+  /*      son DOM. Une passe qui rend juste les composants ne prouve pas   */
+  /*      que le réglage atteint l'écran.                                 */
+  /*                                                                     */
+  /*   4. `--only bills` lance `tools/bills.html`, dans une passe et un  */
+  /*      profil à part : le banc des factures partage le disque avec    */
+  /*      l'application qu'il pilote, et deux vues en mémoire du même    */
+  /*      stockage s'effacent l'une l'autre à chaque écriture.           */
 /* ------------------------------------------------------------------ */
 
 import { spawn } from 'node:child_process'
@@ -138,7 +143,7 @@ async function diskChecks() {
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
      les vérifie, et une simple accolade en trop les laisse muets jusqu'à
      l'expiration du délai. On les analyse donc ici, avant le navigateur. */
-  for (const page of ['check-page.html', 'e2e.html', 'preview.html']) {
+  for (const page of ['check-page.html', 'e2e.html', 'preview.html', 'bills.html']) {
     const file = path.join(ROOT, 'tools', page)
     if (!fs.existsSync(file)) continue
     const html = fs.readFileSync(file, 'utf8')
@@ -257,7 +262,11 @@ async function browserChecks(page = 'check-page.html', label = 'rendu') {
 
   console.log(dim(`\n${path.basename(browser)} — ${WIDTH}px, thème ${THEME}, passe « ${label} »${shot ? ' + capture' : ''}`))
 
-  const args = [
+/* Les bancs qui lancent la vraie application : ils ont besoin de minuteries
+   réelles et d'un budget plus large que le rendu de composants. */
+const REAL_APP_PAGES = ['e2e.html', 'bills.html']
+
+const args = [
     '--headless=new',
     '--disable-gpu',
     '--no-sandbox',
@@ -270,20 +279,20 @@ async function browserChecks(page = 'check-page.html', label = 'rendu') {
     '--disable-backgrounding-occluded-windows',
     '--disable-renderer-backgrounding',
     `--window-size=${WIDTH},${HEIGHT}`,
-    /* Le banc e2e attend le vrai démarrage de l'application : le budget de
+    /* Ces bancs attendent le vrai démarrage de l'application : le budget de
        temps virtuel avancerait l'horloge de la page et ferait boucler la
        sonde avant que la liste ne soit rendue. On lui laisse des minuteries
        réelles, et c'est le délai du rapport qui borne l'attente. */
-    ...(page === 'e2e.html' ? [] : ['--virtual-time-budget=15000']),
+    ...(REAL_APP_PAGES.includes(page) ? [] : ['--virtual-time-budget=15000']),
     `--user-data-dir=${fs.mkdtempSync(path.join(os.tmpdir(), 'check-profile-'))}`,
   ]
-  if (shot && page !== 'e2e.html') args.push(`--screenshot=${shot}`)
+  if (shot && !REAL_APP_PAGES.includes(page)) args.push(`--screenshot=${shot}`)
   args.push(url)
 
   const child = spawn(browser, args, { stdio: 'ignore' })
   /* L'application réelle démarre lentement (IndexedDB, lecture distante) :
-     quatre écrans à la suite demands plus de temps qu'un rendu de composants. */
-  const budget = page === 'e2e.html' ? 150_000 : TIMEOUT_MS
+      quatre écrans à la suite demands plus de temps qu'un rendu de composants. */
+  const budget = REAL_APP_PAGES.includes(page) ? 150_000 : TIMEOUT_MS
   const deadline = Date.now() + budget
   const payload = await waitFor(reportFile, deadline)
   const exited = new Promise((resolve) => child.on('close', resolve))
@@ -323,10 +332,17 @@ async function browserChecks(page = 'check-page.html', label = 'rendu') {
 
 console.log(bold('Vérifications — Mes achats'))
 await diskChecks()
-const answered = ONLY === 'e2e' ? true : await browserChecks()
-if (!answered) {
-  console.log(red('\nImpossible de vérifier le rendu.'))
+if (ONLY === 'bills') {
+  const answered = await browserChecks('bills.html', 'factures')
+  if (!answered) {
+    console.log(red('\nImpossible de vérifier les factures.'))
+  }
+} else {
+  const answered = await browserChecks()
+  if (!answered) {
+    console.log(red('\nImpossible de vérifier le rendu.'))
+  }
+  if (E2E && ONLY !== 'render') await browserChecks('e2e.html', 'application réelle')
 }
-if (E2E && ONLY !== 'render') await browserChecks('e2e.html', 'application réelle')
 console.log(failures === 0 ? `\n${green('Tout passe.')}\n` : `\n${red(`${failures} échec(s).`)}\n`)
 process.exit(failures === 0 ? 0 : 1)

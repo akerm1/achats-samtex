@@ -40,6 +40,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Une limite à connaître, pas une alerte : reste sobre, mais lisible. */
+.list-head-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
 .list-results {
   display: flex;
   flex-direction: column;

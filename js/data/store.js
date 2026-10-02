@@ -5,6 +5,11 @@
 /*   - `github` : `products.json` (jeton facultatif, lecture seule      */
 /*     possible sans jeton sur un dépôt public) ;                      */
 /*   - `worker` : un lien privé Cloudflare, sans jeton ni expiration.  */
+/*                                                                      */
+/* Les produits voyagent par les deux. Les factures, par le lien privé   */
+/* seul : `products.json` ne les porte pas, et une facture reste donc    */
+/* locale tant que le lien privé n'est pas configuré. La vue Factures   */
+/* le dit à l'écran plutôt que de le laisser découvrir.                  */
 /*                                                                     */
 /* Mécanisme de synchronisation, volontairement simple :                */
 /*   - aucune scrutation en arrière-plan, aucun état « en direct » ;   */
@@ -20,7 +25,7 @@ import { storage } from '../core/storage.js'
 import { toast } from '../core/feedback.js'
 import { uid } from '../core/utils.js'
 import { getThemePreference, setTheme } from '../core/theme.js'
-import { STATUS, CARD_LAYOUT_VALUES, normalizeList, normalizeProduct } from './model.js'
+import { STATUS, CARD_LAYOUT_VALUES, normalizeList, normalizeProduct, normalizeBill, normalizeBillList, BILL_STATUS } from './model.js'
 import {
   PROVIDER_GITHUB,
   PROVIDER_WORKER,
@@ -32,7 +37,7 @@ import {
   putRemoteList,
   READ_ONLY_MESSAGE,
 } from './sync.js'
-import { mergeProducts } from './backup.js'
+import { mergeBills, mergeProducts } from './backup.js'
 import * as photoStore from './photo-store.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
@@ -44,6 +49,11 @@ const PREFS_KEY = 'purchase-gros-prefs-v1'
 const DIRTY_KEY = 'purchase-gros-dirty-v1'
 /* L'utilisateur a demandé à rester hors GitHub : on ne reconnecte pas. */
 const OPTOUT_KEY = 'purchase-gros-github-optout-v1'
+
+/* Factures — hors de la liste produits, et hors du JSON local : le JSON
+   ne garde que du texte, les tickets de facture vont dans IndexedDB avec
+   les photos, comme ceux des produits. */
+const BILLS_KEY = 'purchase-gros-bills-v1'
 
 export const DEFAULT_PREFS = {
   filter: 'todo',
@@ -61,6 +71,7 @@ function normalizeLayout(value) {
 }
 
 let products = []
+let bills = []
 let config = normalizeConfig(storage.get(CONFIG_KEY))
 let prefs = { ...DEFAULT_PREFS, ...(storage.get(PREFS_KEY) || {}) }
 prefs.layout = normalizeLayout(prefs.layout)
@@ -156,6 +167,7 @@ export function getState() {
   return {
     ...state,
     products,
+    bills,
     config,
     prefs,
     provider: providerOf(config),
@@ -184,6 +196,7 @@ export const isStorageFull = () => storageProblem === 'quota'
 export const arePhotosSeparated = () => photosSeparated
 
 export const getProducts = () => products
+export const getBills = () => bills
 export const isLoaded = () => state.loaded
 export const getStatus = () => state.status
 export const getSyncMessage = () => state.message
@@ -305,33 +318,60 @@ export function clearConfig() {
  * Charge la liste locale et réattache les photos.
  *
  * Le JSON local ne contient plus les photos : elles sont dans IndexedDB,
- * rattachées par `id`. On les remet dans `product.photo` parce que tout le
- * reste de l'application — rendu, envoi distant, fusion, export — lit ce
- * champ. Si IndexedDB est indisponible, le JSON garde les photos en ligne
- * (voir `persistLocal`), donc cette étape ne perd rien.
+ * rattachées par `id`. On les remet dans `product.photo` et `bill.photo`
+ * parce que tout le reste de l'application — rendu, envoi distant, fusion,
+ * export — lit ces champs. Si IndexedDB est indisponible, le JSON garde les
+ * photos en ligne (voir `persistLocal`), donc cette étape ne perd rien.
  */
 async function loadLocal() {
   /* Pas de démonstration : une liste vide reste vide, le partage GitHub
      (ou l'ajout manuel) reste la seule source de données — ainsi chaque
      appareil affiche exactement la même chose. */
   products = normalizeList(storage.get(PRODUCTS_KEY, null))
+  bills = normalizeBillList(storage.get(BILLS_KEY, null))
   /* La base est testée au chargement, pas à la première photo : si elle est
      inaccessible, on garde les photos dans le JSON, comme avant. */
   await photoStore.ensureReady()
   await attachPhotos(products)
+  await attachBillPhotos(bills)
   await queuePersist()
+  await queuePersistBills()
+}
+
+/** Les deux collections d'images, une seule lecture de la base. */
+async function photoMaps() {
+  if (!photoStore.isAvailable()) return null
+  if (!(await photoStore.ensureReady())) return null
+  const maps = await photoStore.getAllWithReceipts()
+  /* Une lecture réussie — même vide — fait autorité : à partir de là, une
+     valeur vide en mémoire veut vraiment dire « pas de photo ». */
+  if (maps) photosHydrated = true
+  return maps
 }
 
 /** Réinjecte les photos stockées à part dans les produits correspondants. */
 async function attachPhotos(list) {
-  if (!photoStore.isAvailable()) return list
-  if (!(await photoStore.ensureReady())) return list
-  const { photos, receipts } = await photoStore.getAllWithReceipts()
+  const maps = await photoMaps()
+  if (!maps) return list
   for (const product of list) {
     if (product?.id) {
-      if (!product.photo) product.photo = photos.get(product.id) || ''
-      if (!product.receipt) product.receipt = receipts.get(product.id) || ''
+      if (!product.photo) product.photo = maps.photos.get(product.id) || ''
+      if (!product.receipt) product.receipt = maps.receipts.get(product.id) || ''
     }
+  }
+  return list
+}
+
+/**
+ * Même chose pour les factures : leur image de ticket est stockée dans le
+ * champ `receipt`, comme celle d'un produit acheté, et se relit dans
+ * `bill.photo` — le reste de l'application ne connaît que ce nom.
+ */
+async function attachBillPhotos(list) {
+  const maps = await photoMaps()
+  if (!maps) return list
+  for (const bill of list) {
+    if (bill?.id && !bill.photo) bill.photo = maps.receipts.get(bill.id) || ''
   }
   return list
 }
@@ -345,6 +385,9 @@ async function attachPhotos(list) {
  * de le deviner, pour pouvoir prévenir avant la perte.
  */
 let usage = { bytes: 0, photos: 0, photoBytes: 0 }
+/** La base d'images a-t-elle déjà été lue ? Une lecture manquée laisse des
+ *  champs vides qu'il ne faut surtout pas prendre pour un retrait. */
+let photosHydrated = false
 
 /** Refus d'écriture local en cours, à montrer tant qu'il n'est pas résolu. */
 let storageProblem = ''
@@ -372,7 +415,6 @@ function queuePersist() {
 
 /**
  * Enregistre la liste locale, photos mises à part.
- *
  * Le JSON local ne porte plus que du texte, quelques kilo-octets : il ne peut
  * donc plus signaler un quota à cause des photos. Les photos vont dans
  * IndexedDB, par `id`. Le format d'échange, lui, est inchangé : le document
@@ -398,7 +440,7 @@ async function persistLocal() {
      alors que l'autre passe. Ici le JSON est du texte, donc cette étape ne
      peut plus tomber sur un quota de photos ; l'ordre compte quand même,
      parce qu'un succès isolé ne doit pas effacer l'échec de l'autre. */
-  const photoError = separate ? await writePhotos(products) : ''
+  const photoError = separate ? await writePhotos() : ''
 
   /* Si les photos n'ont pas pu être mises à part, on les remet dans le JSON :
      c'est le seul endroit où elles survivront. Le repli d'avant, donc. */
@@ -425,6 +467,17 @@ async function persistLocal() {
     return true
   }
 
+  return reportStorageProblem(reason)
+}
+
+/**
+ * Le compte rendu d'un refus d'écriture, au même endroit pour les produits
+ * et pour les factures : une seule alerte, une seule porte de sortie. Avant,
+ * une facture refusée disparaissait sans rien dire, et l'utilisateur croyait
+ * l'avoir enregistrée.
+ * @returns {false} toujours : l'appelant n'a rien de bon à faire de plus.
+ */
+function reportStorageProblem(reason) {
   storageProblem = reason
   if (reason === 'quota') {
     state.message = 'Stockage du navigateur plein : les photos ne sont plus enregistrées sur cet appareil. Exportez une sauvegarde JSON, puis retirez des photos. Votre liste est encore affichée, mais elle disparaîtra à la fermeture.'
@@ -435,28 +488,53 @@ async function persistLocal() {
 }
 
 /**
- * Écrit les photos dans IndexedDB et supprime celles des produits retirés.
+ * Écrit les photos dans IndexedDB, puis supprime celles qui n'appartiennent
+ * plus à rien.
+ *
+ * Les deux collections y passent : une facture range son ticket dans le champ
+ * `receipt`, comme un produit acheté. Les champs sont réécrits à chaque passe,
+ * y compris quand ils sont vides — c'est ainsi qu'une photo retirée disparaît
+ * vraiment au lieu de revenir au rechargement.
  * @returns {string} la raison de l'échec, ou une chaîne vide si tout est passé.
  */
-async function writePhotos(list) {
+async function writePhotos() {
   const promises = []
-  for (const product of list) {
-    if (product?.photo) promises.push(photoStore.put(product.id, product.photo, 'photo'))
-    if (product?.receipt) promises.push(photoStore.put(product.id, product.receipt, 'receipt'))
+  /* Tant que la base n'a pas été lue, un champ vide ne prouve rien : il peut
+     aussi bien signifier « pas de photo » que « on n'a pas su la relire ».
+     Écrire ce vide supprimerait une image parfaitement saine ; on ne le fait
+     donc pas, et la lecture ratée secorrigera au prochain chargement. */
+  const put = (id, data, type) => {
+    if (!id) return
+    if (!data && !photosHydrated) return
+    promises.push(photoStore.put(id, data || '', type))
   }
+  for (const product of products) {
+    put(product?.id, product?.photo, 'photo')
+    put(product?.id, product?.receipt, 'receipt')
+  }
+  for (const bill of bills) put(bill?.id, bill?.photo, 'receipt')
   const results = promises.length ? await Promise.all(promises) : []
-  /* Les photos des produits disparus ne doivent pas rester pour toujours. */
-  await photoStore.prune(list.map((product) => product?.id).filter(Boolean))
+  /* Les images des éléments disparus ne doivent pas rester pour toujours.
+     Les deux listes sont fournies : ne garder que les produits effacerait le
+     ticket de chaque facture à la première modification de produit. Même règle
+     que ci-dessus : sans lecture de la base, on ne purge rien — on ne connaît
+     alors que sa propre liste, pas l'état du disque. */
+  if (photosHydrated) await photoStore.prune([...products, ...bills].map((item) => item?.id).filter(Boolean))
   if (results.every((ok) => ok)) return ''
   return photoStore.failureReason() || 'unavailable'
 }
 
-/** Poids total, nombre de photos et part occupée par les photos. */
+/**
+ * Poids total, nombre de photos et part occupée par les photos.
+ *
+ * Les tickets de facture comptent avec les photos : ce sont eux qui pèsent,
+ * et les omettre ferait croire à un stockage bien plus léger qu'il n'est.
+ */
 function measureUsage(list, text, separate) {
   let photos = 0
   let photoBytes = 0
-  for (const product of list) {
-    const photo = product?.photo
+  for (const item of [...list, ...bills]) {
+    const photo = item?.photo
     if (typeof photo === 'string' && photo) {
       photos += 1
       photoBytes += photo.length
@@ -465,6 +543,42 @@ function measureUsage(list, text, separate) {
   /* Quand les photos sont à part, le JSON local ne les compte plus : on
      annonce le poids réellement stocké, pas celui d'un document composite. */
   return { bytes: text.length, photos, photoBytes, separated: Boolean(separate) }
+}
+
+/* ------------------------------------------------------------------ */
+/* Persistance des factures                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Enregistre les factures, photos mises à part.
+ *
+ * Le chemin est celui des produits : le ticket part dans IndexedDB, le JSON
+ * local ne garde que du texte. Si IndexedDB refuse, on le remet dans le
+ * JSON plutôt que de le perdre, et l'échec est signalé — une facture
+ * enregistrée sans le dire est une facture perdue au rechargement.
+ */
+async function persistBills() {
+  const separate = photoStore.isAvailable()
+  const photoError = separate ? await writePhotos() : ''
+  const stripped = bills.map((bill) => ({ ...bill, photo: '' }))
+  const payload = separate && photoError ? bills : separate ? stripped : bills
+
+  let text = '[]'
+  try {
+    text = JSON.stringify(payload)
+  } catch {
+    /* Circularité improbable, mais on n'écrit pas une chaîne cassée. */
+  }
+  const ok = storage.setRaw(BILLS_KEY, payload, text)
+  const reason = photoError || (ok ? '' : storage.failureReason())
+  if (!reason) return true
+  return reportStorageProblem(reason)
+}
+
+function queuePersistBills() {
+  const run = () => persistBills()
+  writeChain = writeChain.then(run, run)
+  return writeChain
 }
 
 
@@ -502,7 +616,7 @@ async function syncWithRemote() {
 
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
-    if (state.dirty || products.length) return push({ force: true })
+    if (state.dirty || products.length || bills.length) return push({ force: true })
     return markReady()
   }
   if (state.dirty) return push()
@@ -516,6 +630,18 @@ async function syncWithRemote() {
        lecture locale périmée repartirait au prochain rafraîchissement. */
     await queuePersist()
     changed = true
+  }
+  /* `bills: null` = un document publié avant l'existence des factures, donc
+     une version du Worker pas encore redéployée. On garde alors les factures
+     locales : ce silence ne doit jamais coûter les siennes. Un tableau vide,
+     lui, reste une suppression et s'applique. */
+  if (Array.isArray(remote.bills)) {
+    const remoteBills = normalizeBillList(remote.bills)
+    if (JSON.stringify(remoteBills) !== JSON.stringify(bills)) {
+      bills = remoteBills
+      await queuePersistBills()
+      changed = true
+    }
   }
   if (applyRemoteSettings(remote.settings)) changed = true
   return markReady(changed)
@@ -643,7 +769,7 @@ export async function push({ force = false } = {}) {
   state.status = 'saving'
   emit()
 
-  const result = await putRemoteList(config, products, sha, settingsSnapshot())
+  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills)
   state.pending = false
 
   if (result.ok) {
@@ -656,6 +782,15 @@ export async function push({ force = false } = {}) {
       if (JSON.stringify(merged) !== JSON.stringify(products)) {
         products = merged
         await queuePersist()
+      }
+    }
+    /* Les factures suivent la même règle : un conflit peut en avoir ramené
+       une que cet appareil n'avait pas, et l'écran doit le montrer. */
+    if (Array.isArray(result.bills)) {
+      const mergedBills = normalizeBillList(result.bills)
+      if (JSON.stringify(mergedBills) !== JSON.stringify(bills)) {
+        bills = mergedBills
+        await queuePersistBills()
       }
     }
     state.dirty = false
@@ -706,7 +841,10 @@ export async function importFromGithub() {
   }
 
   const list = normalizeList(remote.list || [])
-  const result = await putRemoteList(config, list, null, remote.settings)
+  /* Les produits viennent de GitHub, les factures restent locales : on ne
+     copie que ce que GitHub sait porter. Sans cela, la copie viderait les
+     factures d'un appareil qui en a. */
+  const result = await putRemoteList(config, list, null, remote.settings, bills)
   if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
 
   sha = result.sha
@@ -738,6 +876,20 @@ function touch({ broadcast = true } = {}) {
      donc elle aboutit quand même, et l'ordre est respecté. */
   queuePersist()
   if (broadcast) emit()
+}
+
+/**
+ * L'équivalent pour une facture : même drapeau, même persistance.
+ *
+ * Le drapeau est partagé avec les produits, et c'est nécessaire : `syncWithRemote`
+ * saute le document distant dès qu'il est posé, donc une facture nouvelle
+ * serait autrement écrasée au prochain rafraîchissement.
+ */
+function touchBills() {
+  state.dirty = true
+  storage.set(DIRTY_KEY, true)
+  queuePersistBills()
+  emit()
 }
 
 function find(id) {
@@ -849,8 +1001,12 @@ export function restoreMany(list = []) {
 
 export function clearAll() {
   products = []
+  /* Les factures partent avec : les laisser derrière pointait vers des
+     images déjà effacées. */
+  bills = []
   if (photoStore.isAvailable()) photoStore.clear()
   touch()
+  queuePersistBills()
   push()
   return true
 }
@@ -875,6 +1031,107 @@ export function importProducts(list = [], { mode = 'merge' } = {}) {
 
 export function replaceAll(list = []) {
   return importProducts(list, { mode: 'replace' })
+}
+
+/* ------------------------------------------------------------------ */
+/* Mutations Factures                                                 */
+/* ------------------------------------------------------------------ */
+
+function findBill(id) {
+  return bills.find((item) => item.id === id) || null
+}
+
+export function addBill(input = {}) {
+  const bill = normalizeBill({
+    ...input,
+    id: input.id || uid('bill'),
+  })
+  bills = [...bills, bill]
+  touchBills()
+  push()
+  return bill
+}
+
+export function updateBill(id, changes = {}) {
+  const current = findBill(id)
+  if (!current) return null
+  const next = normalizeBill({
+    ...current,
+    ...changes,
+    id: current.id,
+    createdAt: current.createdAt,
+    updatedAt: new Date().toISOString(),
+  })
+  bills = bills.map((item) => (item.id === id ? next : item))
+  touchBills()
+  push()
+  return next
+}
+
+export function toggleBillPaid(id) {
+  const current = findBill(id)
+  if (!current) return null
+  const paid = current.status !== BILL_STATUS.PAID
+  const next = normalizeBill({
+    ...current,
+    status: paid ? BILL_STATUS.PAID : BILL_STATUS.PENDING,
+    paidAt: paid ? new Date().toISOString() : null,
+    updatedAt: new Date().toISOString(),
+  })
+  bills = bills.map((item) => (item.id === id ? next : item))
+  touchBills()
+  push()
+  return paid
+}
+
+/**
+ * Supprime une facture.
+ * @returns {{bill:object, index:number}|null} de quoi annuler la suppression.
+ */
+export function deleteBill(id) {
+  const index = bills.findIndex((item) => item.id === id)
+  if (index < 0) return null
+  const bill = bills[index]
+  bills = bills.filter((item) => item.id !== id)
+  /* Le ticket part avec la facture : sinon il resterait sur le disque, et
+     « vider la liste » ne viderait pas tout. */
+  if (photoStore.isAvailable()) photoStore.remove([id])
+  touchBills()
+  push()
+  return { bill, index }
+}
+
+/** Réinsère une facture supprimée (action « Annuler »). */
+export function restoreBill(bill, index = null) {
+  if (!bill) return null
+  const restored = normalizeBill(bill)
+  const next = [...bills]
+  const position = Number.isInteger(index) ? Math.min(Math.max(index, 0), next.length) : next.length
+  next.splice(position, 0, restored)
+  bills = next
+  touchBills()
+  push()
+  return restored
+}
+
+/**
+ * Import d'une sauvegarde : les factures suivent le même sort que les
+ * produits, pour qu'une restauration ramène les deux d'un coup.
+ * @param {'merge'|'replace'} mode
+ */
+export function importBills(list = [], { mode = 'merge' } = {}) {
+  if (!list.length) return { added: 0, updated: 0 }
+  if (mode === 'replace') {
+    bills = normalizeBillList(list)
+    touchBills()
+    push()
+    return { added: bills.length, updated: 0 }
+  }
+  const result = mergeBills(bills, normalizeBillList(list))
+  bills = result.list
+  touchBills()
+  push()
+  return { added: result.added, updated: result.updated }
 }
 
 /* Lecture initiale : la configuration puis la liste. */

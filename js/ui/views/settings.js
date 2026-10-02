@@ -21,11 +21,13 @@ import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
 import { LINK_PLACEHOLDER, normalizeConfig, testConnection } from '../../data/sync.js'
 import { CARD_LAYOUTS } from '../../data/model.js'
 import {
+  getBills,
   getConfig,
   getLastSyncAt,
   getProducts,
   getState,
   getPrefs,
+  importBills,
   importFromGithub,
   importProducts,
   isLoaded,
@@ -250,6 +252,14 @@ function shareTile() {
             <small>Produits partagés</small>
             <strong>${getProducts().length}</strong>
           </div>
+          ${
+            isWorker
+              ? `<div class="kv-item">
+                   <small>Factures partagées</small>
+                   <strong>${getBills().length}</strong>
+                 </div>`
+              : ''
+          }
           <div class="kv-item">
             <small>${config?.provider === 'worker' ? 'Lien privé' : 'Accès GitHub'}</small>
             <strong><span class="badge ${readOnly ? 'badge--orange' : 'badge--teal'}" data-role="github-access">${
@@ -280,10 +290,12 @@ function dataTile() {
 }
 
 function dangerTile() {
-  const total = getProducts().length
+  const products = getProducts().length
+  const bills = getBills().length
+  const what = [`${products} produit${products > 1 ? 's' : ''}`, `${bills} facture${bills > 1 ? 's' : ''}`].join(' et ')
   return tile(
     'Vider la liste',
-    `Supprime les ${total} produits de cet appareil ${getConfig() ? 'et du fichier de partage' : ''}. Pensez à exporter une sauvegarde avant.`,
+    `Supprime ${what} de cet appareil${getConfig() ? ' et du fichier de partage' : ''}. Pensez à exporter une sauvegarde avant.`,
     `<button type="button" class="btn btn--danger btn--sm" data-action="clear-all">${icon('trash', 13)} Tout supprimer</button>`,
     { iconName: 'trash' },
   )
@@ -334,7 +346,11 @@ function aboutTile() {
   const persistent = storage.isPersistent()
   const state = getState()
   const { bytes = 0, photos = 0, photoBytes = 0, separated = false } = state.usage || {}
-  const total = state.products?.length || 0
+  /* Les tickets de facture sont déjà comptés dans `photos` (le store mesure
+     les deux collections) : les compter une fois de plus ferait annoncer un
+     stockage plus lourd qu'il ne l'est. */
+  const products = state.products?.length || 0
+  const bills = state.bills?.length || 0
   const full = Boolean(state.storageFull)
   const hasPhotos = photos > 0
   /* Les navigateurs tiennent autour de 5 à 10 Mo d'origine. Le texte seul
@@ -368,7 +384,8 @@ function aboutTile() {
     ${tile(
       'Stockage sur cet appareil',
       `<span data-role="storage-usage">
-         ${total} produit${total > 1 ? 's' : ''} · ${photos} photo${photos > 1 ? 's' : ''}
+         ${products} produit${products > 1 ? 's' : ''}${bills ? ` · ${bills} facture${bills > 1 ? 's' : ''}` : ''}
+         · ${photos} photo${photos > 1 ? 's' : ''}
          ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
        </span>
        <span class="setting-sub" data-role="storage-detail">
@@ -545,12 +562,16 @@ async function handleImport(event) {
   }
   const mode = host.querySelector('[data-role="import-mode"]')?.value || 'merge'
   const result = importProducts(parsed.products, { mode })
-  toast(
+  /* Les factures suivent : une sauvegarde qui les contient et qui ne les
+     restituerait pas ferait perdre l'import à moitié. */
+  const billResult = importBills(parsed.bills, { mode })
+  const details = [
     mode === 'replace'
-      ? `Liste remplacée par ${parsed.products.length} produit(s).`
-      : `${result.added} produit(s) ajouté(s), ${result.updated} mis à jour.`,
-    { type: 'ok' },
-  )
+      ? `${parsed.products.length} produit(s)`
+      : `${result.added} produit(s) ajouté(s), ${result.updated} mis à jour`,
+    parsed.bills.length ? `${billResult.added + billResult.updated} facture(s)` : '',
+  ].filter(Boolean)
+  toast(`${details.join(' · ')}.`, { type: 'ok' })
 }
 
 /**
@@ -664,6 +685,7 @@ function dataSignature() {
     state.status,
     state.lastSyncAt,
     state.products.length,
+    state.bills.length,
     state.isConfigured,
     update.published,
     update.available,

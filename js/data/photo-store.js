@@ -125,16 +125,27 @@ export async function ensureReady() {
   }
 }
 
-/** Enregistre une photo. Renvoie true si elle est à l'abri. */
+/**
+ * Enregistre une photo. Renvoie true si elle est à l'abri.
+ *
+ * Un `dataUrl` vide ne veut pas dire « ne rien faire » : c'est « retire la
+ * photo ». Sans cela, vider le champ ne laisserait que l'ancien
+ * enregistrement, que `attachPhotos` remettrait à l'écran au
+ * rechargement — la photo retirée reviendrait toute seule. Le champ seul
+ * est effacé : l'enregistrement reste, donc le champ voisin
+ * (`photo` / `receipt`) survit.
+ */
 export async function put(id, dataUrl, type = 'photo') {
-  if (!id || !dataUrl) return false
+  if (!id) return false
   try {
     const record = await transact('readonly', (store) => store.get(id))
     const existing = record || { id }
     if (type === 'receipt') {
-      existing.receipt = dataUrl
+      if (dataUrl) existing.receipt = dataUrl
+      else delete existing.receipt
     } else {
-      existing.photo = dataUrl
+      if (dataUrl) existing.photo = dataUrl
+      else delete existing.photo
     }
     await transact('readwrite', (store) => store.put(existing))
     lastFailure = ''
@@ -189,17 +200,13 @@ export async function remove(ids) {
   }
 }
 
-/** Toutes les photos d'un coup, pour le rechargement de la liste. */
-export async function readAll() {
+/** Tous les identifiants stockés, photo ou ticket, ou aucun des deux. */
+async function storedIds() {
   try {
     const records = await transact('readonly', (store) => store.getAll())
-    const map = new Map()
-    for (const record of records || []) {
-      if (record?.id && typeof record.photo === 'string') map.set(record.id, record.photo)
-    }
-    return map
+    return (records || []).map((record) => record?.id).filter(Boolean)
   } catch {
-    return new Map()
+    return []
   }
 }
 
@@ -207,12 +214,13 @@ export async function readAll() {
  * Ne conserve que les ids encore présents.
  *
  * Sans cela, chaque produit supprimé laisserait sa photo pour toujours, et le
- * disque se remplirait jusqu'à la limite d'IndexedDB.
+ * disque se remplirait jusqu'à la limite d'IndexedDB. La liste porte sur les
+ * tickets comme sur les photos : une facture supprimée ne doit pas laisser
+ * derrière elle l'image de son ticket.
  */
 export async function prune(validIds) {
   const keep = new Set(validIds || [])
-  const stored = await readAll()
-  const orphans = [...stored.keys()].filter((id) => !keep.has(id))
+  const orphans = (await storedIds()).filter((id) => !keep.has(id))
   if (orphans.length) await remove(orphans)
   return orphans.length
 }

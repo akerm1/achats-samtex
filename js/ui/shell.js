@@ -9,6 +9,7 @@ import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../da
 
 export const NAV_ITEMS = [
   { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
+  { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
   { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' },
 ]
 
@@ -31,9 +32,9 @@ export function setActiveRoute(route) {
 }
 
 /**
- * Les onglets de la barre du bas. L'ajout est intercalé au milieu, pas
- * placé à la fin : c'est l'action la plus fréquente, et le pouce porte
- * naturellement au centre de l'écran.
+ * Les onglets de la barre du bas. L'ajout est intercalé après la Liste,
+ * car c'est l'action la plus fréquente, et le pouce porte naturellement
+ * au centre de l'écran.
  */
 function tabItems() {
   const items = []
@@ -172,7 +173,8 @@ function detectPlatform() {
 }
 
 export function isInstalled() {
-  return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
+  /* Voir `js/core/theme.js` : `?.()` seul ne protège pas la lecture qui suit. */
+  return window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true
 }
 
 /** `true` si le navigateur est prêt à afficher la boîte d'installation PWA. */
@@ -182,7 +184,7 @@ export function canPromptInstall() {
 
 /** `true` si cet appareil est utilisé depuis le téléphone (ou un appareil tactile). */
 export function isMobile() {
-  return Boolean(window.matchMedia?.('(max-width: 720px)').matches || 'ontouchstart' in window)
+  return Boolean(window.matchMedia?.('(max-width: 720px)')?.matches || 'ontouchstart' in window)
 }
 
 function installHint() {

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc de bout en bout — factures</title>
+<!--
+  Banc des factures, dans une PASSE À PART (voir check.mjs : `--only bills`).
+
+  Deux raisons de l'isoler :
+
+    1. Un profil neuf. Les autres bancs laissent derrière eux des cadres
+       d'application charged avec une liste sans facture ; à la première
+       écriture, chacun purge ce que l'autre vient de déposer, et le
+       résultat dépend de l'ordre d'arrivée. Ici, une seule vue en mémoire
+       à la fois.
+
+    2. Un seul instantiateur agit à la fois. Le cadre affiché sert à lire
+       l'écran ; dès qu'on doit écrire, il est retiré et c'est le store
+       importé ici qui joue — même origine, donc même localStorage et même
+       IndexedDB, ce qui en fait un « second appareil » sans souris.
+
+  Le contrôle se fait ici en direct, la sortie est renvoyée par POST pour être
+  affichée dans la console Node.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+  #stage { position: fixed; left: -20000px; top: 0; width: 1200px; height: 1400px; border: 0; }
+  #log { padding: 1rem; }
+  .ok { color: #17803d; }
+  .non { color: #b91c1c; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="log">Lancement du banc…</div>
+<iframe id="stage" title="application"></iframe>
+
+<!--
+  Filet de sécurité : sans lui, une page qui ne part pas ne peut rien
+  signaler elle-même, et l'attente expire sans rien dire.
+-->
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.__billsDone) return
+      const log = document.getElementById('log')
+      fetch('/__check/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: 'light',
+          fatal: {
+            message: 'le banc des factures n’a rien renvoyé',
+            stack: `écran = « ${(log?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200)} »`,
+          },
+          results: [],
+        }),
+      }).catch(() => undefined)
+    }, 60_000)
+  })
+  window.addEventListener('error', (e) => {
+    fetch('/__check/log', { method: 'POST', body: `ERREUR PAGE : ${e.message} @ ${e.filename}:${e.lineno}` }).catch(() => undefined)
+  })
+</script>
+
+<script type="module">
+const KEY_PREFS = 'purchase-gros-prefs-v1'
+const KEY_LIST = 'purchase-gros-list-v2'
+const KEY_BILLS = 'purchase-gros-bills-v1'
+const KEY_OPTOUT = 'purchase-gros-github-optout-v1'
+const REPORT_URL = '/__check/report'
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const log = (message) => fetch('/__check/log', { method: 'POST', body: String(message) }).catch(() => undefined)
+const results = []
+const errors = []
+
+/* Le compte de démonstration partirait sur le dépôt GitHub annoncé et
+   remplacerait la liste locale au démarrage. Le refus du dépôt est un
+   réglage prévu par l'application (rester hors GitHub), pas une bidouille :
+   c'est le seul moyen d'avoir une liste maîtrisée. */
+function seed() {
+  const now = Date.now()
+  const iso = new Date(now).toISOString()
+  const products = [
+    { id: 'bill-rgb', name: 'Ceinture satin ivoire', type: 'tissu', color: 'Ivoire', colorRgb: { r: 239, g: 227, b: 211 }, qty: 2, unit: 'm', price: 6.5, status: 'todo', createdAt: iso },
+  ]
+  const bills = [
+    {
+      id: 'bill-1',
+      supplier: 'Marché Saint-Pierre',
+      amount: 42.5,
+      note: 'échéance le 12',
+      status: 'pending',
+      photo: 'data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" fill="%23c94f4f"/%3E%3C/svg%3E',
+      createdAt: iso,
+    },
+  ]
+  localStorage.setItem(KEY_OPTOUT, 'true')
+  localStorage.setItem(KEY_LIST, JSON.stringify(products))
+  localStorage.setItem(KEY_BILLS, JSON.stringify(bills))
+}
+
+const TICKET = 'data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" fill="%23c94f4f"/%3E%3C/svg%3E'
+
+const check = (name, pass, detail = '') => {
+  results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
+  document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
+}
+
+const doc = () => document.getElementById('stage').contentDocument
+
+/* La capture se fait sur `console`, pas sur la fenêtre : le proxy de fenêtre
+   reste le même d'une navigation à l'autre, mais l'objet `console` est
+   reconstruit — s'y fier une seule fois laisserait les cadres suivants sans
+   aucune trace d'erreur. */
+const muted = new WeakSet()
+const listened = new WeakSet()
+function capture(win) {
+  if (!win) return
+  if (win.console && !muted.has(win.console)) {
+    muted.add(win.console)
+    win.console.error = (...a) => errors.push(a.map(String).join(' '))
+  }
+  if (!listened.has(win)) {
+    listened.add(win)
+    win.addEventListener('error', (e) => errors.push(String(e.message)))
+    win.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
+  }
+}
+
+function freshFrame() {
+  document.getElementById('stage')?.remove()
+  const frame = document.createElement('iframe')
+  frame.id = 'stage'
+  frame.title = 'application'
+  frame.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
+  document.body.appendChild(frame)
+  return frame
+}
+
+async function mount(hash, readySelector) {
+  localStorage.setItem(KEY_PREFS, JSON.stringify({ filter: 'todo', category: 'all', sort: 'recent', layout: 'card' }))
+  const frame = freshFrame()
+  frame.src = `/index.html?bills=${Date.now()}#${hash}`
+  let last = null
+  for (let i = 0; i < 100; i += 1) {
+    await sleep(50)
+    try {
+      last = frame.contentDocument
+      capture(frame.contentWindow)
+      if (last?.querySelector(readySelector)) return { ok: true }
+    } catch { /* iframe pas encore prêt */ }
+  }
+  return { ok: false, screen: last?.body?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 140) || 'document illisible' }
+}
+
+/** Retire l'application affichée : plus personne ne peut écrire pendant l'essai. */
+function detach() {
+  document.getElementById('stage')?.remove()
+}
+
+/**
+ * Laisse l'écran se stabiliser avant de le mesurer.
+ *
+ * La vue peut peindre ses fiches une fois la liste chargée, puis une autre
+ * quand les images ont été réinjectées depuis la base : ce banc vérifie la
+ * conservation des photos, pas l'instant d'affichage. Juger sur le premier
+ * rendu le ferait dépendre d'une course qu'il ne contrôle pas.
+ */
+async function settle() {
+  for (let i = 0; i < 20; i += 1) {
+    await sleep(50)
+    if (!/Chargement de la liste/.test(doc().body?.textContent || '')) break
+  }
+  await sleep(250)
+}
+
+/** La fiche de facture affiche-t-elle son ticket ? */
+function ticketShown() {
+  const card = doc().querySelector('[data-id="bill-1"]')
+  if (!card) return { shown: false, why: 'carte absente' }
+  const img = card.querySelector('img')
+  return { shown: Boolean(img), why: img ? 'image présente' : 'aucune image dans le visuel' }
+}
+
+/* Le Worker est le contrat entre deux appareils : il est vérifié tel quel,
+   avec un KV en mémoire. Attendre qu'un appareil perde ses factures pour
+   s'apercevoir que la clé a disparu du document n'est pas un test. */
+async function workerBench() {
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'banc-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.banc.workers.dev/banc-key'
+  const call = (method, body, rev) =>
+    worker.fetch(
+      new Request(endpoint, {
+        method,
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(rev === undefined ? {} : { 'X-Rev': String(rev) }),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      }),
+      env,
+    )
+
+  const empty = await (await call('GET')).json()
+  check('worker : un document vide porte déjà la clé bills', 'bills' in empty && empty.bills === null, `bills = ${JSON.stringify(empty.bills)}`)
+
+  await call('PUT', { products: [{ id: 'p1' }], bills: [{ id: 'b1', supplier: 'Test' }] })
+  const after = await (await call('GET')).json()
+  check('worker : les factures publiées relues reviennent intactes', after.bills?.[0]?.id === 'b1', JSON.stringify(after.bills))
+
+  const conflict = await call('PUT', { products: [{ id: 'p2' }], bills: [{ id: 'b2' }] }, 0)
+  const body = await conflict.json()
+  check('worker : le conflit renvoie les factures à fusionner', conflict.status === 409 && body.bills?.[0]?.id === 'b1', `${conflict.status} · ${JSON.stringify(body.bills)}`)
+
+  await call('PUT', { products: [], bills: [] })
+  const emptied = await (await call('GET')).json()
+  check('worker : des factures supprimées restent un tableau vide, pas null', Array.isArray(emptied.bills) && emptied.bills.length === 0, JSON.stringify(emptied.bills))
+}
+
+/* La sauvegarde est le seul endroit où les deux collections sortent du
+   navigateur : si elle perd les factures, une restauration est un demi-effort. */
+async function backupBench() {
+  const backup = await import('/js/data/backup.js')
+  const text = backup.toJSON([{ id: 'p1', name: 'Ruban de satin' }], [{ id: 'b1', supplier: 'Marché', amount: 12 }])
+  const parsed = backup.parseBackup(text)
+  check('sauvegarde : les factures sortent avec les produits', parsed.ok && parsed.bills?.[0]?.id === 'b1', `${parsed.bills?.length ?? 'aucune'} facture(s)`)
+
+  const legacy = backup.parseBackup(JSON.stringify({ products: [{ id: 'p1', name: 'Ruban de satin' }] }))
+  check('sauvegarde : un fichier sans factures reste importable', legacy.ok && legacy.bills.length === 0, legacy.message || 'ok')
+}
+
+/* Le parcours d'écran : ouvrir l'onglet, vérifier la fiche, puis les deux
+   régressions que la mécanique devait corriger. */
+async function screenBench() {
+  const opened = await mount('/factures', '[data-id="bill-1"]')
+  check('écran : l’onglet Factures s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
+
+  const seen = ticketShown()
+  check('écran : la fiche affiche fournisseur, montant et statut', opened.ok && /Marché Saint-Pierre/.test(doc().body.textContent) && /42/.test(doc().body.textContent), seen.why)
+  check('écran : le ticket est affiché au premier chargement', seen.shown, seen.why)
+
+  const cards = doc().querySelectorAll('.card').length
+  check('écran : la facture est comptée dans l’en-tête', /1\s*facture/.test(doc().querySelector('.list-head')?.textContent || ''), `${cards} carte(s)`)
+
+  const note = doc().querySelector('.list-head-note')
+  check('écran : sans lien privé, l’écran dit où restent les factures', Boolean(note), note ? note.textContent.trim().slice(0, 60) : 'aucun avertissement')
+}
+
+/* Les deux régressions : le ticket d'une facture ne doit pas disparaître à
+   chaque enregistrement d'un produit sans rapport, et un ticket retiré ne
+   doit pas revenir au rechargement. */
+async function photoBench(store, photoStore) {
+  store.addProduct({ name: 'Ruban de satin' })
+  await store.push()
+  check('photo : le ticket survit à l’enregistrement d’un produit', (await photoStore.get('bill-1', 'receipt')) === TICKET, 'champ receipt relu')
+
+  detach()
+  const again = await mount('/factures', '[data-id="bill-1"]')
+  await settle()
+  const kept = ticketShown()
+  check('photo : le ticket est encore là après rechargement', again.ok && kept.shown, kept.why)
+
+  detach()
+  store.updateBill('bill-1', { photo: '' })
+  await store.push()
+  check('photo : retirer le ticket efface vraiment l’enregistrement', (await photoStore.get('bill-1', 'receipt')) === '', 'champ receipt vide')
+
+  const cleared = await mount('/factures', '[data-id="bill-1"]')
+  await settle()
+  const gone = ticketShown()
+  check('photo : le ticket ne revient pas au rechargement', cleared.ok && !gone.shown, gone.why)
+}
+
+async function run() {
+  const report = { theme: 'light', fatal: null, results, errors, detail: {} }
+  try {
+    log('dépôt de la liste et de la facture…')
+    seed()
+
+    await workerBench()
+    await backupBench()
+
+    await screenBench()
+
+    /* Le store est importé ici, hors du cadre : même origine, donc même
+       localStorage et même IndexedDB. `detach()` a retiré l'application
+       affichée : un seul instantiateur écrit pendant les essais. */
+    log('store…')
+    const store = await import('/js/data/store.js')
+    const photoStore = await import('/js/data/photo-store.js')
+    await store.load()
+
+    await photoBench(store, photoStore)
+
+    check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
+  } catch (error) {
+    report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }
+  }
+  document.getElementById('log').textContent = `${results.filter((r) => !r.pass).length} échec(s) sur ${results.length}`
+  window.__billsDone = true
+  await fetch(REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) }).catch(() => undefined)
+}
+
+run()
+</script>
+</body>
+</html>

@@ -46,9 +46,11 @@ export function fetchRemoteList(config) {
     : github.fetchRemoteList(config)
 }
 
-export function putRemoteList(config, list, sha, settings) {
+export function putRemoteList(config, list, sha, settings, bills) {
+  /* Les factures ne voyagent que par le lien privé : `products.json` reste
+     ce qu'il est, et un dépôt GitHub ne voit jamais une facture. */
   return providerOf(config) === PROVIDER_WORKER
-    ? worker.putRemoteList(config, list, sha, settings)
+    ? worker.putRemoteList(config, list, sha, settings, bills)
     : github.putRemoteList(config, list, sha, settings)
 }
 

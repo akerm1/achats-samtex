@@ -13,6 +13,10 @@
 /* CORS ouvert (`*`) : l'application est servie depuis une autre       */
 /* origine (GitHub Pages). Qui possède le lien peut écrire — c'est le */
 /* compromis « aucun mot de passe », assumé et documenté.               */
+/*                                                                     */
+/* Le document échangé porte `products` et `bills` (factures, photo   */
+/* du ticket comprise). C'est ici, et seulement ici, que les factures   */
+/* se synchronisent : la voie GitHub reste produits seule.             */
 /* ------------------------------------------------------------------ */
 
 const CORS_HEADERS = {
@@ -46,13 +50,21 @@ async function handleGet(env) {
   const raw = await env.LIST.get(DOC_KEY, 'json')
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
-  if (!raw) return json({ version: 3, rev: 0, empty: true, updatedAt: null, settings: null, products: null })
+  if (!raw) {
+    return json({ version: 4, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null })
+  }
   return json({
     version: raw.version || 3,
     rev: raw.rev || 1,
     updatedAt: raw.updatedAt || null,
     settings: raw.settings || null,
     products: Array.isArray(raw.products) ? raw.products : [],
+    /* `null` et `[]` ne veulent pas dire la même chose : `null` signale un
+       document écrit avant l'existence des factures (« n'en ai aucune »),
+       `[]` que l'utilisateur les a toutes supprimées. Le client s'appuie
+       sur cette différence pour ne pas effacer les factures locales quand
+       ce Worker n'a pas encore été redéployé. */
+    bills: Array.isArray(raw.bills) ? raw.bills : null,
   })
 }
 
@@ -82,11 +94,15 @@ async function handlePut(request, env) {
   if (sentRev !== null && Number.isFinite(Number(sentRev)) && Number(sentRev) < currentRev) {
     return json(
       {
-        version: 3,
+        version: 4,
         rev: currentRev,
         updatedAt: current?.updatedAt || null,
         settings: current?.settings || null,
         products: Array.isArray(current?.products) ? current.products : [],
+        /* Les factures voyagent avec le conflit : sans elles, l'appareil ne
+           pourrait pas fusionner et repartirait avec une liste de factures
+           vide — la fusion doit porter sur les deux collections. */
+        bills: Array.isArray(current?.bills) ? current.bills : null,
       },
       { status: 409 },
     )
@@ -95,11 +111,14 @@ async function handlePut(request, env) {
   const rev = currentRev + 1
   const updatedAt = new Date().toISOString()
   const document = {
-    version: 3,
+    version: 4,
     rev,
     updatedAt,
     settings: payload.settings || null,
     products: payload.products,
+    /* Un tableau vide est conservé tel quel : c'est « aucune facture », pas
+       « ce document ignore les factures ». */
+    bills: Array.isArray(payload.bills) ? payload.bills : null,
   }
 
   try {

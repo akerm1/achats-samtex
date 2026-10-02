@@ -6,15 +6,16 @@
 /* chose à coller, l'adresse du Worker, qui contient la clé secrète.    */
 /*                                                                      */
 /* Le document échangé est volontairement identique à `products.json`   */
-/* (`{version, updatedAt, settings, products}`) : la migration depuis  */
-/* GitHub se fait alors par simple relecture.                           */
+/* (`{version, updatedAt, settings, products}`), plus `bills` : la      */
+/* migration depuis GitHub se fait alors par simple relecture, et les   */
+/* factures — photo du ticket comprise — voyagent avec la liste.        */
 /*                                                                      */
 /* En plus du numéro de révision, on renvoie `rev` en nombre : c'est   */
 /* ce qui permet à l'application d'ignorer une lecture plus ancienne    */
 /* que ce qu'elle a déjà publié (KV est cohérent à terme).             */
 /* ------------------------------------------------------------------ */
 
-import { mergeProducts } from './backup.js'
+import { mergeBills, mergeProducts } from './backup.js'
 
 export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.workers.dev/<clé-secrète>'
 
@@ -61,6 +62,9 @@ function parseDocument(payload) {
   const rev = Number(payload?.rev)
   return {
     list: Array.isArray(payload?.products) ? payload.products : [],
+    /* `null` = le document publié ne parle pas encore de factures. Le store
+       s'en sert pour ne rien écraser : voir `syncWithRemote`. */
+    bills: Array.isArray(payload?.bills) ? payload.bills : null,
     settings,
     sha: String(payload?.rev ?? 0),
     rev: Number.isFinite(rev) ? rev : 0,
@@ -104,49 +108,56 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, sha: '0', rev: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, sha: '0', rev: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings) {
+function buildBody(list, settings, bills) {
   return JSON.stringify({
-    version: 3,
+    version: 4,
     updatedAt: new Date().toISOString(),
     settings: settings || null,
     products: list,
+    /* `null` quand on n'en a pas : c'est le marqueur « ce document ignore
+       les factures », à ne pas confondre avec un tableau vide. */
+    bills: bills ?? null,
   })
 }
 
 /**
  * Publie la liste. En cas de conflit (révision plus récente que celle
  * que l'appareil a lue), on fusionne avec l'état distant puis on retente —
- * aucune modification n'est donc écrasée en silence.
- * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, status:string, message?:string}>}
+ * aucune modification n'est donc écrasée en silence. Les factures suivent
+ * exactement le même chemin, avec leur propre fusion.
+ * @param {Array|null} bills factures à publier, `null` pour ne rien changer
+ * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings) {
+export async function putRemoteList(config, list, sha, settings, bills) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev) =>
+  const send = (payload, rev, payloadBills) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings),
+      body: buildBody(payload, settings, payloadBills),
     })
 
   let out = list
+  let outBills = bills ?? null
+  let mergedBills = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev)
+    response = await send(out, outRev, outBills)
   } catch (error) {
     return {
       ok: false,
@@ -163,9 +174,16 @@ export async function putRemoteList(config, list, sha, settings) {
     }
     const merged = mergeProducts(out, current.products)
     out = merged.list
+    /* Le Worker ne renvoie `bills: null` que pour un document écrit avant
+       les factures : dans ce cas on garde ce qu'on avait, plutôt que de
+       repartir d'un tableau vide qui effacerait tout. */
+    if (Array.isArray(current.bills)) {
+      mergedBills = mergeBills(outBills || [], current.bills).list
+      outBills = mergedBills
+    }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev)
+      response = await send(out, outRev, outBills)
     } catch (error) {
       return {
         ok: false,
@@ -191,6 +209,7 @@ export async function putRemoteList(config, list, sha, settings) {
     rev: Number.isFinite(rev) ? rev : null,
     /* La fusion d'un conflit est proposée à l'appelant pour qu'il l'adopte. */
     list: out === list ? null : out,
+    bills: mergedBills,
     status: 'ok',
   }
 }

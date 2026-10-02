@@ -15,7 +15,9 @@ const VALID = THEMES.map((theme) => theme.value)
 let preference = VALID.includes(storage.get(KEY)) ? storage.get(KEY) : 'system'
 
 function prefersDark() {
-  return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches)
+  /* `?.()` ne protège que l'appel : sans le second `?.`, un navigateur sans
+     `matchMedia` ferait échouer la lecture de `.matches` sur `undefined`. */
+  return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)')?.matches)
 }
 
 export function resolveTheme(value = preference) {

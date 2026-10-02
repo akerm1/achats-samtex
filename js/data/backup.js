@@ -2,22 +2,28 @@
 /* Sauvegarde — export / import JSON et CSV                            */
 /* ------------------------------------------------------------------ */
 
-import { normalizeList } from './model.js'
+import { normalizeBillList, normalizeList } from './model.js'
 import { downloadText } from '../core/utils.js'
 
 export const BACKUP_VERSION = 2
 
-export function buildBackup(products) {
+/**
+ * La sauvegarde emporte les factures avec les produits : c'est le seul
+ * endroit où les deux collections sortent du navigateur. Le CSV reste
+ * produits seul — une image n'a pas sa place dans une feuille de calcul.
+ */
+export function buildBackup(products, bills) {
   return {
     app: 'mes-achats',
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     products: products || [],
+    bills: bills || [],
   }
 }
 
-export function toJSON(products) {
-  return JSON.stringify(buildBackup(products), null, 2)
+export function toJSON(products, bills) {
+  return JSON.stringify(buildBackup(products, bills), null, 2)
 }
 
 export function backupFilename(extension, prefix = 'mes-achats') {
@@ -62,24 +68,26 @@ export function toCSV(products) {
 
 /**
  * Analyse un fichier de sauvegarde JSON (accepte l'ancien format : tableau nu).
- * @returns {{ok:boolean, products:Array, message?:string}}
+ * Les fichiers sans `bills` restent valides : les produits, eux, suffisent.
+ * @returns {{ok:boolean, products:Array, bills:Array, message?:string}}
  */
 export function parseBackup(text) {
   let parsed
   try {
     parsed = JSON.parse(String(text || ''))
   } catch {
-    return { ok: false, products: [], message: 'Fichier JSON illisible.' }
+    return { ok: false, products: [], bills: [], message: 'Fichier JSON illisible.' }
   }
   const raw = Array.isArray(parsed) ? parsed : parsed?.products
   if (!Array.isArray(raw)) {
-    return { ok: false, products: [], message: 'Ce fichier ne contient pas de liste de produits.' }
+    return { ok: false, products: [], bills: [], message: 'Ce fichier ne contient pas de liste de produits.' }
   }
   const products = normalizeList(raw).filter(
     (product) => product.name || product.photo || product.colorRgb || product.note,
   )
-  if (!products.length) return { ok: false, products: [], message: 'Aucun produit valide dans ce fichier.' }
-  return { ok: true, products }
+  const bills = normalizeBillList(Array.isArray(parsed?.bills) ? parsed.bills : [])
+  if (!products.length) return { ok: false, products: [], bills: [], message: 'Aucun produit valide dans ce fichier.' }
+  return { ok: true, products, bills }
 }
 
 /**
@@ -87,24 +95,41 @@ export function parseBackup(text) {
  * existants sont mis à jour, les nouveaux sont ajoutés).
  */
 export function mergeProducts(current, incoming) {
-  const map = new Map((current || []).map((product) => [product.id, product]))
+  return mergeById(current, incoming)
+}
+
+/** Même fusion pour les factures : le conflit se joue aussi par `id`. */
+export function mergeBills(current, incoming) {
+  return mergeById(current, incoming)
+}
+
+/**
+ * Fusion par `id`, commune aux produits et aux factures.
+ *
+ * C'est la règle qui évite qu'une publication concurrente n'efface une
+ * modification : deux appareils convergent vers l'union de leurs changes,
+ * et le perdant garde le sien.
+ */
+function mergeById(current, incoming) {
+  const map = new Map((current || []).map((item) => [item.id, item]))
   let added = 0
   let updated = 0
-  for (const product of incoming || []) {
-    const existing = map.get(product.id)
+  for (const item of incoming || []) {
+    if (!item || typeof item !== 'object') continue
+    const existing = map.get(item.id)
     if (existing) {
-      map.set(product.id, { ...existing, ...product, updatedAt: new Date().toISOString() })
+      map.set(item.id, { ...existing, ...item, updatedAt: new Date().toISOString() })
       updated += 1
     } else {
-      map.set(product.id, product)
+      map.set(item.id, item)
       added += 1
     }
   }
   return { list: [...map.values()], added, updated }
 }
 
-export function exportJSON(products) {
-  downloadText(backupFilename('json'), toJSON(products), 'application/json')
+export function exportJSON(products, bills) {
+  downloadText(backupFilename('json'), toJSON(products, bills), 'application/json')
 }
 
 export function exportCSV(products) {
