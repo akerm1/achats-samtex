@@ -115,9 +115,16 @@ function toggleButton(item) {
 }
 
 function editButton(item, name) {
-  const receiptBtn = item.receipt ? `
+  let receiptBtn = ''
+  if (item.receipt) {
+    receiptBtn = `
       <button type="button" class="icon-btn" data-action="preview-receipt" data-id="${esc(item.id)}"
-              aria-label="Voir le ticket/facture de ${esc(name)}" title="Voir le ticket/facture">${icon('imagePlus', 15)}</button>` : ''
+              aria-label="Voir le ticket/facture de ${esc(name)}" title="Voir le ticket/facture">${icon('imagePlus', 15)}</button>`
+  } else if (item.isBought) {
+    receiptBtn = `
+      <button type="button" class="icon-btn" data-action="add-receipt" data-id="${esc(item.id)}"
+              aria-label="Ajouter un ticket/facture pour ${esc(name)}" title="Ajouter un ticket/facture">${icon('camera', 15)}</button>`
+  }
   return `
       ${receiptBtn}
       <button type="button" class="icon-btn" data-action="edit" data-id="${esc(item.id)}"

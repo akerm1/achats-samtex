@@ -176,6 +176,10 @@ const ACTIONS = {
     const product = productById(node.dataset.id)
     if (product?.receipt) openReceiptPreview(product)
   },
+  'add-receipt': (node) => {
+    const product = productById(node.dataset.id)
+    if (product) openProductForm(product)
+  },
   toggle: (node) => {
     toggleBought(node.dataset.id)
   },
