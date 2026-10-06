@@ -564,7 +564,7 @@ les cartes, même sans valeur RGB enregistrée (voir `js/data/colors.js`).
 index.html                  coquille de l'application (barre, navigation, conteneurs)
 manifest.webmanifest        manifeste PWA (Ajouter, Liste)
 version.json                version publiée de l'application (repère des mises à jour)
-sync-defaults.json          valeurs par défaut pour le bouton « Configurer automatiquement »
+sync-defaults.json          dépôt public lu en lecture seule au premier lancement (sans configuration)
 sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
 worker/
   share-list-worker.mjs     code du Cloudflare Worker du lien privé (à coller dans le dashboard)
@@ -631,45 +631,41 @@ la photo, couleur de fond de l'aplat) au lieu d'une image. C'est ce mode qui a
 révélé que la couleur disparaissait et que la photo n'occupait que 60 % de la
 case : la 8.1 passait les vérifications automate *et* ces deux défauts.
 
-## Synchronisation : GitHub ou lien privé
+## Synchronisation : le lien privé
 
-La liste **et les réglages partagés** (thème, tri, filtres) sont stockés dans `products.json`
-à la racine d'un dépôt GitHub. Les appareils qui ouvrent la même page relisent ce fichier
-**à chaque rafraîchissement de la page** (ou d'un clic sur la pastille) — il n'y a plus de
-synchronisation automatique en arrière-plan. Le réglage le plus récent gagne côté préférences.
+La liste, les factures, l'analyse **et les réglages partagés** (thème, tri, filtres) sont
+enregistrés dans votre **lien privé** (Cloudflare Worker). Les appareils qui ouvrent la même
+page relisent ce lien **à chaque rafraîchissement de la page** (ou d'un clic sur le bouton
+« Synchroniser ») — il n'y a pas de synchronisation automatique en arrière-plan. Le réglage
+le plus récent gagne côté préférences.
 
-> Restent **locaux** (jamais envoyés sur GitHub) : le jeton d'accès et le drapeau d'installation PWA.
+> Restent **locaux** (jamais envoyés) : le drapeau d'installation PWA et, pour les anciennes
+> installations, le jeton GitHub éventuellement resté en mémoire.
 
 ### Configuration (une fois par appareil)
 
-1. Créer un dépôt GitHub (ou réutiliser celui qui héberge l'application)
-2. Créer un **Personal Access Token fine-grained** :
-   GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
-   · Repository access : votre dépôt · Permissions → Contents → **Read and write**
-3. Dans l'application : **Réglages → Partage entre appareils**
-4. Renseigner le jeton, le propriétaire, le dépôt, la branche (`main`)
-5. **Tester la connexion** puis **Enregistrer**
+1. Déployer le Worker et récupérer son lien (`worker/setup.ps1`, voir aussi la section
+   [Version 7.3](#version-73--le--lien-privé--fini-les-jetons-github))
+2. Dans l'application : **Réglages → Partage entre appareils**
+3. Coller la ligne entière du fichier `worker\LIEN-PRIVE.txt`
+4. **Tester la connexion** puis **Enregistrer**
+5. Si une liste publiée existe déjà sur GitHub : **Importer depuis GitHub** la reprend en un clic
 
-La configuration reste dans le navigateur (localStorage) : elle n'est envoyée qu'à GitHub.
+Lecture **et** écriture, sans jeton ni expiration : le lien lui-même est le secret — ne le
+publiez pas et ne le collez pas dans un chat.
+
 La **pastille** de la barre du haut indique l'état (À jour / Local seul / Hors ligne / Erreur) et
 la dernière synchronisation ; un clic déclenche une synchronisation manuelle.
 
 Règle de résolution de conflit : **les modifications locales non encore envoyées gagnent**,
 sinon la version distante remplace la liste locale.
 
-### Ou le lien privé (sans jeton) — recommandé
+### Arrière-plan : lecture seule du dépôt public
 
-Si les jetons GitHub vous fatiguent (expiration, permissions, « jeton refusé »), l'onglet
-**Lien privé (sans jeton)** de la même section **Réglages → Partage entre appareils** utilise
-un Cloudflare Worker à la place de GitHub.
-
-- Mise en service détaillée : section [Version 7.3](#version-73--le--lien-privé--fini-les-jetons-github).
-- Dans l'application : onglet **Lien privé (sans jeton)** → coller le lien → **Tester la
-  connexion** → **Enregistrer** → **Importer depuis GitHub** pour reprendre la liste existante.
-- Lecture **et** écriture, sans jeton ni expiration. Le lien lui-même est le secret.
-
-Les deux méthodes restent disponibles : basculer d'un onglet à l'autre ne perd rien, et le
-passage de l'une à l'autre se fait en un clic grâce à l'import.
+Un appareil neuf, tant qu'aucun lien privé n'est collé, lit silencieusement le dépôt public
+(`sync-defaults.json` indique propriétaire/dépôt/branche) pour afficher la liste publiée —
+sans configuration ni clic. Ce dépôt ne reçoit plus que la publication des produits ; les
+factures et l'analyse ne voyagent que par le lien privé.
 
 ## Installer sur le téléphone
 

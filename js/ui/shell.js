@@ -253,16 +253,16 @@ export function renderBanners() {
   const { isConfigured, status, message, messageKind, unpublished } = getState()
   const html = []
 
-  /* Des modifications existent sur cet appareil mais GitHub ne peut pas les
-     recevoir : sans cet avertissement, l'application installée et le site
-     afficheraient deux listes différentes sans explication. */
+  /* Des modifications existent sur cet appareil mais la source connectée ne
+     peut pas les recevoir : sans cet avertissement, l'application installée
+     et le site afficheraient deux listes différentes sans explication. */
   if (unpublished) {
     html.push(`
       <aside class="banner banner--warn">
         <span class="banner-mark">${icon('upload', 15)}</span>
         <div class="banner-text">
           <strong>Modifications non publiées</strong>
-          <span>Elles sont sur cet appareil uniquement : ajoutez un jeton GitHub valide dans les Réglages pour les partager.</span>
+          <span>Elles sont sur cet appareil uniquement : collez votre lien privé dans les Réglages pour les partager.</span>
         </div>
         <a class="btn btn--ghost btn--sm" href="#/reglages">Réglages</a>
       </aside>`)
