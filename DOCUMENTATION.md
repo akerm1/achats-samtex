@@ -189,9 +189,9 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
   carte/mosaïque/ligne, tuiles de réglages, formulaire produit, roue de couleur, responsive ;
   vue **Analyse** (mobile d'abord) : onglets collants sous la barre de statut, sélecteur
   d'exercice et de mois, fiche mensuelle (jour courant accentué, week-end teinté, pied
-   total/total÷n/écart/moyenne collant au bord bas), feuille de comparaison, grille de
-   cartes-sommaire (une carte = une section, les deux autres onglets compris, un appui
-   y conduit) et panneaux de l'onglet Générale.
+   total/total÷n/écart/moyenne collant au bord bas), feuille de comparaison, sommaire en
+   sept cartes de section (un appui y conduit ; un appui d'onglet remonte en haut) et
+   panneaux de l'onglet Générale.
 
 ---
 

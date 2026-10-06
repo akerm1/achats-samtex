@@ -399,11 +399,18 @@ async function e2eBench() {
   const monthValue = () => doc().querySelector('[data-role="ana-month-select"]')?.value
   const fyLabel = () => doc().querySelector('.ana-fy-label')?.textContent
 
-  /* Carte-sommaire → autres onglets. */
-  act('[data-action="analysis-goto"][data-tab="recettes"]')
+  /* Le sommaire ne porte que les sections Générale (7 cartes). */
+  d = doc()
+  const sommaire = [...d.querySelectorAll('.ana-section-card')]
+  check('boutons : le sommaire ne porte que les sections Générale',
+    sommaire.length === 7 && sommaire.every((card) => !card.hasAttribute('data-tab')),
+    `${sommaire.length} carte(s)`)
+
+  /* Onglet Recettes ouvre la fiche mensuelle. */
+  act('[data-action="analysis-tab"][data-value="recettes"]')
   await sleep(150)
   d = doc()
-  check('boutons : la carte « Fiche du mois » ouvre Recettes',
+  check('boutons : l’onglet Recettes ouvre la fiche',
     Boolean(d.querySelector('[data-role="ana-month-select"]')),
     d.querySelector('[data-role="ana-month-select"]') ? 'sélecteur de mois présent' : 'pas de sélecteur')
 
@@ -478,6 +485,15 @@ async function e2eBench() {
   await addDelRoundtrip('purchase', 'achat')
   await addDelRoundtrip('place', 'détail')
   await addDelRoundtrip('holding', 'possession')
+
+  /* Retour en haut : cliquer l'onglet Générale remonte la page. */
+  win().scrollTo(0, 900)
+  await sleep(80)
+  const scrolled = win().scrollY
+  act('[data-action="analysis-tab"][data-value="generale"]')
+  await sleep(700)
+  check('boutons : cliquer Générale remonte en haut',
+    scrolled > 100 && win().scrollY < 40, `scrollY ${scrolled} → ${win().scrollY}`)
 }
 
 /* ------------------------------------------------------------------ */

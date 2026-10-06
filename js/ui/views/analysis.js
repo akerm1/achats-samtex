@@ -474,14 +474,11 @@ function generaleSettings() {
     </details>`
 }
 
-/* Sommaire : chaque section devient une carte, un appui y conduit —
-   les deux autres onglets y figurent aussi, pour tout joindre d'un seul
-   endroit. */
+/* Sommaire de l'onglet Générale : chaque section devient une carte, un
+   appui y conduit — sept cartes, une par section du feuillet. */
 function generaleSections(s) {
   const state = store.getAnalysis()
   const cards = [
-    { tab: 'recettes', icon: 'calendar', label: 'Fiche du mois', hint: monthTitle(monthKey) },
-    { tab: 'comparaison', icon: 'sort', label: 'Comparaison', hint: 'les deux années côte à côte' },
     { target: 'ana-sec-synthese', icon: 'sparkles', label: 'Synthèse', hint: 'les 12 cartes du classeur' },
     { target: 'ana-sec-recettes', icon: 'euro', label: 'Recettes', hint: formatDA(s.totalRecettes) },
     { target: 'ana-sec-invest', icon: 'chart', label: 'Investissements', hint: formatDA(s.totalInvestissements) },
@@ -495,9 +492,7 @@ function generaleSections(s) {
       ${cards
         .map(
           (card) => `
-        <button type="button" class="ana-section-card" data-action="analysis-goto"
-                ${card.target ? `data-target="${card.target}"` : ''}
-                ${card.tab ? `data-tab="${card.tab}"` : ''}>
+        <button type="button" class="ana-section-card" data-action="analysis-goto" data-target="${card.target}">
           <span class="ana-section-icon">${icon(card.icon, 18)}</span>
           <span class="ana-section-copy">
             <strong>${esc(card.label)}</strong>
@@ -696,6 +691,9 @@ export const analysisView = {
   setTab(value) {
     tab = TABS.some((item) => item.value === value) ? value : 'recettes'
     refresh()
+    /* Un appui d'onglet remonte en haut : le feuillet est long, et
+       re-cliquer l'onglet courant sert de « retour en haut ». */
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   },
   shiftFy(delta) {
     fyStart = ana.shiftFiscalYear(currentFy(), delta).startYear
