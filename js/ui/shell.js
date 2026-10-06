@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
   { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
   { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' },
+  { route: 'analyse', label: 'Analyse', short: 'Analyse', icon: 'analysis' },
 ]
 
 const shell = {

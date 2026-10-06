@@ -15,7 +15,7 @@
 /* que ce qu'elle a déjà publié (KV est cohérent à terme).             */
 /* ------------------------------------------------------------------ */
 
-import { mergeBills, mergeProducts } from './backup.js'
+import { mergeAnalysis, mergeBills, mergeProducts } from './backup.js'
 
 export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.workers.dev/<clé-secrète>'
 
@@ -65,6 +65,12 @@ function parseDocument(payload) {
     /* `null` = le document publié ne parle pas encore de factures. Le store
        s'en sert pour ne rien écraser : voir `syncWithRemote`. */
     bills: Array.isArray(payload?.bills) ? payload.bills : null,
+    /* `null` = document écrit avant l'analyse (Worker v4) : même contrat,
+       l'analyse locale n'est jamais écrasée par ce silence. */
+    analysis:
+      payload?.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)
+        ? payload.analysis
+        : null,
     settings,
     sha: String(payload?.rev ?? 0),
     rev: Number.isFinite(rev) ? rev : 0,
@@ -108,56 +114,61 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, bills: null, sha: '0', rev: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, analysis: null, sha: '0', rev: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings, bills) {
+function buildBody(list, settings, bills, analysis) {
   return JSON.stringify({
-    version: 4,
+    version: 5,
     updatedAt: new Date().toISOString(),
     settings: settings || null,
     products: list,
     /* `null` quand on n'en a pas : c'est le marqueur « ce document ignore
-       les factures », à ne pas confondre avec un tableau vide. */
+       les factures » (ou l'analyse), à ne pas confondre avec un vide. */
     bills: bills ?? null,
+    analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null,
   })
 }
 
 /**
  * Publie la liste. En cas de conflit (révision plus récente que celle
  * que l'appareil a lue), on fusionne avec l'état distant puis on retente —
- * aucune modification n'est donc écrasée en silence. Les factures suivent
- * exactement le même chemin, avec leur propre fusion.
+ * aucune modification n'est donc écrasée en silence. Factures et analyse
+ * suivent exactement le même chemin, chacune avec leur propre fusion par
+ * `id` (l'état distant gagne).
  * @param {Array|null} bills factures à publier, `null` pour ne rien changer
- * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, status:string, message?:string}>}
+ * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
+ * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills) {
+export async function putRemoteList(config, list, sha, settings, bills, analysis) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev, payloadBills) =>
+  const send = (payload, rev, payloadBills, payloadAnalysis) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings, payloadBills),
+      body: buildBody(payload, settings, payloadBills, payloadAnalysis),
     })
 
   let out = list
   let outBills = bills ?? null
+  let outAnalysis = analysis ?? null
   let mergedBills = null
+  let mergedAnalysis = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev, outBills)
+    response = await send(out, outRev, outBills, outAnalysis)
   } catch (error) {
     return {
       ok: false,
@@ -181,9 +192,15 @@ export async function putRemoteList(config, list, sha, settings, bills) {
       mergedBills = mergeBills(outBills || [], current.bills).list
       outBills = mergedBills
     }
+    /* Même contrat pour l'analyse (objet = fusionnée, `null` = document
+       encore v4) : fusion par `id` des cinq collections, distant gagne. */
+    if (current.analysis && typeof current.analysis === 'object' && !Array.isArray(current.analysis)) {
+      mergedAnalysis = mergeAnalysis(outAnalysis || {}, current.analysis).analysis
+      outAnalysis = mergedAnalysis
+    }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev, outBills)
+      response = await send(out, outRev, outBills, outAnalysis)
     } catch (error) {
       return {
         ok: false,
@@ -210,6 +227,7 @@ export async function putRemoteList(config, list, sha, settings, bills) {
     /* La fusion d'un conflit est proposée à l'appelant pour qu'il l'adopte. */
     list: out === list ? null : out,
     bills: mergedBills,
+    analysis: mergedAnalysis,
     status: 'ok',
   }
 }

@@ -1,0 +1,2725 @@
+{
+ "sales": [
+  {
+   "date": "2025-04-01",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2025-04-05",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2025-04-06",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-04-07",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2025-04-08",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-04-09",
+   "kind": "amount",
+   "amount": 20500
+  },
+  {
+   "date": "2025-04-10",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2025-04-12",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-04-13",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-04-14",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2025-04-15",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-04-16",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2025-04-17",
+   "kind": "amount",
+   "amount": 72000
+  },
+  {
+   "date": "2025-04-19",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2025-04-20",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2025-04-21",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2025-04-22",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2025-04-23",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2025-04-24",
+   "kind": "amount",
+   "amount": 30500
+  },
+  {
+   "date": "2025-04-26",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-04-27",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-04-28",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-04-29",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2025-04-30",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-05-01",
+   "kind": "amount",
+   "amount": 25500
+  },
+  {
+   "date": "2025-05-03",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-05-04",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-05-05",
+   "kind": "amount",
+   "amount": 51000
+  },
+  {
+   "date": "2025-05-06",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-05-07",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-05-08",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-05-10",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-05-11",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-05-12",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-05-13",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2025-05-14",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-05-15",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-05-17",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2025-05-18",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2025-05-19",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-05-20",
+   "kind": "amount",
+   "amount": 24000
+  },
+  {
+   "date": "2025-05-21",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-05-22",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-05-24",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-05-25",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2025-05-26",
+   "kind": "amount",
+   "amount": 82000
+  },
+  {
+   "date": "2025-05-27",
+   "kind": "amount",
+   "amount": 49000
+  },
+  {
+   "date": "2025-05-28",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2025-05-29",
+   "kind": "amount",
+   "amount": 80000
+  },
+  {
+   "date": "2025-05-31",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-06-01",
+   "kind": "amount",
+   "amount": 56000
+  },
+  {
+   "date": "2025-06-02",
+   "kind": "amount",
+   "amount": 72000
+  },
+  {
+   "date": "2025-06-03",
+   "kind": "amount",
+   "amount": 55000
+  },
+  {
+   "date": "2025-06-04",
+   "kind": "amount",
+   "amount": 49000
+  },
+  {
+   "date": "2025-06-05",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-06-08",
+   "kind": "amount",
+   "amount": 4000
+  },
+  {
+   "date": "2025-06-09",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-06-10",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-06-11",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-06-12",
+   "kind": "amount",
+   "amount": 80000
+  },
+  {
+   "date": "2025-06-14",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2025-06-15",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-06-16",
+   "kind": "amount",
+   "amount": 105000
+  },
+  {
+   "date": "2025-06-17",
+   "kind": "amount",
+   "amount": 60000
+  },
+  {
+   "date": "2025-06-18",
+   "kind": "amount",
+   "amount": 56000
+  },
+  {
+   "date": "2025-06-19",
+   "kind": "amount",
+   "amount": 66000
+  },
+  {
+   "date": "2025-06-21",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-06-22",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-06-23",
+   "kind": "amount",
+   "amount": 41000
+  },
+  {
+   "date": "2025-06-24",
+   "kind": "amount",
+   "amount": 55000
+  },
+  {
+   "date": "2025-06-25",
+   "kind": "amount",
+   "amount": 39000
+  },
+  {
+   "date": "2025-06-26",
+   "kind": "amount",
+   "amount": 59500
+  },
+  {
+   "date": "2025-06-28",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2025-06-29",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-06-30",
+   "kind": "amount",
+   "amount": 49000
+  },
+  {
+   "date": "2025-07-01",
+   "kind": "amount",
+   "amount": 70000
+  },
+  {
+   "date": "2025-07-02",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-07-03",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-07-05",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2025-07-06",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-07-07",
+   "kind": "amount",
+   "amount": 57000
+  },
+  {
+   "date": "2025-07-08",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2025-07-09",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-07-10",
+   "kind": "amount",
+   "amount": 67000
+  },
+  {
+   "date": "2025-07-12",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-07-13",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2025-07-14",
+   "kind": "amount",
+   "amount": 58000
+  },
+  {
+   "date": "2025-07-15",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2025-07-16",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-07-17",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-07-19",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2025-07-20",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2025-07-21",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2025-07-22",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-07-23",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-07-24",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-07-26",
+   "kind": "amount",
+   "amount": 22500
+  },
+  {
+   "date": "2025-07-27",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-07-28",
+   "kind": "amount",
+   "amount": 57000
+  },
+  {
+   "date": "2025-07-29",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-07-30",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2025-07-31",
+   "kind": "amount",
+   "amount": 68000
+  },
+  {
+   "date": "2025-08-02",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2025-08-03",
+   "kind": "amount",
+   "amount": 41000
+  },
+  {
+   "date": "2025-08-04",
+   "kind": "amount",
+   "amount": 67000
+  },
+  {
+   "date": "2025-08-05",
+   "kind": "amount",
+   "amount": 73000
+  },
+  {
+   "date": "2025-08-06",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2025-08-07",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2025-08-09",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-08-10",
+   "kind": "amount",
+   "amount": 36000
+  },
+  {
+   "date": "2025-08-11",
+   "kind": "amount",
+   "amount": 80000
+  },
+  {
+   "date": "2025-08-12",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-08-13",
+   "kind": "amount",
+   "amount": 39000
+  },
+  {
+   "date": "2025-08-14",
+   "kind": "amount",
+   "amount": 60000
+  },
+  {
+   "date": "2025-08-16",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-08-17",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2025-08-18",
+   "kind": "amount",
+   "amount": 55000
+  },
+  {
+   "date": "2025-08-19",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-08-20",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-08-21",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-08-23",
+   "kind": "amount",
+   "amount": 24000
+  },
+  {
+   "date": "2025-08-24",
+   "kind": "amount",
+   "amount": 43000
+  },
+  {
+   "date": "2025-08-25",
+   "kind": "amount",
+   "amount": 43000
+  },
+  {
+   "date": "2025-08-26",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2025-08-27",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-08-28",
+   "kind": "amount",
+   "amount": 56000
+  },
+  {
+   "date": "2025-08-30",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2025-08-31",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-09-01",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2025-09-02",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-09-03",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2025-09-04",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-09-06",
+   "kind": "amount",
+   "amount": 21000
+  },
+  {
+   "date": "2025-09-07",
+   "kind": "amount",
+   "amount": 7000
+  },
+  {
+   "date": "2025-09-08",
+   "kind": "amount",
+   "amount": 41000
+  },
+  {
+   "date": "2025-09-09",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2025-09-10",
+   "kind": "amount",
+   "amount": 41000
+  },
+  {
+   "date": "2025-09-11",
+   "kind": "amount",
+   "amount": 34500
+  },
+  {
+   "date": "2025-09-13",
+   "kind": "amount",
+   "amount": 24000
+  },
+  {
+   "date": "2025-09-14",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-09-15",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-09-16",
+   "kind": "amount",
+   "amount": 23500
+  },
+  {
+   "date": "2025-09-17",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2025-09-18",
+   "kind": "amount",
+   "amount": 27000
+  },
+  {
+   "date": "2025-09-20",
+   "kind": "amount",
+   "amount": 24500
+  },
+  {
+   "date": "2025-09-21",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2025-09-22",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2025-09-23",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-09-24",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-09-25",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2025-09-27",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-09-28",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2025-09-29",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2025-09-30",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-10-01",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2025-10-02",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2025-10-04",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-10-05",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2025-10-06",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2025-10-07",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2025-10-08",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2025-10-09",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-10-11",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-10-12",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-10-13",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2025-10-14",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-10-15",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2025-10-16",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2025-10-18",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2025-10-19",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-10-20",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2025-10-21",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2025-10-22",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2025-10-23",
+   "kind": "amount",
+   "amount": 39000
+  },
+  {
+   "date": "2025-10-25",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2025-10-26",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2025-10-27",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2025-10-28",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2025-10-29",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2025-10-30",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2025-11-01",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2025-11-02",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2025-11-03",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-11-04",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-11-05",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-11-06",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2025-11-08",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2025-11-09",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2025-11-10",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2025-11-11",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-11-12",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2025-11-13",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-11-15",
+   "kind": "amount",
+   "amount": 11000
+  },
+  {
+   "date": "2025-11-16",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2025-11-17",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2025-11-18",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-11-19",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2025-11-20",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2025-11-22",
+   "kind": "closed",
+   "amount": null
+  },
+  {
+   "date": "2025-11-23",
+   "kind": "closed",
+   "amount": null
+  },
+  {
+   "date": "2025-11-24",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2025-11-25",
+   "kind": "amount",
+   "amount": 11000
+  },
+  {
+   "date": "2025-11-26",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-11-27",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-11-29",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-11-30",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2025-12-01",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2025-12-02",
+   "kind": "amount",
+   "amount": 7000
+  },
+  {
+   "date": "2025-12-03",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-12-04",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-12-06",
+   "kind": "amount",
+   "amount": 6000
+  },
+  {
+   "date": "2025-12-07",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2025-12-08",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-12-09",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2025-12-10",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-12-11",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2025-12-13",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2025-12-14",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-12-15",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2025-12-16",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-12-17",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2025-12-18",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-12-20",
+   "kind": "amount",
+   "amount": 7000
+  },
+  {
+   "date": "2025-12-21",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2025-12-22",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2025-12-23",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2025-12-24",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2025-12-25",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-12-27",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2025-12-28",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2025-12-29",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2025-12-30",
+   "kind": "amount",
+   "amount": 21000
+  },
+  {
+   "date": "2025-12-31",
+   "kind": "amount",
+   "amount": 21000
+  },
+  {
+   "date": "2026-01-01",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-01-03",
+   "kind": "amount",
+   "amount": 6000
+  },
+  {
+   "date": "2026-01-04",
+   "kind": "amount",
+   "amount": 6000
+  },
+  {
+   "date": "2026-01-05",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-01-06",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-01-07",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2026-01-08",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-01-10",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2026-01-11",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2026-01-12",
+   "kind": "amount",
+   "amount": 4000
+  },
+  {
+   "date": "2026-01-13",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-01-14",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-01-15",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-01-17",
+   "kind": "amount",
+   "amount": 13000
+  },
+  {
+   "date": "2026-01-18",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-01-19",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-01-20",
+   "kind": "amount",
+   "amount": 6000
+  },
+  {
+   "date": "2026-01-21",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-01-22",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-01-24",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2026-01-25",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-01-26",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2026-01-27",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-01-28",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2026-01-29",
+   "kind": "amount",
+   "amount": 11000
+  },
+  {
+   "date": "2026-01-31",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2026-02-01",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2026-02-02",
+   "kind": "amount",
+   "amount": 24000
+  },
+  {
+   "date": "2026-02-03",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2026-02-04",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2026-02-05",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2026-02-07",
+   "kind": "amount",
+   "amount": 3000
+  },
+  {
+   "date": "2026-02-08",
+   "kind": "amount",
+   "amount": 9000
+  },
+  {
+   "date": "2026-02-09",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-02-10",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-02-11",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-02-12",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-02-14",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-02-15",
+   "kind": "amount",
+   "amount": 11000
+  },
+  {
+   "date": "2026-02-16",
+   "kind": "amount",
+   "amount": 44000
+  },
+  {
+   "date": "2026-02-17",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-02-18",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2026-02-19",
+   "kind": "amount",
+   "amount": 7000
+  },
+  {
+   "date": "2026-02-21",
+   "kind": "amount",
+   "amount": 7000
+  },
+  {
+   "date": "2026-02-22",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2026-02-23",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-02-24",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-02-25",
+   "kind": "amount",
+   "amount": 10000
+  },
+  {
+   "date": "2026-02-26",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2026-02-28",
+   "kind": "amount",
+   "amount": 5000
+  },
+  {
+   "date": "2026-03-01",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-03-02",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2026-03-03",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-03-04",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-03-05",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-03-07",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2026-03-08",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2026-03-09",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2026-03-10",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-03-11",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2026-03-12",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-03-14",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2026-03-15",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-03-16",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-03-17",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-03-18",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-03-19",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-03-21",
+   "kind": "aid",
+   "amount": null
+  },
+  {
+   "date": "2026-03-22",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-03-23",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-03-24",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-03-25",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-03-26",
+   "kind": "amount",
+   "amount": 39000
+  },
+  {
+   "date": "2026-03-28",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-03-29",
+   "kind": "amount",
+   "amount": 8000
+  },
+  {
+   "date": "2026-03-30",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-03-31",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-04-01",
+   "kind": "amount",
+   "amount": 11000
+  },
+  {
+   "date": "2026-04-02",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-04",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-04-05",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-06",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-04-07",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2026-04-08",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-04-09",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2026-04-11",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-12",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-13",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-04-14",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-04-15",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-04-16",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-04-18",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-19",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-20",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-04-21",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-04-22",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-04-23",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-04-25",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-26",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-04-27",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-04-28",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-04-29",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-04-30",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-05-02",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-05-03",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2026-05-04",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-05-05",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-05-06",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-05-07",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2026-05-09",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-05-10",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-05-11",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-05-12",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-05-13",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-05-14",
+   "kind": "amount",
+   "amount": 70000
+  },
+  {
+   "date": "2026-05-16",
+   "kind": "amount",
+   "amount": 21000
+  },
+  {
+   "date": "2026-05-17",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2026-05-18",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2026-05-19",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-05-20",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-05-21",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2026-05-23",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2026-05-24",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-05-25",
+   "kind": "amount",
+   "amount": 46000
+  },
+  {
+   "date": "2026-05-26",
+   "kind": "amount",
+   "amount": 12000
+  },
+  {
+   "date": "2026-05-27",
+   "kind": "aid",
+   "amount": null
+  },
+  {
+   "date": "2026-05-28",
+   "kind": "aid",
+   "amount": null
+  },
+  {
+   "date": "2026-05-30",
+   "kind": "amount",
+   "amount": 4000
+  },
+  {
+   "date": "2026-05-31",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-06-01",
+   "kind": "amount",
+   "amount": 39000
+  },
+  {
+   "date": "2026-06-02",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-06-03",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-06-04",
+   "kind": "amount",
+   "amount": 60000
+  },
+  {
+   "date": "2026-06-06",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-06-07",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-06-08",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2026-06-09",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2026-06-10",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2026-06-11",
+   "kind": "amount",
+   "amount": 46000
+  },
+  {
+   "date": "2026-06-13",
+   "kind": "amount",
+   "amount": 49000
+  },
+  {
+   "date": "2026-06-14",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-06-15",
+   "kind": "amount",
+   "amount": 76000
+  },
+  {
+   "date": "2026-06-16",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2026-06-17",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-06-18",
+   "kind": "amount",
+   "amount": 60000
+  },
+  {
+   "date": "2026-06-20",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-06-21",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-06-22",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2026-06-23",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2026-06-24",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2026-06-25",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-06-27",
+   "kind": "amount",
+   "amount": 28000
+  },
+  {
+   "date": "2026-06-28",
+   "kind": "amount",
+   "amount": 37000
+  },
+  {
+   "date": "2026-06-29",
+   "kind": "amount",
+   "amount": 70000
+  },
+  {
+   "date": "2026-06-30",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-07-01",
+   "kind": "amount",
+   "amount": 43000
+  },
+  {
+   "date": "2026-07-02",
+   "kind": "amount",
+   "amount": 26000
+  },
+  {
+   "date": "2026-07-04",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-07-05",
+   "kind": "amount",
+   "amount": 29000
+  },
+  {
+   "date": "2026-07-06",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2026-07-07",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-07-08",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-07-09",
+   "kind": "amount",
+   "amount": 58000
+  },
+  {
+   "date": "2026-07-11",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2026-07-12",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-07-13",
+   "kind": "amount",
+   "amount": 36000
+  },
+  {
+   "date": "2026-07-14",
+   "kind": "amount",
+   "amount": 55000
+  },
+  {
+   "date": "2026-07-15",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-07-16",
+   "kind": "amount",
+   "amount": 51000
+  },
+  {
+   "date": "2026-07-18",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2026-07-19",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-07-20",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-07-21",
+   "kind": "amount",
+   "amount": 24000
+  },
+  {
+   "date": "2026-07-22",
+   "kind": "amount",
+   "amount": 42000
+  },
+  {
+   "date": "2026-07-23",
+   "kind": "amount",
+   "amount": 59000
+  },
+  {
+   "date": "2026-07-25",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-07-26",
+   "kind": "amount",
+   "amount": 74000
+  },
+  {
+   "date": "2026-07-27",
+   "kind": "amount",
+   "amount": 104000
+  },
+  {
+   "date": "2026-07-28",
+   "kind": "amount",
+   "amount": 46000
+  },
+  {
+   "date": "2026-07-29",
+   "kind": "amount",
+   "amount": 36000
+  },
+  {
+   "date": "2026-07-30",
+   "kind": "amount",
+   "amount": 50000
+  },
+  {
+   "date": "2026-08-01",
+   "kind": "amount",
+   "amount": 44000
+  },
+  {
+   "date": "2026-08-02",
+   "kind": "amount",
+   "amount": 36000
+  },
+  {
+   "date": "2026-08-03",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2026-08-04",
+   "kind": "amount",
+   "amount": 58000
+  },
+  {
+   "date": "2026-08-05",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-08-06",
+   "kind": "amount",
+   "amount": 56000
+  },
+  {
+   "date": "2026-08-08",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-08-09",
+   "kind": "amount",
+   "amount": 46000
+  },
+  {
+   "date": "2026-08-10",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-08-11",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-08-12",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-08-13",
+   "kind": "amount",
+   "amount": 49000
+  },
+  {
+   "date": "2026-08-15",
+   "kind": "amount",
+   "amount": 54000
+  },
+  {
+   "date": "2026-08-16",
+   "kind": "amount",
+   "amount": 60000
+  },
+  {
+   "date": "2026-08-17",
+   "kind": "amount",
+   "amount": 48000
+  },
+  {
+   "date": "2026-08-18",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-08-19",
+   "kind": "amount",
+   "amount": 59000
+  },
+  {
+   "date": "2026-08-20",
+   "kind": "amount",
+   "amount": 67000
+  },
+  {
+   "date": "2026-08-22",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-08-23",
+   "kind": "amount",
+   "amount": 23000
+  },
+  {
+   "date": "2026-08-24",
+   "kind": "amount",
+   "amount": 55000
+  },
+  {
+   "date": "2026-08-25",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-08-26",
+   "kind": "amount",
+   "amount": 19000
+  },
+  {
+   "date": "2026-08-27",
+   "kind": "amount",
+   "amount": 47000
+  },
+  {
+   "date": "2026-08-29",
+   "kind": "amount",
+   "amount": 25000
+  },
+  {
+   "date": "2026-08-30",
+   "kind": "amount",
+   "amount": 18000
+  },
+  {
+   "date": "2026-08-31",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-09-01",
+   "kind": "amount",
+   "amount": 17000
+  },
+  {
+   "date": "2026-09-02",
+   "kind": "amount",
+   "amount": 22000
+  },
+  {
+   "date": "2026-09-03",
+   "kind": "amount",
+   "amount": 45000
+  },
+  {
+   "date": "2026-09-05",
+   "kind": "amount",
+   "amount": 38000
+  },
+  {
+   "date": "2026-09-06",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-09-07",
+   "kind": "amount",
+   "amount": 44000
+  },
+  {
+   "date": "2026-09-08",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-09-09",
+   "kind": "amount",
+   "amount": 16000
+  },
+  {
+   "date": "2026-09-10",
+   "kind": "amount",
+   "amount": 57000
+  },
+  {
+   "date": "2026-09-12",
+   "kind": "amount",
+   "amount": 14000
+  },
+  {
+   "date": "2026-09-13",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-09-14",
+   "kind": "amount",
+   "amount": 57000
+  },
+  {
+   "date": "2026-09-15",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-09-16",
+   "kind": "amount",
+   "amount": 34000
+  },
+  {
+   "date": "2026-09-17",
+   "kind": "amount",
+   "amount": 33000
+  },
+  {
+   "date": "2026-09-19",
+   "kind": "amount",
+   "amount": 30000
+  },
+  {
+   "date": "2026-09-20",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-09-21",
+   "kind": "amount",
+   "amount": 46000
+  },
+  {
+   "date": "2026-09-22",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-09-23",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-09-24",
+   "kind": "amount",
+   "amount": 35000
+  },
+  {
+   "date": "2026-09-26",
+   "kind": "amount",
+   "amount": 20000
+  },
+  {
+   "date": "2026-09-27",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2026-09-28",
+   "kind": "amount",
+   "amount": 31000
+  },
+  {
+   "date": "2026-09-29",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-09-30",
+   "kind": "amount",
+   "amount": 15000
+  },
+  {
+   "date": "2026-10-01",
+   "kind": "amount",
+   "amount": 40000
+  },
+  {
+   "date": "2026-10-03",
+   "kind": "amount",
+   "amount": 32000
+  },
+  {
+   "date": "2026-10-04",
+   "kind": "amount",
+   "amount": 20000
+  }
+ ],
+ "purchases": [
+  {
+   "id": "purchase-1",
+   "date": "2026-04-07",
+   "amount": 22100
+  },
+  {
+   "id": "purchase-2",
+   "date": "2026-04-09",
+   "amount": 30000
+  },
+  {
+   "id": "purchase-3",
+   "date": "2026-04-13",
+   "amount": 240200
+  },
+  {
+   "id": "purchase-4",
+   "date": "2026-04-16",
+   "amount": 15100
+  },
+  {
+   "id": "purchase-5",
+   "date": "2026-04-24",
+   "amount": 171520
+  },
+  {
+   "id": "purchase-6",
+   "date": "2026-05-02",
+   "amount": 322000
+  },
+  {
+   "id": "purchase-7",
+   "date": "2026-05-05",
+   "amount": 6250
+  },
+  {
+   "id": "purchase-8",
+   "date": "2026-05-06",
+   "amount": 118730
+  },
+  {
+   "id": "purchase-9",
+   "date": "2026-05-07",
+   "amount": 136900
+  },
+  {
+   "id": "purchase-10",
+   "date": "2026-05-10",
+   "amount": 84200
+  },
+  {
+   "id": "purchase-11",
+   "date": "2026-05-11",
+   "amount": 235400
+  },
+  {
+   "id": "purchase-12",
+   "date": "2026-05-18",
+   "amount": 270480
+  },
+  {
+   "id": "purchase-13",
+   "date": "2026-05-20",
+   "amount": 24900
+  },
+  {
+   "id": "purchase-14",
+   "date": "2026-05-21",
+   "amount": 45820
+  },
+  {
+   "id": "purchase-15",
+   "date": "2026-05-22",
+   "amount": 4050
+  },
+  {
+   "id": "purchase-16",
+   "date": "2026-05-25",
+   "amount": 30140
+  },
+  {
+   "id": "purchase-17",
+   "date": "2026-05-29",
+   "amount": 107400
+  },
+  {
+   "id": "purchase-18",
+   "date": "2026-06-01",
+   "amount": 32000
+  },
+  {
+   "id": "purchase-19",
+   "date": "2026-06-02",
+   "amount": 3000
+  },
+  {
+   "id": "purchase-20",
+   "date": "2026-06-08",
+   "amount": 226670
+  },
+  {
+   "id": "purchase-21",
+   "date": "2026-06-10",
+   "amount": 47750
+  },
+  {
+   "id": "purchase-22",
+   "date": "2026-06-14",
+   "amount": 4250
+  },
+  {
+   "id": "purchase-23",
+   "date": "2026-06-15",
+   "amount": 190550
+  },
+  {
+   "id": "purchase-24",
+   "date": "2026-06-21",
+   "amount": 11400
+  },
+  {
+   "id": "purchase-25",
+   "date": "2026-06-22",
+   "amount": 127460
+  },
+  {
+   "id": "purchase-26",
+   "date": "2026-06-24",
+   "amount": 108700
+  },
+  {
+   "id": "purchase-27",
+   "date": "2026-06-25",
+   "amount": 18500
+  },
+  {
+   "id": "purchase-28",
+   "date": "2026-06-29",
+   "amount": 197150
+  },
+  {
+   "id": "purchase-29",
+   "date": "2026-07-02",
+   "amount": 101400
+  },
+  {
+   "id": "purchase-30",
+   "date": "2026-07-06",
+   "amount": 164700
+  },
+  {
+   "id": "purchase-31",
+   "date": "2026-07-11",
+   "amount": 30000
+  },
+  {
+   "id": "purchase-32",
+   "date": "2026-07-13",
+   "amount": 148190
+  },
+  {
+   "id": "purchase-33",
+   "date": "2026-07-18",
+   "amount": 52050
+  },
+  {
+   "id": "purchase-34",
+   "date": "2026-07-20",
+   "amount": 230250
+  },
+  {
+   "id": "purchase-35",
+   "date": "2026-07-27",
+   "amount": 317410
+  },
+  {
+   "id": "purchase-36",
+   "date": "2026-08-02",
+   "amount": 130000
+  },
+  {
+   "id": "purchase-37",
+   "date": "2026-08-03",
+   "amount": 94150
+  },
+  {
+   "id": "purchase-38",
+   "date": "2026-08-08",
+   "amount": 100000
+  },
+  {
+   "id": "purchase-39",
+   "date": "2026-08-10",
+   "amount": 229270
+  },
+  {
+   "id": "purchase-40",
+   "date": "2026-08-11",
+   "amount": 5000
+  },
+  {
+   "id": "purchase-41",
+   "date": "2026-08-17",
+   "amount": 162440
+  },
+  {
+   "id": "purchase-42",
+   "date": "2026-08-20",
+   "amount": 32830
+  },
+  {
+   "id": "purchase-43",
+   "date": "2026-08-24",
+   "amount": 108390
+  },
+  {
+   "id": "purchase-44",
+   "date": "2026-08-27",
+   "amount": 64020
+  },
+  {
+   "id": "purchase-45",
+   "date": "2026-08-30",
+   "amount": 200000
+  },
+  {
+   "id": "purchase-46",
+   "date": "2026-09-01",
+   "amount": 163630
+  },
+  {
+   "id": "purchase-47",
+   "date": "2026-09-05",
+   "amount": 24230
+  },
+  {
+   "id": "purchase-48",
+   "date": "2026-09-06",
+   "amount": 35190
+  },
+  {
+   "id": "purchase-49",
+   "date": "2026-09-07",
+   "amount": 66330
+  },
+  {
+   "id": "purchase-50",
+   "date": "2026-09-08",
+   "amount": 24000
+  },
+  {
+   "id": "purchase-51",
+   "date": "2026-09-09",
+   "amount": 5500
+  },
+  {
+   "id": "purchase-52",
+   "date": "2026-09-12",
+   "amount": 76900
+  },
+  {
+   "id": "purchase-53",
+   "date": "2026-09-14",
+   "amount": 296640
+  },
+  {
+   "id": "purchase-54",
+   "date": "2026-09-15",
+   "amount": 1130
+  },
+  {
+   "id": "purchase-55",
+   "date": "2026-09-17",
+   "amount": 2000
+  },
+  {
+   "id": "purchase-56",
+   "date": "2026-09-21",
+   "amount": 43250
+  },
+  {
+   "id": "purchase-57",
+   "date": "2026-09-24",
+   "amount": 25520
+  },
+  {
+   "id": "purchase-58",
+   "date": "2026-09-25",
+   "amount": 127460
+  },
+  {
+   "id": "purchase-59",
+   "date": "2026-09-26",
+   "amount": 106570
+  },
+  {
+   "id": "purchase-60",
+   "date": "2026-09-27",
+   "amount": 1600
+  },
+  {
+   "id": "purchase-61",
+   "date": "2026-09-28",
+   "amount": 78950
+  },
+  {
+   "id": "purchase-62",
+   "date": "2026-10-04",
+   "amount": 21500
+  }
+ ],
+ "investments": [
+  {
+   "id": "inv-1",
+   "name": "mouh",
+   "amount": 1600000
+  },
+  {
+   "id": "inv-2",
+   "name": "maman",
+   "amount": 70000
+  }
+ ],
+ "holdings": [
+  {
+   "id": "hold-1",
+   "holder": "moi",
+   "amount": 12500
+  },
+  {
+   "id": "hold-2",
+   "holder": "hakima",
+   "amount": 10000
+  },
+  {
+   "id": "hold-3",
+   "holder": "autre",
+   "amount": 11100,
+   "note": "gabardi"
+  }
+ ],
+ "places": [
+  {
+   "id": "place-1",
+   "label": "moi",
+   "amount": 24000
+  },
+  {
+   "id": "place-2",
+   "label": "maison",
+   "amount": 50000
+  },
+  {
+   "id": "place-3",
+   "label": "mrd",
+   "amount": 5500
+  },
+  {
+   "id": "place-4",
+   "label": "mgzn",
+   "amount": 153500
+  }
+ ],
+ "settings": {
+  "divisorA": 3,
+  "divisorB": 4,
+  "deduction": 1500000,
+  "openingRevenue": 8505000,
+  "openingPurchases": 9837530
+ }
+}

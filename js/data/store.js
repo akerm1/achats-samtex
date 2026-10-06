@@ -38,6 +38,7 @@ import {
   READ_ONLY_MESSAGE,
 } from './sync.js'
 import { mergeBills, mergeProducts } from './backup.js'
+import * as analysisStore from './analysis-store.js'
 import * as photoStore from './photo-store.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
@@ -62,6 +63,17 @@ export const DEFAULT_PREFS = {
   layout: 'card',
   installHidden: false,
 }
+
+/* L'analyse partage le drapeau « modifications non poussées » des
+   factures : une saisie dans l'Analyse marque `dirty` puis publie, avec
+   la même mécanique que `touchBills()` + `push()`. Le module d'analyse
+   n'importe pas ce store — le branchement se fait ici, à sens unique. */
+analysisStore.onAnalysisChange(() => {
+  state.dirty = true
+  storage.set(DIRTY_KEY, true)
+  emit()
+  push()
+})
 
 /* Les préférences viennent du stockage local ET d'un fichier distant. Une
    valeur illisible ne doit pas produire une classe CSS qui n'existe pas :
@@ -616,7 +628,7 @@ async function syncWithRemote() {
 
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
-    if (state.dirty || products.length || bills.length) return push({ force: true })
+    if (state.dirty || products.length || bills.length || analysisStore.hasData()) return push({ force: true })
     return markReady()
   }
   if (state.dirty) return push()
@@ -643,6 +655,9 @@ async function syncWithRemote() {
       changed = true
     }
   }
+  /* `analysis: null` = document écrit avant l'analyse (Worker v4) : on
+     garde alors l'analyse locale, exactement comme pour les factures. */
+  if (analysisStore.applyRemoteAnalysis(remote.analysis)) changed = true
   if (applyRemoteSettings(remote.settings)) changed = true
   return markReady(changed)
 }
@@ -769,7 +784,7 @@ export async function push({ force = false } = {}) {
   state.status = 'saving'
   emit()
 
-  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills)
+  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills, analysisStore.getSnapshot())
   state.pending = false
 
   if (result.ok) {
@@ -793,6 +808,8 @@ export async function push({ force = false } = {}) {
         await queuePersistBills()
       }
     }
+    /* Idem pour l'analyse fusionnée par le 409 (objet, sinon `null`). */
+    analysisStore.applyRemoteAnalysis(result.analysis)
     state.dirty = false
     storage.remove(DIRTY_KEY)
     state.status = 'ready'
@@ -843,8 +860,8 @@ export async function importFromGithub() {
   const list = normalizeList(remote.list || [])
   /* Les produits viennent de GitHub, les factures restent locales : on ne
      copie que ce que GitHub sait porter. Sans cela, la copie viderait les
-     factures d'un appareil qui en a. */
-  const result = await putRemoteList(config, list, null, remote.settings, bills)
+     factures d'un appareil qui en a — l'analyse fait de même. */
+  const result = await putRemoteList(config, list, null, remote.settings, bills, analysisStore.getSnapshot())
   if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
 
   sha = result.sha

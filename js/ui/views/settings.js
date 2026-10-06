@@ -18,6 +18,7 @@ import { THEMES, getThemePreference } from '../../core/theme.js'
 import { storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
+import { importAnalysis } from '../../data/analysis-store.js'
 import { LINK_PLACEHOLDER, normalizeConfig, testConnection } from '../../data/sync.js'
 import { CARD_LAYOUTS } from '../../data/model.js'
 import {
@@ -404,7 +405,7 @@ function aboutTile() {
     ${tile(
       'Raccourcis clavier',
       `<code>N</code> nouveau produit · <code>/</code> rechercher · <code>Échap</code> fermer une fenêtre ·
-       <code>1</code><code>2</code> changer de vue · <code>S</code> synchroniser.`,
+       <code>1</code><code>2</code><code>3</code><code>4</code> changer de vue · <code>S</code> synchroniser.`,
       '',
       { wide: true, iconName: 'sparkles' },
     )}`
@@ -565,11 +566,15 @@ async function handleImport(event) {
   /* Les factures suivent : une sauvegarde qui les contient et qui ne les
      restituerait pas ferait perdre l'import à moitié. */
   const billResult = importBills(parsed.bills, { mode })
+  /* Idem pour l'analyse (fichier v3) ; un fichier v1/v2 n'en porte pas
+     et laisse l'analyse locale intacte. */
+  const analysisResult = importAnalysis(parsed.analysis, { mode })
   const details = [
     mode === 'replace'
       ? `${parsed.products.length} produit(s)`
       : `${result.added} produit(s) ajouté(s), ${result.updated} mis à jour`,
     parsed.bills.length ? `${billResult.added + billResult.updated} facture(s)` : '',
+    parsed.analysis ? `${analysisResult.added + analysisResult.updated} ligne(s) d'analyse` : '',
   ].filter(Boolean)
   toast(`${details.join(' · ')}.`, { type: 'ok' })
 }

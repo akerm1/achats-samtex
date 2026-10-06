@@ -29,6 +29,19 @@ import {
 } from './data/store.js'
 import { checkForUpdate, installUpdate, subscribe as subscribeUpdate } from './core/update.js'
 import { exportCSV, exportJSON } from './data/backup.js'
+import {
+  addHolding,
+  addInvestment,
+  addPlace,
+  addPurchase,
+  clearSale,
+  deleteHolding,
+  deleteInvestment,
+  deletePlace,
+  deletePurchase,
+  getAnalysis,
+  toggleSaleKind,
+} from './data/analysis-store.js'
 import { openProductForm } from './ui/product-form.js'
 import { openBillForm } from './ui/bill-form.js'
 import { openColorPreview, openPhotoPreview, openReceiptPreview } from './ui/preview.js'
@@ -47,12 +60,15 @@ import {
 } from './ui/shell.js'
 import { listView } from './ui/views/list.js'
 import { billsView } from './ui/views/bills.js'
+import { analysisView } from './ui/views/analysis.js'
 import { settingsView } from './ui/views/settings.js'
 
 const VIEWS = {
   liste: listView,
   factures: billsView,
   reglages: settingsView,
+  /* En dernière position : le raccourci « 4 » ouvre l'Analyse. */
+  analyse: analysisView,
 }
 const ROUTE_ORDER = Object.keys(VIEWS)
 /** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
@@ -269,15 +285,33 @@ const ACTIONS = {
   },
   'disconnect-github': () => handleDisconnect(),
   'export-json': () => {
-    /* Les factures voyagent avec la sauvegarde : c'est le seul endroit où
-       les deux collections sortent du navigateur. */
-    exportJSON(getProducts(), getBills())
+    /* Factures ET analyse voyagent avec la sauvegarde : c'est le seul
+       endroit où ces collections sortent du navigateur (GitHub ni le
+       CSV ne les portent). */
+    exportJSON(getProducts(), getBills(), getAnalysis())
     toast('Sauvegarde JSON générée.', { type: 'ok' })
   },
   'export-csv': () => {
     exportCSV(getProducts())
     toast('Export CSV généré (Excel).', { type: 'ok' })
   },
+  /* Analyse — les mutations vont au store d'analyse ; l'écran se
+     redessine par l'abonnement (même enveloppe try/catch que les autres). */
+  'analysis-tab': (node) => analysisView.setTab(node.dataset.value),
+  'analysis-fy-prev': () => analysisView.shiftFy(-1),
+  'analysis-fy-next': () => analysisView.shiftFy(1),
+  'analysis-month-prev': () => analysisView.shiftMonth(-1),
+  'analysis-month-next': () => analysisView.shiftMonth(1),
+  'analysis-day-kind': (node) => toggleSaleKind(node.dataset.date, node.dataset.kind),
+  'analysis-day-clear': (node) => clearSale(node.dataset.date),
+  'analysis-investment-add': () => addInvestment({}),
+  'analysis-investment-del': (node) => deleteInvestment(node.dataset.id),
+  'analysis-purchase-add': () => addPurchase({}),
+  'analysis-purchase-del': (node) => deletePurchase(node.dataset.id),
+  'analysis-holding-add': (node) => addHolding({ holder: node.dataset.holder }),
+  'analysis-holding-del': (node) => deleteHolding(node.dataset.id),
+  'analysis-place-add': () => addPlace({}),
+  'analysis-place-del': (node) => deletePlace(node.dataset.id),
   'install-update': () => installUpdate(),
   'install-app': () => (canPromptInstall() ? promptInstall() : showInstallHelp()),
   'hide-install': () => dismissInstall(),

@@ -28,6 +28,10 @@
   /*      profil à part : le banc des factures partage le disque avec    */
   /*      l'application qu'il pilote, et deux vues en mémoire du même    */
   /*      stockage s'effacent l'une l'autre à chaque écriture.           */
+  /*   5. `--only analysis` lance `tools/analysis.html` : calculs purs   */
+  /*      (recettes, diviseurs, manques, stat, sauvegarde v3, fusion 409 */
+  /*      des ventes), parcours d'écran, puis rendu à 430 et 360 px dans */
+  /*      les deux thèmes — profil à part, pour les mêmes raisons.       */
 /* ------------------------------------------------------------------ */
 
 import { spawn } from 'node:child_process'
@@ -143,7 +147,7 @@ async function diskChecks() {
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
      les vérifie, et une simple accolade en trop les laisse muets jusqu'à
      l'expiration du délai. On les analyse donc ici, avant le navigateur. */
-  for (const page of ['check-page.html', 'e2e.html', 'preview.html', 'bills.html']) {
+  for (const page of ['check-page.html', 'e2e.html', 'preview.html', 'bills.html', 'analysis.html']) {
     const file = path.join(ROOT, 'tools', page)
     if (!fs.existsSync(file)) continue
     const html = fs.readFileSync(file, 'utf8')
@@ -264,7 +268,7 @@ async function browserChecks(page = 'check-page.html', label = 'rendu') {
 
 /* Les bancs qui lancent la vraie application : ils ont besoin de minuteries
    réelles et d'un budget plus large que le rendu de composants. */
-const REAL_APP_PAGES = ['e2e.html', 'bills.html']
+const REAL_APP_PAGES = ['e2e.html', 'bills.html', 'analysis.html']
 
 const args = [
     '--headless=new',
@@ -336,6 +340,11 @@ if (ONLY === 'bills') {
   const answered = await browserChecks('bills.html', 'factures')
   if (!answered) {
     console.log(red('\nImpossible de vérifier les factures.'))
+  }
+} else if (ONLY === 'analysis') {
+  const answered = await browserChecks('analysis.html', 'analyse')
+  if (!answered) {
+    console.log(red('\nImpossible de vérifier l’analyse.'))
   }
 } else {
   const answered = await browserChecks()

@@ -14,9 +14,10 @@
 /* origine (GitHub Pages). Qui possède le lien peut écrire — c'est le */
 /* compromis « aucun mot de passe », assumé et documenté.               */
 /*                                                                     */
-/* Le document échangé porte `products` et `bills` (factures, photo   */
-/* du ticket comprise). C'est ici, et seulement ici, que les factures   */
-/* se synchronisent : la voie GitHub reste produits seule.             */
+/* Le document échangé porte `products`, `bills` (factures, photo    */
+/* du ticket comprise) et `analysis` (recettes, achats, possession). */
+/* C'est ici, et seulement ici, que factures et analyse se           */
+/* synchronisent : la voie GitHub reste produits seule.              */
 /* ------------------------------------------------------------------ */
 
 const CORS_HEADERS = {
@@ -46,15 +47,20 @@ function pathKey(url) {
   return url.pathname.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
+/** `analysis` : objet = l'analyse voyage ; `null` = document antérieur. */
+function analysisOf(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null
+}
+
 async function handleGet(env) {
   const raw = await env.LIST.get(DOC_KEY, 'json')
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
   if (!raw) {
-    return json({ version: 4, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null })
+    return json({ version: 5, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null })
   }
   return json({
-    version: raw.version || 3,
+    version: raw.version || 5,
     rev: raw.rev || 1,
     updatedAt: raw.updatedAt || null,
     settings: raw.settings || null,
@@ -65,6 +71,9 @@ async function handleGet(env) {
        sur cette différence pour ne pas effacer les factures locales quand
        ce Worker n'a pas encore été redéployé. */
     bills: Array.isArray(raw.bills) ? raw.bills : null,
+    /* Même contrat pour `analysis` : `null` = document écrit avant
+       l'analyse (Worker v4), l'appareil garde alors la sienne. */
+    analysis: analysisOf(raw.analysis),
   })
 }
 
@@ -94,7 +103,7 @@ async function handlePut(request, env) {
   if (sentRev !== null && Number.isFinite(Number(sentRev)) && Number(sentRev) < currentRev) {
     return json(
       {
-        version: 4,
+        version: 5,
         rev: currentRev,
         updatedAt: current?.updatedAt || null,
         settings: current?.settings || null,
@@ -103,6 +112,9 @@ async function handlePut(request, env) {
            pourrait pas fusionner et repartirait avec une liste de factures
            vide — la fusion doit porter sur les deux collections. */
         bills: Array.isArray(current?.bills) ? current.bills : null,
+        /* Idem pour l'analyse : c'est ce document que le client fusionne
+           par `id` avant de retenter l'écriture. */
+        analysis: analysisOf(current?.analysis),
       },
       { status: 409 },
     )
@@ -111,7 +123,7 @@ async function handlePut(request, env) {
   const rev = currentRev + 1
   const updatedAt = new Date().toISOString()
   const document = {
-    version: 4,
+    version: 5,
     rev,
     updatedAt,
     settings: payload.settings || null,
@@ -119,6 +131,8 @@ async function handlePut(request, env) {
     /* Un tableau vide est conservé tel quel : c'est « aucune facture », pas
        « ce document ignore les factures ». */
     bills: Array.isArray(payload.bills) ? payload.bills : null,
+    /* Idem pour l'analyse : objet publié, `null` = envoyée sans elle. */
+    analysis: analysisOf(payload.analysis),
   }
 
   try {

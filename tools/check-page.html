@@ -464,6 +464,8 @@
               </a>
               <nav class="statusbar-nav">
                 <a class="navlink is-active" href="#/liste">Liste</a>
+                <a class="navlink" href="#/factures">Factures</a>
+                <a class="navlink" href="#/analyse">Analyse</a>
                 <a class="navlink" href="#/reglages">Réglages</a>
               </nav>
               <div class="statusbar-actions">
@@ -498,7 +500,9 @@
             <nav class="tabbar"><div class="tabbar-inner">
               <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
               <button type="button" class="tab tab--add"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
+              <a class="tab" href="#/factures"><span class="tab-icon">F</span><span class="tab-label">Factures</span></a>
               <a class="tab" href="#/reglages"><span class="tab-icon">R</span><span class="tab-label">Réglages</span></a>
+              <a class="tab" href="#/analyse"><span class="tab-icon">A</span><span class="tab-label">Analyse</span></a>
             </div></nav>
           </div>`
 
@@ -517,12 +521,12 @@
         check('barre de statut : navigation réservée au grand écran', navShown === (innerWidth > 820), `${innerWidth}px → ${navShown ? 'visible' : 'masquée'}`)
 
         /* Barre d'onglets : la navigation permanente, et le bouton d'ajout
-           au centre, à portée du pouce. */
+           après la Liste, à portée du pouce. */
         const tabbar = shell.querySelector('.tabbar')
         const tabs = [...shell.querySelectorAll('.tab')]
         check('onglets : la barre est posée en bas', tabbar && getComputedStyle(tabbar).position === 'fixed', tabbar && getComputedStyle(tabbar).position)
-        check('onglets : trois entrées', tabs.length === 3, tabs.length)
-        check('onglets : l’ajout est au centre', tabs[1]?.classList.contains('tab--add'), tabs.map((t) => t.className).join(' | '))
+        check('onglets : cinq entrées', tabs.length === 5, tabs.length)
+        check('onglets : l’ajout est deuxième, après la Liste', tabs[1]?.classList.contains('tab--add'), tabs.map((t) => t.className).join(' | '))
         check('onglets : cibles d’au moins 44 px', tabs.every((t) => t.getBoundingClientRect().height >= 44), tabs.map((t) => Math.round(t.getBoundingClientRect().height)).join('/'))
 
         /* Barre de filtres : collante, et empilée recherche / statut /

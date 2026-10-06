@@ -1639,3 +1639,475 @@ input.color-box::-webkit-color-swatch {
     font-size: 10.5px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Vue Analyse — exercice fiscal, fiches mensuelles, synthèse           */
+/*                                                                     */
+/* Reproduction fidèle des en-têtes du classeur (recettes | somme,     */
+/* investissements | somme, achats | total) avec les mêmes jetons :    */
+/* filets, cartes, serif pour les montants, chiffres tabulaires.        */
+/* ------------------------------------------------------------------ */
+
+.ana-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+/* Sélecteur d'exercice et de mois ---------------------------------- */
+
+.ana-fybar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.ana-fy-label {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.ana-monthbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.ana-month-title {
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  color: var(--ink);
+}
+
+.ana-cmp-filter {
+  flex: 1 1 auto;
+  max-width: 320px;
+  margin: 0;
+}
+
+/* Fiche des jours --------------------------------------------------- */
+
+.ana-days {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-1) var(--space-4);
+}
+
+.ana-day {
+  display: grid;
+  grid-template-columns: 92px 96px minmax(120px, 1fr) auto;
+  grid-template-areas: 'date week amount toggles';
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ana-day:last-child {
+  border-bottom: 0;
+}
+
+.ana-day-date {
+  grid-area: date;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.ana-day-week {
+  grid-area: week;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.ana-day-slot {
+  grid-area: amount;
+  min-width: 0;
+}
+
+.ana-day-slot .ana-day-input {
+  min-height: 44px;
+}
+
+.ana-day-mark {
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.04em;
+}
+
+.ana-day-toggles {
+  grid-area: toggles;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ana-toggle.is-on {
+  background: var(--teal);
+  color: #ffffff;
+}
+
+/* Pied de fiche : total / total/4 / écart / moyenne ------------------ */
+
+.ana-foot {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.ana-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.ana-stat span {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ana-stat strong {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Comparaison (feuille « stat ») -------------------------------------- */
+
+.ana-compare {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-1) var(--space-4);
+}
+
+.ana-compare-head,
+.ana-compare-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ana-compare-head {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ana-compare-row:last-child {
+  border-bottom: 0;
+}
+
+.ana-num {
+  font-family: var(--font-head);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.ana-cell-empty {
+  color: var(--muted);
+}
+
+/* Panneaux de la vue Générale ---------------------------------------- */
+
+.ana-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.ana-panel-title {
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-1);
+  color: var(--ink);
+}
+
+/* Les en-têtes du classeur : recettes | somme, etc. */
+.ana-table-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--line-strong);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ana-table-head span:last-child {
+  text-align: right;
+}
+
+.ana-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.ana-line strong {
+  font-family: var(--font-head);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.ana-line--total {
+  border-bottom: 0;
+  border-top: 2px solid var(--line-strong);
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ana-line--total strong {
+  font-size: var(--text-md);
+  color: var(--teal);
+}
+
+/* Lignes éditables (investissements, achats, possession) ------------- */
+
+.ana-edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 140px) 44px;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+
+.ana-edit .input {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+
+.ana-edit .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+
+/* Cartes de synthèse ------------------------------------------------- */
+
+.ana-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+
+.ana-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.ana-card-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+}
+
+.ana-card-value {
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.ana-card-hint {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+/* Possession : quatre colonnes de détenteurs ------------------------- */
+
+.ana-holders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+
+.ana-holder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.ana-holder-label {
+  min-height: 44px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.ana-holder-row {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.ana-holder-note {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  font-size: var(--text-sm);
+}
+
+.ana-holder-sum {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-top: 1px solid var(--line-strong);
+  padding-top: var(--space-2);
+}
+
+.ana-holder-sum span {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ana-holder-sum strong {
+  font-family: var(--font-head);
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+}
+
+/* Paramètres (dépliable) --------------------------------------------- */
+
+.ana-settings > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  list-style-position: inside;
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--ink);
+}
+
+.ana-settings[open] > summary {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.ana-settings-body {
+  padding-top: var(--space-1);
+}
+
+/* Téléphone ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  /* La fiche d'un jour passe sur deux lignes : date + somme, puis
+     jour + bascules — c'est la seule façon qui tient à 360 px. */
+  .ana-day {
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-areas:
+      'date amount'
+      'week toggles';
+  }
+
+  .ana-day-toggles {
+    justify-content: flex-end;
+  }
+
+  .ana-compare-head,
+  .ana-compare-row {
+    grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ana-foot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ana-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ana-edit {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 110px) 48px;
+    gap: 6px;
+  }
+
+  .ana-holder-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 6px;
+  }
+
+  /* Cibles tactiles : dans l'Analyse, rien d'utile sous 48 px. */
+  .view--analysis .btn,
+  .view--analysis .btn--sm {
+    min-height: 48px;
+  }
+
+  .view--analysis .icon-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .view--analysis .ana-day-input,
+  .view--analysis .ana-edit .input,
+  .view--analysis .ana-holder-label,
+  .view--analysis .ana-holder-note,
+  .view--analysis .ana-settings input {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .view--analysis .ana-days,
+  .view--analysis .ana-compare {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+}
+
+
+

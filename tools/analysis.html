@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc de bout en bout — analyse</title>
+<!--
+  Banc de l'Analyse, dans une PASSE À PART (check.mjs : `--only analysis`).
+
+  Trois familles d'essais, dans cet ordre :
+
+    1. Calculs purs — importent js/data/analysis.js avec une fixture en
+       ligne : totaux mensuels (aid/fermé/vide ignorés), diviseurs,
+       déduction, signe des « manques », regard « stat » à cheval sur
+       deux exercices, aller-retour sauvegarde v3, fusion par id.
+
+    2. Le Worker — module réel sur un KV en mémoire : le document v5
+       porte `analysis`, et un conflit 409 fusionne les ventes par id
+       (le distant gagne), exactement comme les factures.
+
+    3. L'écran — l'application réelle dans une iframe : saisie d'une
+       recette → total du mois ET « total recettes » à jour, puis rendu
+       à 430 px et 360 px, dans les deux thèmes, sans débordement.
+
+  Comme pour bills.html, la sortie part par POST ; un filet de sécurité
+  signale une page qui ne répondrait pas.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+  #stage { position: fixed; left: -20000px; top: 0; width: 1200px; height: 1500px; border: 0; }
+  #log { padding: 1rem; }
+  .ok { color: #17803d; }
+  .non { color: #b91c1c; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="log">Lancement du banc analyse…</div>
+<iframe id="stage" title="application"></iframe>
+
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.__analysisDone) return
+      const log = document.getElementById('log')
+      fetch('/__check/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: 'light',
+          fatal: {
+            message: 'le banc analyse n’a rien renvoyé',
+            stack: `écran = « ${(log?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200)} »`,
+          },
+          results: [],
+        }),
+      }).catch(() => undefined)
+    }, 60_000)
+  })
+  window.addEventListener('error', (e) => {
+    fetch('/__check/log', { method: 'POST', body: `ERREUR PAGE : ${e.message} @ ${e.filename}:${e.lineno}` }).catch(() => undefined)
+  })
+</script>
+
+<script type="module">
+const KEY_PREFS = 'purchase-gros-prefs-v1'
+const KEY_LIST = 'purchase-gros-list-v2'
+const KEY_BILLS = 'purchase-gros-bills-v1'
+const KEY_ANALYSIS = 'purchase-gros-analysis-v1'
+const KEY_OPTOUT = 'purchase-gros-github-optout-v1'
+const KEY_THEME = 'purchase-gros-theme-v1'
+const REPORT_URL = '/__check/report'
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const log = (message) => fetch('/__check/log', { method: 'POST', body: String(message) }).catch(() => undefined)
+const results = []
+const errors = []
+
+const check = (name, pass, detail = '') => {
+  results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
+  document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
+}
+
+const doc = () => document.getElementById('stage').contentDocument
+const win = () => document.getElementById('stage').contentWindow
+
+/* Comme bills.html : la capture porte sur `console` (l'objet de fenêtre
+   change à chaque navigation, pas celui-ci). */
+const muted = new WeakSet()
+const listened = new WeakSet()
+function capture(frameWin) {
+  if (!frameWin) return
+  if (frameWin.console && !muted.has(frameWin.console)) {
+    muted.add(frameWin.console)
+    frameWin.console.error = (...a) => errors.push(a.map(String).join(' '))
+  }
+  if (!listened.has(frameWin)) {
+    listened.add(frameWin)
+    frameWin.addEventListener('error', (e) => errors.push(String(e.message)))
+    frameWin.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
+  }
+}
+
+/* Aucune donnée de démonstration : on part d'appareils vides (liste,
+   factures, analyse), hors GitHub, avec le thème demandé. */
+function seed(theme = 'light') {
+  localStorage.setItem(KEY_OPTOUT, 'true')
+  localStorage.setItem(KEY_LIST, JSON.stringify([]))
+  localStorage.setItem(KEY_BILLS, JSON.stringify([]))
+  localStorage.removeItem(KEY_ANALYSIS)
+  /* JSON valide : storage.get fait un JSON.parse, « dark » nu le ferait
+     tomber sur le repli mémoire (donc « system » → clair en headless). */
+  localStorage.setItem(KEY_THEME, JSON.stringify(theme))
+}
+
+function freshFrame(width = 1200) {
+  document.getElementById('stage')?.remove()
+  const frame = document.createElement('iframe')
+  frame.id = 'stage'
+  frame.title = 'application'
+  frame.setAttribute('style', `position:fixed;left:-20000px;top:0;width:${width}px;height:1500px;border:0`)
+  document.body.appendChild(frame)
+  return frame
+}
+
+async function mount(hash, { width = 1200, theme = 'light', ready = '.view--analysis' } = {}) {
+  seed(theme)
+  const frame = freshFrame(width)
+  frame.src = `/index.html?analysis=${Date.now()}#${hash}`
+  let last = null
+  for (let i = 0; i < 120; i += 1) {
+    await sleep(50)
+    try {
+      last = frame.contentDocument
+      capture(frame.contentWindow)
+      if (last?.querySelector(ready)) return { ok: true }
+    } catch { /* iframe pas encore prêt */ }
+  }
+  return { ok: false, screen: last?.body?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 160) || 'document illisible' }
+}
+
+function detach() {
+  document.getElementById('stage')?.remove()
+}
+
+/** Texte normalisé : les espaces fines des milliers comptent comme des espaces. */
+const plain = (text) => String(text || '').replace(/[\s\u202f\u00a0]+/g, ' ').trim()
+
+/* ------------------------------------------------------------------ */
+/* 1. Calculs purs — fixture en ligne, rien n'est écrit sur le disque   */
+/* ------------------------------------------------------------------ */
+
+async function pureBench() {
+  const ana = await import('/js/data/analysis.js')
+
+  /* Jour « aid » et jour « fermé » portent des nombres : le total doit
+     les ignorer quand même (la cellule du classeur contient du texte). */
+  const sales = [
+    { id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 100000 },
+    { id: '2026-04-02', date: '2026-04-02', kind: 'aid', amount: 999999 },
+    { id: '2026-04-03', date: '2026-04-03', kind: 'closed', amount: 888888 },
+    { id: '2026-04-05', date: '2026-04-05', kind: 'amount', amount: 50000 },
+    { id: '2026-04-07', date: '2026-04-07', kind: 'amount', amount: 0 },
+  ]
+  const stats = ana.monthStats(sales, '2026-04', { divisorB: 4 })
+  check('recettes : total ignore aid, fermé et vide', stats.total === 150000, `total = ${stats.total}`)
+  check('recettes : seuls les jours numériques comptent (moyenne)', stats.count === 3 && stats.average === 50000, `${stats.count} jours · moyenne ${stats.average}`)
+  check('recettes : total/4 et total − total/4', stats.perDivisor === 37500 && stats.minusDivisor === 112500, `${stats.perDivisor} · ${stats.minusDivisor}`)
+
+  const fy = ana.fiscalYearByStart(2026)
+  check('exercice : 01/04/2026 > 31/03/2027', fy.label === '01/04/2026 > 31/03/2027' && fy.start === '2026-04-01' && fy.end === '2027-03-31', fy.label)
+
+  const state = {
+    sales,
+    purchases: [
+      { id: 'a1', date: '2026-05-15', amount: 150000 },
+      { id: 'a2', date: '2025-12-15', amount: 999 }, /* hors exercice */
+    ],
+    investments: [{ id: 'i1', name: 'Frigo', amount: 50000 }],
+    holdings: [
+      { id: 'h1', holder: 'moi', amount: 400000 },
+      { id: 'h2', holder: 'moh', amount: 300000 },
+      { id: 'h3', holder: 'hakima', amount: 200000 },
+      { id: 'h4', holder: 'autre', amount: 50000 },
+    ],
+    places: [],
+    settings: { divisorA: 3, divisorB: 4, deduction: 150000, openingRevenue: 1050000, openingPurchases: 100000 },
+  }
+
+  const s = ana.synthesis(state, fy)
+  check('générale : total recettes = report + 12 mois', s.totalRecettes === 1200000, `${s.totalRecettes}`)
+  check('générale : total achats = report + achats de l’exercice', s.totalAchats === 250000, `${s.totalAchats} (hors exercice exclu)`)
+  check('diviseur recette/3', s.recetteDivA === 400000 && s.beneficeA === 250000, `${s.recetteDivA} · bénéfice ${s.beneficeA}`)
+  check('diviseur recette/4', s.recetteDivB === 300000 && s.beneficeB === 150000, `${s.recetteDivB} · bénéfice ${s.beneficeB}`)
+  check('générale : recette + inv', s.recetteInv === 1250000, `${s.recetteInv}`)
+  check('générale : différence = (recette + inv) − achats', s.difference === 1000000, `${s.difference}`)
+  check('manques : signe positif (différence > possession)', s.manques === 50000 && s.manques > 0, `${s.manques}`)
+  check('GT = possession + manques', s.gt === 1000000 && s.gt === s.possession + s.manques, `${s.gt}`)
+
+  const rich = { ...state, holdings: [...state.holdings, { id: 'h5', holder: 'moi', amount: 200000 }] }
+  const s2 = ana.synthesis(rich, fy)
+  check('manques : signe négatif (possession > différence)', s2.manques === -150000 && s2.manques < 0, `${s2.manques}`)
+
+  const { formatDA } = await import('/js/core/utils.js')
+  check('formatDA : « 1 234 567 DA », sans décimale', plain(formatDA(1234567)) === '1 234 567 DA' && plain(formatDA(12.7)) === '13 DA', plain(formatDA(1234567)))
+}
+
+/* Feuille stat à cheval sur deux exercices + sauvegarde v3 + fusion. */
+async function referenceBench() {
+  const ana = await import('/js/data/analysis.js')
+  const backup = await import('/js/data/backup.js')
+
+  /* Aller-retour : horodatages figés, sinon deux normalisations donnent
+     deux `updatedAt` différents et le JSON ne peut pas coïncider. */
+  const sales = [
+    { id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 100000, updatedAt: '2026-04-01T12:00:00.000Z' },
+    { id: '2025-04-01', date: '2025-04-01', kind: 'amount', amount: 777777, updatedAt: '2025-04-01T12:00:00.000Z' },
+    { id: '2026-04-04', date: '2026-04-04', kind: 'aid', amount: null, updatedAt: '2026-04-04T12:00:00.000Z' },
+    { id: '2025-04-04', date: '2025-04-04', kind: 'aid', amount: null, updatedAt: '2025-04-04T12:00:00.000Z' },
+    { id: '2026-03-31', date: '2026-03-31', kind: 'amount', amount: 654321, updatedAt: '2026-03-31T12:00:00.000Z' },
+  ]
+
+  const apr = ana.comparisonRows(sales, '2026-04')
+  check('stat : 01/04 compare au 01/04 un an plus tôt', apr[0].previous?.amount === 777777, `${apr[0].previous?.amount}`)
+  check('stat : marque aid relue d’une année à l’autre', apr[3]?.key === '2026-04-04' && apr[3].previous?.kind === 'aid', apr[3]?.previous?.kind || 'aucun')
+  const mar = ana.comparisonRows(sales, '2027-03')
+  const last = mar[mar.length - 1]
+  check('stat : 31/03 traverse la frontière des exercices', last.key === '2027-03-31' && last.previous?.amount === 654321, `${last.previous?.amount}`)
+  const totals = ana.comparisonTotals(apr)
+  check('stat : sous-totaux des deux années', totals.previousTotal === 777777 && totals.currentTotal === 100000, `${totals.previousTotal} / ${totals.currentTotal}`)
+
+  /* Sauvegarde v3 : aller-retour complet, v1 et v2 toujours lisibles. */
+  const fixture = {
+    sales,
+    purchases: [{ id: 'a1', date: '2026-05-15', amount: 150000, note: '', createdAt: '2026-05-15T10:00:00.000Z', updatedAt: '2026-05-15T10:00:00.000Z' }],
+    investments: [{ id: 'i1', name: 'Frigo', amount: 50000 }],
+    holdings: [{ id: 'h1', holder: 'moi', amount: 400000, note: '' }],
+    places: [{ id: 'p1', label: 'banque', amount: 100000 }],
+    settings: { divisorA: 3, divisorB: 4, deduction: 150000, openingRevenue: 1050000, openingPurchases: 100000 },
+    holderLabels: { moi: 'moi', moh: 'moh', hakima: 'hakima', autre: 'autre' },
+  }
+  const text = backup.toJSON([{ id: 'p1', name: 'Ruban de satin' }], [{ id: 'b1', supplier: 'Marché' }], fixture)
+  const parsed = backup.parseBackup(text)
+  check('sauvegarde v3 : version et analyse présentes', parsed.ok && backup.BACKUP_VERSION === 3 && parsed.analysis?.sales?.length === sales.length, `v${backup.BACKUP_VERSION}`)
+  check('sauvegarde v3 : aller-retour identique', JSON.stringify(parsed.analysis) === JSON.stringify(ana.normalizeAnalysis(fixture)), 'JSON identique')
+  const v2 = backup.parseBackup(JSON.stringify({ products: [{ id: 'p1', name: 'Ruban' }], bills: [{ id: 'b1', supplier: 'M' }] }))
+  check('sauvegarde v2 (sans analyse) reste lisible', v2.ok && v2.analysis === null && v2.bills.length === 1, v2.message || 'ok')
+  const v1 = backup.parseBackup(JSON.stringify([{ id: 'p1', name: 'Ruban' }]))
+  check('sauvegarde v1 (tableau nu) reste lisible', v1.ok && v1.analysis === null, v1.message || 'ok')
+
+  const merged = backup.mergeAnalysis(
+    { sales: [{ id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 1 }] },
+    { sales: [{ id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 2 }, { id: '2026-04-02', date: '2026-04-02', kind: 'amount', amount: 3 }] },
+  )
+  check('fusion : l’entrant gagne par id', merged.analysis.sales.find((x) => x.id === '2026-04-01')?.amount === 2 && merged.added === 1 && merged.updated === 1, `${merged.added} ajout · ${merged.updated} mis à jour`)
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Le Worker réel sur un KV en mémoire : document v5 + fusion 409    */
+/* ------------------------------------------------------------------ */
+
+async function workerBench() {
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const client = await import('/js/data/worker.js')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'ana-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.banc.workers.dev/ana-key'
+  const call = (method, body, rev) =>
+    worker.fetch(
+      new Request(endpoint, {
+        method,
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(rev === undefined ? {} : { 'X-Rev': String(rev) }),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      }),
+      env,
+    )
+
+  /* Le client parle à ce même Worker : on détourne fetch pour les URL du
+     banc (le réseau réel n'existe pas ici), le reste reste intact. */
+  const realFetch = window.fetch.bind(window)
+  window.fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : input?.url || ''
+    if (url.includes('liste.banc.workers.dev/ana-key')) {
+      const request = input instanceof Request ? input : new Request(url, init)
+      return worker.fetch(request, env)
+    }
+    return realFetch(input, init)
+  }
+
+  try {
+    const empty = await (await call('GET')).json()
+    check("worker : document vide porte 'analysis: null'", 'analysis' in empty && empty.analysis === null, JSON.stringify(empty.analysis))
+    check('worker : le document vide est en version 5', empty.version === 5, `v${empty.version}`)
+
+    const config = { provider: 'worker', endpoint }
+    const remoteState = {
+      sales: [{ id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 111, updatedAt: '2026-04-01T12:00:00.000Z' }],
+      purchases: [], investments: [], holdings: [], places: [],
+      settings: { divisorA: 3, divisorB: 4, deduction: 1500000, openingRevenue: 0, openingPurchases: 0 },
+      holderLabels: { moi: 'moi', moh: 'moh', hakima: 'hakima', autre: 'autre' },
+    }
+    const first = await client.putRemoteList(config, [{ id: 'p1' }], '0', null, [], remoteState)
+    const stored = JSON.parse(kv.get('doc'))
+    check('worker : première publication acceptée', first.ok && first.rev === 1, first.message || `rev ${first.rev}`)
+    check('worker : le document v5 porte l’analyse', stored.version === 5 && stored.analysis?.sales?.[0]?.amount === 111, `v${stored.version}`)
+
+    /* Un second appareil, resté sur la révision 0, envoie SA journée :
+       le 409 doit fusionner — distant gagne sur le jour commun, la
+       journée locale non conflitante survit. */
+    const localState = {
+      ...remoteState,
+      sales: [
+        { id: '2026-04-01', date: '2026-04-01', kind: 'amount', amount: 999, updatedAt: '2026-04-02T08:00:00.000Z' },
+        { id: '2026-04-02', date: '2026-04-02', kind: 'aid', amount: null, updatedAt: '2026-04-02T08:00:00.000Z' },
+      ],
+    }
+    const conflict = await client.putRemoteList(config, [{ id: 'p1' }, { id: 'p2' }], '0', null, [], localState)
+    const day = conflict.analysis?.sales?.find((item) => item.id === '2026-04-01')
+    check('worker : conflit 409 → fusion des ventes', conflict.ok && Boolean(conflict.analysis), conflict.message || 'analysis absent')
+    check('worker : le distant gagne sur le jour commun', day?.amount === 111, `2026-04-01 = ${day?.amount}`)
+    check('worker : la journée locale non conflitante survit', conflict.analysis?.sales?.some((item) => item.id === '2026-04-02' && item.kind === 'aid'), `${conflict.analysis?.sales?.length} journée(s)`)
+
+    const after = JSON.parse(kv.get('doc'))
+    check('worker : le document relu porte la fusion', Array.isArray(after.analysis?.sales) && after.analysis.sales.length === 2, `${after.analysis?.sales?.length} journée(s)`)
+    check('worker : rev montée à 2 après la reprise', after.rev === 2, `rev ${after.rev}`)
+  } finally {
+    window.fetch = realFetch
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. L'écran réel : saisie d'une recette → total du mois + synthèse    */
+/* ------------------------------------------------------------------ */
+
+async function e2eBench() {
+  const opened = await mount('/analyse', { width: 1200, theme: 'light' })
+  check('écran : #/analyse s’ouvre au chargement', opened.ok, opened.screen || '')
+  if (!opened.ok) return
+
+  let d = doc()
+  check('écran : titre Analyse présent', /Analyse/.test(d.querySelector('h1')?.textContent || ''), d.querySelector('h1')?.textContent || 'aucun h1')
+  /* L'exercice par défaut est l'en cours : on le recalcule ici plutôt que
+     de figer une date, pour que le banc reste juste dans le temps. */
+  const now0 = new Date()
+  const startYear = now0.getMonth() >= 3 ? now0.getFullYear() : now0.getFullYear() - 1
+  const expectedFy = `01/04/${startYear} > 31/03/${startYear + 1}`
+  check("écran : exercice par défaut = exercice en cours", plain(d.querySelector('.ana-fy-label')?.textContent) === expectedFy, plain(d.querySelector('.ana-fy-label')?.textContent))
+  const tabs = [...d.querySelectorAll('[data-role="ana-tabs"] button')].map((b) => b.textContent.trim())
+  check('écran : les trois onglets sont là', JSON.stringify(tabs) === JSON.stringify(['Recettes', 'Comparaison', 'Générale']), tabs.join(' · '))
+
+  /* On tape la recette du jour dans la fiche du mois, comme au doigt. */
+  const now = new Date()
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const input = d.querySelector(`.ana-day-input[data-date="${key}"]`) || d.querySelector('.ana-day-input')
+  check('écran : la journée du jour possède un champ somme', Boolean(input), input?.dataset.date || 'aucun champ')
+  if (!input) return
+  const frame = win()
+  input.value = '120000'
+  input.dispatchEvent(new frame.Event('change', { bubbles: true }))
+  input.dispatchEvent(new frame.Event('blur', { bubbles: true }))
+  await sleep(400)
+
+  d = doc()
+  const foot = plain(d.querySelector('[data-role="ana-foot"]')?.textContent || '')
+  check('saisie : le total du mois se met à jour', foot.includes('120 000 DA'), foot.slice(0, 120))
+  check('saisie : le pied garde ses quatre calculs', ['total', 'total/4', 'moyenne'].every((label) => foot.includes(label)), foot.includes('total − total/4') ? 'total − total/4 aussi' : 'écart absent')
+
+  /* Bascule sur Générale : « total recettes » reflète la même journée. */
+  d.querySelector('[data-action="analysis-tab"][data-value="generale"]')?.click()
+  await sleep(400)
+  d = doc()
+  const card = plain(d.querySelector('[data-ana-card="total-recettes"]')?.textContent || '')
+  check('saisie : « total recettes » se met à jour', card.includes('120 000 DA'), card.slice(0, 80))
+  check('générale : cartes exactes du classeur', ['total recettes', 'total investissements', 'total achats', 'recette + inv', 'recette/3', 'bénéfice', 'recette/4', 'différence', 'possession', 'manques', 'GT'].every(
+    (label) => (d.body.textContent || '').includes(label)),
+  'libellés du classeur')
+}
+
+/* ------------------------------------------------------------------ */
+/* 4. Rendu : 430 et 360 px, thème clair et sombre                     */
+/* ------------------------------------------------------------------ */
+
+async function renderCombo(width, theme) {
+  const tag = `${width}px ${theme}`
+  const opened = await mount('/analyse', { width, theme })
+  if (!opened.ok) {
+    check(`${tag} : l’écran #/analyse s’ouvre`, false, opened.screen)
+    return
+  }
+  const d = doc()
+  check(`${tag} : aucun débordement horizontal`, d.documentElement.scrollWidth <= width + 1, `${d.documentElement.scrollWidth} / ${width}`)
+  check(`${tag} : thème ${theme} appliqué`, d.documentElement.dataset.theme === theme, d.documentElement.dataset.theme || 'aucun')
+  check(`${tag} : titre + trois onglets présents`, /Analyse/.test(d.querySelector('h1')?.textContent || '') && d.querySelectorAll('[data-role="ana-tabs"] button').length === 3, `${d.querySelectorAll('[data-role="ana-tabs"] button').length} onglets`)
+
+  /* La barre du bas doit loger 5 entrées (Liste, +, Factures, Réglages, Analyse). */
+  const bar = d.querySelector('#bottomnav-inner')
+  const tabs = [...(bar?.querySelectorAll('.tab') || [])]
+  check(`${tag} : cinq entrées dans la barre du bas`, tabs.length === 5, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
+  check(`${tag} : la barre du bas ne déborde pas`, bar ? bar.scrollWidth <= bar.clientWidth + 1 : false, bar ? `${bar.scrollWidth} / ${bar.clientWidth}` : 'barre absente')
+
+  const foot = plain(d.querySelector('[data-role="ana-foot"]')?.textContent || '')
+  check(`${tag} : pied Recettes affiché`, ['total', 'total/4', 'moyenne'].every((label) => foot.includes(label)), foot.slice(0, 80))
+
+  d.querySelector('[data-action="analysis-tab"][data-value="comparaison"]')?.click()
+  await sleep(300)
+  const cmp = doc().body.textContent || ''
+  check(`${tag} : Comparaison — année précédente / année en cours`, cmp.includes('année précédente') && cmp.includes('année en cours'), 'colonnes')
+
+  doc().querySelector('[data-action="analysis-tab"][data-value="generale"]')?.click()
+  await sleep(300)
+  const gen = doc()
+  const genText = gen.body.textContent || ''
+  check(`${tag} : Générale — en-têtes recettes/investissements/achats`, ['recettes', 'somme', 'investissements', 'achats', 'total'].every((label) => genText.toLowerCase().includes(label)), 'en-têtes')
+  check(`${tag} : Générale — synthèse + possession + paramètres`, ['Synthèse', 'manques', 'GT', 'Report période antérieure', "Paramètres de l'analyse", 'possession'].every((label) => genText.includes(label)), 'sections')
+
+  const small = [...gen.querySelectorAll('.view--analysis .btn, .view--analysis .icon-btn, .view--analysis .input, .view--analysis select')].filter((el) => {
+    const box = el.getBoundingClientRect()
+    return box.width > 0 && box.height > 0 && box.height < 44
+  })
+  check(`${tag} : cibles tactiles ≥ 44 px`, small.length === 0, small.slice(0, 3).map((el) => el.className).join(' | ') || 'toutes ok')
+}
+
+async function renderBench() {
+  for (const width of [430, 360]) {
+    for (const theme of ['light', 'dark']) {
+      log(`rendu ${width}px ${theme}…`)
+      await renderCombo(width, theme)
+    }
+  }
+  detach()
+}
+
+async function run() {
+  const report = { theme: 'light', fatal: null, results, errors, detail: {} }
+  try {
+    log('calculs purs…')
+    await pureBench()
+    await referenceBench()
+
+    log('worker…')
+    await workerBench()
+
+    log('écran…')
+    await e2eBench()
+    detach()
+
+    log('rendu…')
+    await renderBench()
+
+    check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
+  } catch (error) {
+    report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }
+  }
+  document.getElementById('log').textContent = `${results.filter((r) => !r.pass).length} échec(s) sur ${results.length}`
+  window.__analysisDone = true
+  await fetch(REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) }).catch(() => undefined)
+}
+
+run()
+</script>
+</body>
+</html>

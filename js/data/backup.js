@@ -3,27 +3,33 @@
 /* ------------------------------------------------------------------ */
 
 import { normalizeBillList, normalizeList } from './model.js'
+import { mergeAnalysis as mergeAnalysisState, normalizeAnalysis } from './analysis.js'
 import { downloadText } from '../core/utils.js'
 
-export const BACKUP_VERSION = 2
+/* v1 : produits seuls · v2 : + factures · v3 : + analyse (l'ancien format
+   reste lisible : `analysis` absent → null, jamais une perte d'import). */
+export const BACKUP_VERSION = 3
 
 /**
- * La sauvegarde emporte les factures avec les produits : c'est le seul
- * endroit où les deux collections sortent du navigateur. Le CSV reste
- * produits seul — une image n'a pas sa place dans une feuille de calcul.
+ * La sauvegarde emporte factures ET analyse avec les produits : c'est le
+ * seul endroit où les collections sortent du navigateur (GitHub ne porte
+ * ni l'une ni l'autre). Le CSV reste produits seul.
  */
-export function buildBackup(products, bills) {
+export function buildBackup(products, bills, analysis = null) {
   return {
     app: 'mes-achats',
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     products: products || [],
     bills: bills || [],
+    analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis)
+      ? normalizeAnalysis(analysis)
+      : null,
   }
 }
 
-export function toJSON(products, bills) {
-  return JSON.stringify(buildBackup(products, bills), null, 2)
+export function toJSON(products, bills, analysis = null) {
+  return JSON.stringify(buildBackup(products, bills, analysis), null, 2)
 }
 
 export function backupFilename(extension, prefix = 'mes-achats') {
@@ -67,27 +73,31 @@ export function toCSV(products) {
 }
 
 /**
- * Analyse un fichier de sauvegarde JSON (accepte l'ancien format : tableau nu).
- * Les fichiers sans `bills` restent valides : les produits, eux, suffisent.
- * @returns {{ok:boolean, products:Array, bills:Array, message?:string}}
+ * Analyse un fichier de sauvegarde JSON (accepte les anciens formats :
+ * tableau nu v1, objet sans factures v2, objet sans analyse v3).
+ * @returns {{ok:boolean, products:Array, bills:Array, analysis:object|null, message?:string}}
  */
 export function parseBackup(text) {
   let parsed
   try {
     parsed = JSON.parse(String(text || ''))
   } catch {
-    return { ok: false, products: [], bills: [], message: 'Fichier JSON illisible.' }
+    return { ok: false, products: [], bills: [], analysis: null, message: 'Fichier JSON illisible.' }
   }
   const raw = Array.isArray(parsed) ? parsed : parsed?.products
   if (!Array.isArray(raw)) {
-    return { ok: false, products: [], bills: [], message: 'Ce fichier ne contient pas de liste de produits.' }
+    return { ok: false, products: [], bills: [], analysis: null, message: 'Ce fichier ne contient pas de liste de produits.' }
   }
   const products = normalizeList(raw).filter(
     (product) => product.name || product.photo || product.colorRgb || product.note,
   )
   const bills = normalizeBillList(Array.isArray(parsed?.bills) ? parsed.bills : [])
-  if (!products.length) return { ok: false, products: [], bills: [], message: 'Aucun produit valide dans ce fichier.' }
-  return { ok: true, products, bills }
+  const analysis =
+    parsed?.analysis && typeof parsed.analysis === 'object' && !Array.isArray(parsed.analysis)
+      ? normalizeAnalysis(parsed.analysis)
+      : null
+  if (!products.length) return { ok: false, products: [], bills: [], analysis: null, message: 'Aucun produit valide dans ce fichier.' }
+  return { ok: true, products, bills, analysis }
 }
 
 /**
@@ -101,6 +111,11 @@ export function mergeProducts(current, incoming) {
 /** Même fusion pour les factures : le conflit se joue aussi par `id`. */
 export function mergeBills(current, incoming) {
   return mergeById(current, incoming)
+}
+
+/** L'analyse suit la même règle « incoming wins » (v3 + conflit 409). */
+export function mergeAnalysis(current, incoming) {
+  return mergeAnalysisState(current, incoming)
 }
 
 /**
@@ -128,8 +143,8 @@ function mergeById(current, incoming) {
   return { list: [...map.values()], added, updated }
 }
 
-export function exportJSON(products, bills) {
-  downloadText(backupFilename('json'), toJSON(products, bills), 'application/json')
+export function exportJSON(products, bills, analysis = null) {
+  downloadText(backupFilename('json'), toJSON(products, bills, analysis), 'application/json')
 }
 
 export function exportCSV(products) {

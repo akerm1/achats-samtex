@@ -74,6 +74,25 @@ export function formatNumber(value) {
   return n === null ? NO_VALUE : number.format(n)
 }
 
+const da = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
+
+/**
+ * Montant en dinars : « 1 234 567 DA », sans décimale.
+ *
+ * `formatMoney` reste tel quel (euros, ailleurs dans l'application) :
+ * l'Analyse affiche le dirham, et les milliers sont séparés par une espace
+ * fine insécable (U+202F) quel que soit le système — `fr-FR` peut renvoyer
+ * une espace classique selon les glottes.
+ */
+export function formatDA(value) {
+  const n = toNumber(value)
+  if (n === null) return NO_VALUE
+  return `${da.format(Math.round(n)).replace(/[\s\u202f\u00a0]/g, '\u202f')} DA`
+}
+
 const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 const MONTHS_LONG = [
   'janvier',
