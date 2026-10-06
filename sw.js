@@ -18,7 +18,7 @@
 /* `js/core/update.js`).                                                */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v7.5.0'
+const VERSION = 'mes-achats-v7.5.1'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
 const FALLBACK_URLS = ['./', 'index.html', 'css/tokens.css', 'css/base.css', 'css/layout.css', 'css/components.css', 'css/views.css', 'js/main.js']
@@ -47,9 +47,10 @@ self.addEventListener('message', (event) => {
 })
 
 /**
- * Réseau d'abord, repli sur le cache si — et seulement si — le réseau
- * échoue. Rien n'est mis en cache quand le réseau répond : un fichier
- * périmé ne peut donc plus être resservi.
+ * Réseau d'abord ; si le réseau échoue, repli sur le cache local puis
+ * 503. Rien n'est mis en cache quand le réseau répond : un fichier
+ * périmé ne peut donc plus être resservi. La promesse ne rejette
+ * jamais — un rejet dans `respondWith` noie la console du débogage.
  *
  * `fresh` court-circuite en plus le cache HTTP du navigateur, que
  * `fetch(request)` consulte par défaut. Réservé au code et aux données.
@@ -57,12 +58,17 @@ self.addEventListener('message', (event) => {
 async function networkFirst(request, { cache = false, fresh = false } = {}) {
   try {
     return fresh ? await fetch(request, { cache: 'no-store' }) : await fetch(request)
-  } catch (error) {
-    if (!cache) throw error
+  } catch {
+    /* Repli sur le cache local, y compris pour le code : c'est le seul
+       moyen d'afficher l'application quand le serveur est injoignable
+       (hors-ligne, mais aussi Live Server qui redémarre). */
     const store = await caches.open(VERSION)
     const cached = await store.match(request, { ignoreSearch: true })
     if (cached) return cached
-    throw error
+    /* Jamais de promesse rejetée : `respondWith(rejected)` se lit
+       « network error response » + « Uncaught (in promise) » dans la
+       console. Une 503 silencieuse vaut mieux. */
+    return new Response('', { status: 503, statusText: 'Hors ligne' })
   }
 }
 
