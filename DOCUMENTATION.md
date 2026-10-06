@@ -120,7 +120,7 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='8.4.5'`, `APP_RELEASE='2026-10-06'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='8.4.6'`, `APP_RELEASE='2026-10-06'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `js/data/*`
@@ -193,7 +193,10 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
   teinté, pied total/total÷n/écart/moyenne collant au bord bas), feuille
   de comparaison, sommaire en neuf cartes (deux ouvrent les feuilles
   Recettes/Comparaison, sept conduisent aux sections de Générale) et
-  panneaux de la feuille Générale.
+  panneaux de la feuille Générale ; sur téléphone, une ligne par jour
+  (date/jour/pastille · somme · bascules), ouverture de la fiche et
+  **Aujourd'hui** sur le jour courant, bouton **Aujourd'hui** pleine
+  largeur et sommaire densifié.
 
 ---
 

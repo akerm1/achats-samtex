@@ -669,6 +669,17 @@ function scrollWhenReady(id, attempt = 0) {
   if (attempt < 20) setTimeout(() => scrollWhenReady(id, attempt + 1), 60)
 }
 
+/* Sur le téléphone, la fiche s'ouvre sur le jour courant : c'est lui
+   qu'on saisit. S'il n'est pas dans le mois affiché, on reste en haut. */
+function scrollToDateToday() {
+  const row = host?.querySelector(`.ana-day[data-date="${ana.monthKeyOf(new Date())}"]`)
+  if (!row) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
 export const analysisView = {
   id: 'analysis',
   route: 'analyse',
@@ -718,6 +729,7 @@ export const analysisView = {
     monthKey = defaultMonthKey()
     tab = 'recettes'
     refresh()
+    scrollToDateToday()
   },
   /** Carte du sommaire : ouvre la feuille cible puis conduit à la section. */
   gotoSection(id, targetTab) {
@@ -728,9 +740,12 @@ export const analysisView = {
       refresh()
     }
     if (!id) {
-      /* Carte-feuille (Fiche du mois, Comparaison) : la feuille s'ouvre
-         depuis le haut. */
-      if (switched) window.scrollTo({ top: 0, behavior: 'smooth' })
+      /* Carte-feuille : Comparaison s'ouvre en haut, la fiche du mois
+         directement sur le jour courant (c'est lui qu'on saisit). */
+      if (switched) {
+        if (tab === 'recettes') scrollToDateToday()
+        else window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
       return
     }
     if (id === 'ana-sec-params') {

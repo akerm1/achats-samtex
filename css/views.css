@@ -1749,20 +1749,19 @@ input.color-box::-webkit-color-swatch {
   overflow: hidden;
 }
 
-/* En-tête de colonnes : desktop seulement, le téléphone replie la
-   ligne sur deux rangs. */
+/* En-tête de colonnes : grand écran seulement. */
 .ana-days-head {
   display: none;
 }
 
+/* Une seule ligne sur téléphone : date · somme · bascules. Le grand
+   écran élargit simplement la colonne du jour (média min-width plus bas). */
 .ana-day {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(110px, 140px);
-  grid-template-areas:
-    'when amount'
-    'toggles toggles';
+  grid-template-columns: minmax(64px, auto) minmax(80px, 1fr) auto;
+  grid-template-areas: 'when amount toggles';
   align-items: center;
-  gap: 5px var(--space-2);
+  gap: 6px;
   padding: var(--space-2) clamp(12px, 3vw, 16px);
   border-bottom: 1px solid var(--line);
 }
@@ -1774,9 +1773,9 @@ input.color-box::-webkit-color-swatch {
 .ana-day-when {
   grid-area: when;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 3px 7px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -2254,13 +2253,20 @@ input.color-box::-webkit-color-swatch {
 /* Grand écran --------------------------------------------------------- */
 
 @media (min-width: 721px) {
-  /* La fiche repasse sur une ligne : date · jour · somme · bascules,
+  /* La fiche garde sa ligne unique : date · jour · somme · bascules,
      avec un en-tête de colonnes aligné sur les mêmes tracés. */
   .ana-day {
     grid-template-columns: minmax(0, 1fr) minmax(180px, 300px) auto;
     grid-template-areas: 'when amount toggles';
     gap: var(--space-3);
     padding: var(--space-2) var(--space-4);
+  }
+
+  .ana-day-when {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 3px 7px;
   }
 
   .ana-day-date {
@@ -2342,10 +2348,45 @@ input.color-box::-webkit-color-swatch {
 
   .ana-day-toggles .btn {
     min-height: 48px;
+    padding-inline: 10px;
+  }
+
+  .ana-day-toggles {
+    gap: 4px;
+  }
+
+  .ana-day-toggles .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Pastille « aujourd'hui » ramenée à la largeur de la colonne date. */
+  .ana-day-now {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    padding: 2px 5px;
   }
 
   .ana-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Le mois tient en moins de défilement : cartes du sommaire densifiées. */
+  .ana-section-card {
+    min-height: 56px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .ana-section-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* « Aujourd'hui » sur toute la largeur : cible de pouce sous le mois. */
+  .ana-today {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 
   .ana-edit {
