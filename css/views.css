@@ -1955,50 +1955,78 @@ input.color-box::-webkit-color-swatch {
 
 /* Panneaux de la vue Générale ---------------------------------------- */
 
-/* Puces de section : horizontales, glissables, collantes sous les
-   onglets — le feuillet est long, le retour en haut coûte cher. */
-.ana-jump {
-  position: sticky;
-  top: calc(var(--statusbar-h) + env(safe-area-inset-top) + var(--ana-chrome-h, 72px));
-  z-index: 18;
+/* Sommaire de l'onglet Générale : cartes de sections, un appui conduit
+   à la section (onglets compris). Grille dense, cibles larges. */
+.ana-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: var(--space-3);
+}
+
+.ana-section-card {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  margin: 0 calc(-1 * clamp(14px, 4vw, 32px));
-  padding: var(--space-2) clamp(14px, 4vw, 32px);
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  scrollbar-width: none;
-}
-
-.ana-jump::-webkit-scrollbar {
-  display: none;
-}
-
-.ana-jump-chip {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line-strong);
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 8px 10px 10px;
   background: var(--surface);
-  color: var(--ink-2);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  white-space: nowrap;
-  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
-.ana-jump-chip:hover,
-.ana-jump-chip:active {
+.ana-section-card:hover,
+.ana-section-card:active {
   background: var(--teal-soft);
   border-color: color-mix(in srgb, var(--teal) 45%, transparent);
+}
+
+.ana-section-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--teal-soft);
   color: var(--teal);
 }
 
-/* La cible du saut passe sous les barres collantes (statut, onglets,
-   puces) et garde un souffle d'air en dessous. */
+.ana-section-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.ana-section-copy strong {
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.ana-section-copy small {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ana-section-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+/* La cible du saut passe sous les barres collantes (statut, onglets)
+   et garde un souffle d'air en dessous. */
 .ana-sec {
   scroll-margin-top: calc(var(--statusbar-h) + env(safe-area-inset-top) + var(--ana-chrome-h, 72px) + 68px);
   scroll-margin-bottom: calc(var(--tabbar-h) + 24px);

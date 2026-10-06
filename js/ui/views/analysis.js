@@ -167,7 +167,6 @@ function dayRow(day, sale, monthLabel) {
              </span>`
       }
       <span class="ana-day-toggles">
-        ${toggle(ana.SALE_KINDS.AID, 'Aïd')}
         ${toggle(ana.SALE_KINDS.CLOSED, 'Fermé')}
         <button type="button" class="icon-btn" data-action="analysis-day-clear" data-date="${day.key}"
                 aria-label="Effacer la journée du ${shortDate(day.key)}" title="Effacer">${icon('x', 14)}</button>
@@ -475,31 +474,46 @@ function generaleSettings() {
     </details>`
 }
 
-/* Barre de sauts : une section = un appui, même sur un long feuillet. */
-const GENERALE_SECTIONS = [
-  ['ana-sec-synthese', 'Synthèse'],
-  ['ana-sec-recettes', 'Recettes'],
-  ['ana-sec-invest', 'Investissements'],
-  ['ana-sec-achats', 'Achats'],
-  ['ana-sec-possession', 'Possession'],
-  ['ana-sec-detail', 'Détail'],
-  ['ana-sec-params', 'Paramètres'],
-]
-
-function generaleJump() {
+/* Sommaire : chaque section devient une carte, un appui y conduit —
+   les deux autres onglets y figurent aussi, pour tout joindre d'un seul
+   endroit. */
+function generaleSections(s) {
+  const state = store.getAnalysis()
+  const cards = [
+    { tab: 'recettes', icon: 'calendar', label: 'Fiche du mois', hint: monthTitle(monthKey) },
+    { tab: 'comparaison', icon: 'sort', label: 'Comparaison', hint: 'les deux années côte à côte' },
+    { target: 'ana-sec-synthese', icon: 'sparkles', label: 'Synthèse', hint: 'les 12 cartes du classeur' },
+    { target: 'ana-sec-recettes', icon: 'euro', label: 'Recettes', hint: formatDA(s.totalRecettes) },
+    { target: 'ana-sec-invest', icon: 'chart', label: 'Investissements', hint: formatDA(s.totalInvestissements) },
+    { target: 'ana-sec-achats', icon: 'bag', label: 'Achats', hint: formatDA(s.totalAchats) },
+    { target: 'ana-sec-possession', icon: 'shield', label: 'Possession', hint: formatDA(s.possession) },
+    { target: 'ana-sec-detail', icon: 'list', label: 'Détail', hint: `${state.places.length} ligne(s)` },
+    { target: 'ana-sec-params', icon: 'settings', label: 'Paramètres', hint: 'diviseurs, déduction, reports' },
+  ]
   return `
-    <nav class="ana-jump" aria-label="Aller à une section">
-      ${GENERALE_SECTIONS.map(
-        ([id, label]) => `
-        <button type="button" class="ana-jump-chip" data-action="analysis-goto" data-target="${id}">${esc(label)}</button>`,
-      ).join('')}
+    <nav class="ana-sections" aria-label="Aller à une section">
+      ${cards
+        .map(
+          (card) => `
+        <button type="button" class="ana-section-card" data-action="analysis-goto"
+                ${card.target ? `data-target="${card.target}"` : ''}
+                ${card.tab ? `data-tab="${card.tab}"` : ''}>
+          <span class="ana-section-icon">${icon(card.icon, 18)}</span>
+          <span class="ana-section-copy">
+            <strong>${esc(card.label)}</strong>
+            <small>${esc(card.hint)}</small>
+          </span>
+          <span class="ana-section-go" aria-hidden="true">${icon('chevronRight', 16)}</span>
+        </button>`,
+        )
+        .join('')}
     </nav>`
 }
 
 function generaleHtml() {
   const s = ana.synthesis(store.getAnalysis(), currentFy())
   return `
-    ${generaleJump()}
+    ${generaleSections(s)}
     <div class="ana-sec" id="ana-sec-synthese">${generaleSynthese(s)}</div>
     <div class="ana-sec" id="ana-sec-recettes">${generaleRecettes(s)}</div>
     <div class="ana-sec" id="ana-sec-invest">${generaleInvestissements(s)}</div>
@@ -645,6 +659,17 @@ function refresh() {
   paint()
 }
 
+/** Défilement doux, avec retries : un redessin différé (saisie en cours)
+ *  peut faire exister la section quelques frames plus tard. */
+function scrollWhenReady(id, attempt = 0) {
+  const section = host?.querySelector(`#${id}`)
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  if (attempt < 20) setTimeout(() => scrollWhenReady(id, attempt + 1), 60)
+}
+
 export const analysisView = {
   id: 'analysis',
   route: 'analyse',
@@ -692,15 +717,20 @@ export const analysisView = {
     tab = 'recettes'
     refresh()
   },
-  /** Saut de section dans l'onglet Générale (barre de puces). */
-  gotoSection(id) {
+  /** Carte du sommaire : ouvre l'onglet cible puis conduit à la section. */
+  gotoSection(id, targetTab) {
     if (!host) return
+    if (targetTab && targetTab !== tab && TABS.some((item) => item.value === targetTab)) {
+      tab = targetTab
+      refresh()
+    }
+    if (!id) return
     if (id === 'ana-sec-params') {
       settingsOpen = true
       const panel = host.querySelector('[data-role="ana-settings"]')
       if (panel) panel.open = true
     }
-    host.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollWhenReady(id)
   },
 }
 

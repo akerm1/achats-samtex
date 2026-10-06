@@ -384,6 +384,100 @@ async function e2eBench() {
   check('générale : cartes exactes du classeur', ['total recettes', 'total investissements', 'total achats', 'recette + inv', 'recette/3', 'bénéfice', 'recette/4', 'différence', 'possession', 'manques', 'GT'].every(
     (label) => (d.body.textContent || '').includes(label)),
   'libellés du classeur')
+
+  /* ---------------------------------------------------------------- */
+  /* 5. Chaque bouton de l'écran : appui réel, effet observable        */
+  /* ---------------------------------------------------------------- */
+
+  /** Appuie sur un bouton (nœud relu à chaque fois : le rendu le remplace). */
+  const act = (sel) => {
+    const el = doc().querySelector(sel)
+    if (!el || el.disabled) return false
+    el.click()
+    return true
+  }
+  const monthValue = () => doc().querySelector('[data-role="ana-month-select"]')?.value
+  const fyLabel = () => doc().querySelector('.ana-fy-label')?.textContent
+
+  /* Carte-sommaire → autres onglets. */
+  act('[data-action="analysis-goto"][data-tab="recettes"]')
+  await sleep(150)
+  d = doc()
+  check('boutons : la carte « Fiche du mois » ouvre Recettes',
+    Boolean(d.querySelector('[data-role="ana-month-select"]')),
+    d.querySelector('[data-role="ana-month-select"]') ? 'sélecteur de mois présent' : 'pas de sélecteur')
+
+  /* Mois précédent / suivant (aller-retour). */
+  const m0 = monthValue()
+  const usedPrev = act('[data-action="analysis-month-prev"]') || act('[data-action="analysis-month-next"]')
+  await sleep(80)
+  const m1 = monthValue()
+  check('boutons : mois précédent/suivant change de fiche', Boolean(m1) && m1 !== m0, `${m0} → ${m1}`)
+  act(usedPrev ? '[data-action="analysis-month-next"]' : '[data-action="analysis-month-prev"]')
+  await sleep(80)
+  check('boutons : l’autre flèche revient à la fiche', monthValue() === m0, String(monthValue()))
+
+  /* Aujourd'hui : s'éloigner puis revenir au mois du jour. */
+  act(usedPrev ? '[data-action="analysis-month-prev"]' : '[data-action="analysis-month-next"]')
+  await sleep(80)
+  act('[data-action="analysis-today"]')
+  await sleep(150)
+  check('boutons : « Aujourd’hui » revient au mois du jour',
+    monthValue() === key.slice(0, 7), `${monthValue()} (attendu ${key.slice(0, 7)})`)
+
+  /* Exercice précédent / suivant (aller-retour). */
+  const fy0 = fyLabel()
+  act('[data-action="analysis-fy-prev"]')
+  await sleep(80)
+  const fy1 = fyLabel()
+  check('boutons : exercice précédent change l’exercice', Boolean(fy1) && fy1 !== fy0, `${fy0} → ${fy1}`)
+  act('[data-action="analysis-fy-next"]')
+  await sleep(80)
+  check('boutons : exercice suivant revient', fyLabel() === fy0, String(fyLabel()))
+
+  /* Bascule « Fermé » puis effacer sur la journée du jour. */
+  act(`[data-action="analysis-day-kind"][data-date="${key}"]`)
+  await sleep(80)
+  d = doc()
+  const marked = Boolean(d.querySelector(`.ana-day[data-date="${key}"] .ana-day-mark`))
+  check('boutons : « Fermé » marque la journée', marked, marked ? 'marque affichée' : 'pas de marque')
+  act(`[data-action="analysis-day-clear"][data-date="${key}"]`)
+  await sleep(80)
+  d = doc()
+  const fieldBack = Boolean(d.querySelector(`.ana-day-input[data-date="${key}"]`))
+  check('boutons : effacer rend le champ somme', fieldBack, fieldBack ? 'champ revenu' : 'champ absent')
+
+  /* Cartes-sommaire : Paramètres ouvre son panneau, Synthèse scrolle. */
+  act('[data-action="analysis-tab"][data-value="generale"]')
+  await sleep(150)
+  act('[data-action="analysis-goto"][data-target="ana-sec-params"]')
+  await sleep(250)
+  d = doc()
+  check('boutons : la carte Paramètres ouvre le panneau',
+    d.querySelector('[data-role="ana-settings"]')?.open === true,
+    d.querySelector('[data-role="ana-settings"]')?.open ? 'panneau ouvert' : 'panneau fermé')
+  act('[data-action="analysis-goto"][data-target="ana-sec-synthese"]')
+  await sleep(250)
+
+  /* Ajouter / supprimer : les quatre listes éditables. */
+  const rowTotal = (col) => doc().querySelectorAll(`[data-ana-col="${col}"]`).length
+  const addDelRoundtrip = async (col, label) => {
+    const before = rowTotal(col)
+    act(`[data-action="analysis-${col}-add"]`)
+    await sleep(120)
+    const grown = rowTotal(col)
+    const rows = [...doc().querySelectorAll(`[data-ana-col="${col}"]`)]
+    const del = rows[rows.length - 1]?.querySelector(`[data-action="analysis-${col}-del"]`)
+    if (del) del.click()
+    await sleep(120)
+    const after = rowTotal(col)
+    check(`boutons : ${label} — ajouter puis supprimer`, grown === before + 1 && after === before,
+      `${before} → ${grown} → ${after}`)
+  }
+  await addDelRoundtrip('investment', 'investissement')
+  await addDelRoundtrip('purchase', 'achat')
+  await addDelRoundtrip('place', 'détail')
+  await addDelRoundtrip('holding', 'possession')
 }
 
 /* ------------------------------------------------------------------ */
