@@ -1,8 +1,11 @@
 /* ------------------------------------------------------------------ */
 /* Vue Analyse — le classeur CHABET.xlsx porté à l'écran                */
 /*                                                                     */
-/* Onglets : Recettes (la fiche d'un mois), Comparaison (feuille « stat »), */
-/* Générale (synthèse, possession, paramètres).                        */
+/* Feuilles : Recettes (la fiche d'un mois), Comparaison (feuille « stat »), */
+/* Générale (sommaire + synthèse, possession, paramètres).               */
+/* Navigation : pas d'onglets — le sommaire de cartes mène aux feuilles  */
+/* et aux sections ; le bouton « Générale » de la barre collante ramène  */
+/* au sommaire (et remonte en haut de la page).                          */
 /* Exercice fiscal par défaut : l'en cours (1 avril → 31 mars).         */
 /* Saisie : auto-enregistrement à la perte de focus (deferWhileEditing  */
 /* empêche un redessin de voler le curseur en cours de frappe).         */
@@ -18,7 +21,7 @@ import * as ana from '../../data/analysis.js'
 import * as store from '../../data/analysis-store.js'
 
 let host = null
-let tab = 'recettes'
+let tab = 'generale'
 let fyStart = null
 let monthKey = null /* fiche Recettes */
 let cmpMonthKey = null /* filtre de Comparaison */
@@ -117,15 +120,14 @@ function fyBar() {
     </div>`
 }
 
-function tabsHtml() {
+function chromeHtml() {
+  const sheet = TABS.find((item) => item.value === tab) || TABS[TABS.length - 1]
   return `
-    <div class="segmented segmented--block" role="tablist" aria-label="Sections de l'analyse" data-role="ana-tabs">
-      ${TABS.map(
-        (item) => `
-          <button type="button" role="tab" class="${tab === item.value ? 'is-active' : ''}"
-                  data-action="analysis-tab" data-value="${item.value}"
-                  aria-selected="${tab === item.value ? 'true' : 'false'}">${esc(item.label)}</button>`,
-      ).join('')}
+    <div class="ana-chrome-inner">
+      <span class="ana-chrome-title" data-role="ana-chrome-title">${esc(sheet.label)}</span>
+      <button type="button" class="btn btn--soft ana-home" data-action="analysis-home">
+        ${icon('home', 16)} Générale
+      </button>
     </div>`
 }
 
@@ -474,11 +476,13 @@ function generaleSettings() {
     </details>`
 }
 
-/* Sommaire de l'onglet Générale : chaque section devient une carte, un
-   appui y conduit — sept cartes, une par section du feuillet. */
+/* Sommaire de la feuille Générale : neuf cartes — deux ouvrent les
+   feuilles Recettes et Comparaison, sept conduisent aux sections. */
 function generaleSections(s) {
   const state = store.getAnalysis()
   const cards = [
+    { tab: 'recettes', icon: 'calendar', label: 'Fiche du mois', hint: 'saisie des recettes' },
+    { tab: 'comparaison', icon: 'chart', label: 'Comparaison', hint: 'année en cours / précédente' },
     { target: 'ana-sec-synthese', icon: 'sparkles', label: 'Synthèse', hint: 'les 12 cartes du classeur' },
     { target: 'ana-sec-recettes', icon: 'euro', label: 'Recettes', hint: formatDA(s.totalRecettes) },
     { target: 'ana-sec-invest', icon: 'chart', label: 'Investissements', hint: formatDA(s.totalInvestissements) },
@@ -488,11 +492,11 @@ function generaleSections(s) {
     { target: 'ana-sec-params', icon: 'settings', label: 'Paramètres', hint: 'diviseurs, déduction, reports' },
   ]
   return `
-    <nav class="ana-sections" aria-label="Aller à une section">
+    <nav class="ana-sections" aria-label="Sommaire de l'analyse">
       ${cards
         .map(
           (card) => `
-        <button type="button" class="ana-section-card" data-action="analysis-goto" data-target="${card.target}">
+        <button type="button" class="ana-section-card" data-action="analysis-goto"${card.tab ? ` data-tab="${card.tab}"` : ''}${card.target ? ` data-target="${card.target}"` : ''}>
           <span class="ana-section-icon">${icon(card.icon, 18)}</span>
           <span class="ana-section-copy">
             <strong>${esc(card.label)}</strong>
@@ -534,7 +538,7 @@ function paint() {
     <section class="view view--analysis">
       ${header()}
       ${fyBar()}
-      <div class="ana-chrome" data-role="ana-chrome">${tabsHtml()}</div>
+      <div class="ana-chrome" data-role="ana-chrome">${chromeHtml()}</div>
       <div class="ana-body" data-role="ana-body">${bodyHtml()}</div>
     </section>`
   bindBody()
@@ -672,7 +676,7 @@ export const analysisView = {
   icon: 'analysis',
   mount(element) {
     host = element
-    tab = 'recettes'
+    tab = 'generale'
     fyStart = ana.fiscalYear().startYear
     monthKey = defaultMonthKey()
     cmpMonthKey = monthKey
@@ -683,16 +687,16 @@ export const analysisView = {
     refresh()
   },
   resetFilters() {
-    tab = 'recettes'
+    tab = 'generale'
     fyStart = ana.fiscalYear().startYear
     monthKey = defaultMonthKey()
     cmpMonthKey = monthKey
   },
   setTab(value) {
-    tab = TABS.some((item) => item.value === value) ? value : 'recettes'
+    tab = TABS.some((item) => item.value === value) ? value : 'generale'
     refresh()
-    /* Un appui d'onglet remonte en haut : le feuillet est long, et
-       re-cliquer l'onglet courant sert de « retour en haut ». */
+    /* « Générale » ramène au sommaire : le feuillet est long, et
+       re-cliquer Générale sert de « retour en haut ». */
     window.scrollTo({ top: 0, behavior: 'smooth' })
   },
   shiftFy(delta) {
@@ -715,14 +719,20 @@ export const analysisView = {
     tab = 'recettes'
     refresh()
   },
-  /** Carte du sommaire : ouvre l'onglet cible puis conduit à la section. */
+  /** Carte du sommaire : ouvre la feuille cible puis conduit à la section. */
   gotoSection(id, targetTab) {
     if (!host) return
-    if (targetTab && targetTab !== tab && TABS.some((item) => item.value === targetTab)) {
+    const switched = Boolean(targetTab) && targetTab !== tab && TABS.some((item) => item.value === targetTab)
+    if (switched) {
       tab = targetTab
       refresh()
     }
-    if (!id) return
+    if (!id) {
+      /* Carte-feuille (Fiche du mois, Comparaison) : la feuille s'ouvre
+         depuis le haut. */
+      if (switched) window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     if (id === 'ana-sec-params') {
       settingsOpen = true
       const panel = host.querySelector('[data-role="ana-settings"]')

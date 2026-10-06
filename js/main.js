@@ -297,7 +297,7 @@ const ACTIONS = {
   },
   /* Analyse — les mutations vont au store d'analyse ; l'écran se
      redessine par l'abonnement (même enveloppe try/catch que les autres). */
-  'analysis-tab': (node) => analysisView.setTab(node.dataset.value),
+  'analysis-home': () => analysisView.setTab('generale'),
   'analysis-fy-prev': () => analysisView.shiftFy(-1),
   'analysis-fy-next': () => analysisView.shiftFy(1),
   'analysis-month-prev': () => analysisView.shiftMonth(-1),

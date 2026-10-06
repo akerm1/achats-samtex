@@ -120,7 +120,7 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='8.3.0'`, `APP_RELEASE='2026-09-29'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='8.4.5'`, `APP_RELEASE='2026-10-06'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `js/data/*`
@@ -187,11 +187,13 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 - **views.css** — en-tête de liste, barre de filtres, groupes, trois grilles (`grid--card`
   auto-fill 320px, `grid--mosaic` 3→4 colonnes, `grid--row` liste réglée), intérieurs
   carte/mosaïque/ligne, tuiles de réglages, formulaire produit, roue de couleur, responsive ;
-  vue **Analyse** (mobile d'abord) : onglets collants sous la barre de statut, sélecteur
-  d'exercice et de mois, fiche mensuelle (jour courant accentué, week-end teinté, pied
-   total/total÷n/écart/moyenne collant au bord bas), feuille de comparaison, sommaire en
-   sept cartes de section (un appui y conduit ; un appui d'onglet remonte en haut) et
-   panneaux de l'onglet Générale.
+  vue **Analyse** (mobile d'abord) : barre collante (feuille courante +
+  bouton **Générale** qui ramène au sommaire et remonte en haut), sélecteur
+  d'exercice et de mois, fiche mensuelle (jour courant accentué, week-end
+  teinté, pied total/total÷n/écart/moyenne collant au bord bas), feuille
+  de comparaison, sommaire en neuf cartes (deux ouvrent les feuilles
+  Recettes/Comparaison, sept conduisent aux sections de Générale) et
+  panneaux de la feuille Générale.
 
 ---
 

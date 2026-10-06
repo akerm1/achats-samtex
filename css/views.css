@@ -1641,7 +1641,7 @@ input.color-box::-webkit-color-swatch {
 }
 
 /* ------------------------------------------------------------------ */
-/* Vue Analyse — onglets collants, fiche mensuelle, synthèse            */
+/* Vue Analyse — barre collante Générale, fiche mensuelle, synthèse     */
 /*                                                                     */
 /* Mobile d'abord : la fiche d'un jour tient sur deux lignes (date +   */
 /* somme, puis les bascules), le pied du mois reste collant au bord    */
@@ -1677,11 +1677,11 @@ input.color-box::-webkit-color-swatch {
   white-space: nowrap;
 }
 
-/* Onglets collants -------------------------------------------------- */
+/* Barre collante : feuille courante + bouton Générale ----------------- */
 
 /* Même parti que la barre de filtres de la liste : posée sous la barre
-   de statut, fond opaque d'un bord à l'autre — on change d'onglet à
-   mi-scroll, sans remonter tout le feuillet. */
+   de statut, fond opaque d'un bord à l'autre — on regagne le sommaire
+   (et le haut de la page) à mi-scroll, sans remonter tout le feuillet. */
 .ana-chrome {
   position: sticky;
   top: calc(var(--statusbar-h) + env(safe-area-inset-top));
@@ -1692,8 +1692,25 @@ input.color-box::-webkit-color-swatch {
   border-bottom: 1px solid var(--line);
 }
 
-.ana-chrome .segmented button {
+.ana-chrome-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ana-chrome-title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ana-home {
   min-height: 44px;
+  flex: 0 0 auto;
 }
 
 /* Barre de mois : ‹ mois › + Aujourd'hui ---------------------------- */

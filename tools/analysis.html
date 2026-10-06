@@ -65,6 +65,7 @@ const KEY_PREFS = 'purchase-gros-prefs-v1'
 const KEY_LIST = 'purchase-gros-list-v2'
 const KEY_BILLS = 'purchase-gros-bills-v1'
 const KEY_ANALYSIS = 'purchase-gros-analysis-v1'
+const KEY_ANALYSIS_SEEDED = 'purchase-gros-analysis-seeded-v1'
 const KEY_OPTOUT = 'purchase-gros-github-optout-v1'
 const KEY_THEME = 'purchase-gros-theme-v1'
 const REPORT_URL = '/__check/report'
@@ -99,12 +100,15 @@ function capture(frameWin) {
 }
 
 /* Aucune donnée de démonstration : on part d'appareils vides (liste,
-   factures, analyse), hors GitHub, avec le thème demandé. */
+   factures, analyse), hors GitHub, avec le thème demandé. Le drapeau
+   « ensemencé » est posé : sinon analysis-store chargerait analysis.json
+   (données réelles du dépôt) dans l'appareil vierge du banc. */
 function seed(theme = 'light') {
   localStorage.setItem(KEY_OPTOUT, 'true')
   localStorage.setItem(KEY_LIST, JSON.stringify([]))
   localStorage.setItem(KEY_BILLS, JSON.stringify([]))
   localStorage.removeItem(KEY_ANALYSIS)
+  localStorage.setItem(KEY_ANALYSIS_SEEDED, JSON.stringify(true))
   /* JSON valide : storage.get fait un JSON.parse, « dark » nu le ferait
      tomber sur le repli mémoire (donc « system » → clair en headless). */
   localStorage.setItem(KEY_THEME, JSON.stringify(theme))
@@ -355,10 +359,18 @@ async function e2eBench() {
   const startYear = now0.getMonth() >= 3 ? now0.getFullYear() : now0.getFullYear() - 1
   const expectedFy = `01/04/${startYear} > 31/03/${startYear + 1}`
   check("écran : exercice par défaut = exercice en cours", plain(d.querySelector('.ana-fy-label')?.textContent) === expectedFy, plain(d.querySelector('.ana-fy-label')?.textContent))
-  const tabs = [...d.querySelectorAll('[data-role="ana-tabs"] button')].map((b) => b.textContent.trim())
-  check('écran : les trois onglets sont là', JSON.stringify(tabs) === JSON.stringify(['Recettes', 'Comparaison', 'Générale']), tabs.join(' · '))
+  /* Sans onglets : le sommaire Générale s'affiche d'emblée (9 cartes). */
+  const sommaire0 = [...d.querySelectorAll('.ana-section-card')]
+  check('écran : sommaire de neuf cartes + bouton Générale',
+    sommaire0.length === 9 && Boolean(d.querySelector('[data-action="analysis-home"]')),
+    `${sommaire0.length} carte(s)`)
+
+  /* On ouvre la fiche du mois par sa carte, comme au doigt. */
+  d.querySelector('[data-action="analysis-goto"][data-tab="recettes"]')?.click()
+  await sleep(300)
 
   /* On tape la recette du jour dans la fiche du mois, comme au doigt. */
+  d = doc()
   const now = new Date()
   const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const input = d.querySelector(`.ana-day-input[data-date="${key}"]`) || d.querySelector('.ana-day-input')
@@ -375,8 +387,8 @@ async function e2eBench() {
   check('saisie : le total du mois se met à jour', foot.includes('120 000 DA'), foot.slice(0, 120))
   check('saisie : le pied garde ses quatre calculs', ['total', 'total/4', 'moyenne'].every((label) => foot.includes(label)), foot.includes('total − total/4') ? 'total − total/4 aussi' : 'écart absent')
 
-  /* Bascule sur Générale : « total recettes » reflète la même journée. */
-  d.querySelector('[data-action="analysis-tab"][data-value="generale"]')?.click()
+  /* Retour au sommaire : le bouton Générale ouvre la feuille Générale. */
+  d.querySelector('[data-action="analysis-home"]')?.click()
   await sleep(400)
   d = doc()
   const card = plain(d.querySelector('[data-ana-card="total-recettes"]')?.textContent || '')
@@ -399,18 +411,19 @@ async function e2eBench() {
   const monthValue = () => doc().querySelector('[data-role="ana-month-select"]')?.value
   const fyLabel = () => doc().querySelector('.ana-fy-label')?.textContent
 
-  /* Le sommaire ne porte que les sections Générale (7 cartes). */
+  /* Le sommaire porte les deux feuilles et les sept sections (9 cartes). */
   d = doc()
   const sommaire = [...d.querySelectorAll('.ana-section-card')]
-  check('boutons : le sommaire ne porte que les sections Générale',
-    sommaire.length === 7 && sommaire.every((card) => !card.hasAttribute('data-tab')),
+  check('boutons : le sommaire porte 2 feuilles + 7 sections',
+    sommaire.length === 9 && sommaire.filter((card) => card.dataset.tab).length === 2 &&
+      sommaire.filter((card) => card.dataset.target).length === 7,
     `${sommaire.length} carte(s)`)
 
-  /* Onglet Recettes ouvre la fiche mensuelle. */
-  act('[data-action="analysis-tab"][data-value="recettes"]')
-  await sleep(150)
+  /* La carte « Fiche du mois » ouvre la fiche mensuelle. */
+  act('[data-action="analysis-goto"][data-tab="recettes"]')
+  await sleep(300)
   d = doc()
-  check('boutons : l’onglet Recettes ouvre la fiche',
+  check('boutons : la carte Fiche du mois ouvre la fiche',
     Boolean(d.querySelector('[data-role="ana-month-select"]')),
     d.querySelector('[data-role="ana-month-select"]') ? 'sélecteur de mois présent' : 'pas de sélecteur')
 
@@ -455,8 +468,8 @@ async function e2eBench() {
   check('boutons : effacer rend le champ somme', fieldBack, fieldBack ? 'champ revenu' : 'champ absent')
 
   /* Cartes-sommaire : Paramètres ouvre son panneau, Synthèse scrolle. */
-  act('[data-action="analysis-tab"][data-value="generale"]')
-  await sleep(150)
+  act('[data-action="analysis-home"]')
+  await sleep(300)
   act('[data-action="analysis-goto"][data-target="ana-sec-params"]')
   await sleep(250)
   d = doc()
@@ -486,11 +499,11 @@ async function e2eBench() {
   await addDelRoundtrip('place', 'détail')
   await addDelRoundtrip('holding', 'possession')
 
-  /* Retour en haut : cliquer l'onglet Générale remonte la page. */
+  /* Retour en haut : cliquer Générale remonte la page. */
   win().scrollTo(0, 900)
   await sleep(80)
   const scrolled = win().scrollY
-  act('[data-action="analysis-tab"][data-value="generale"]')
+  act('[data-action="analysis-home"]')
   await sleep(700)
   check('boutons : cliquer Générale remonte en haut',
     scrolled > 100 && win().scrollY < 40, `scrollY ${scrolled} → ${win().scrollY}`)
@@ -510,7 +523,8 @@ async function renderCombo(width, theme) {
   const d = doc()
   check(`${tag} : aucun débordement horizontal`, d.documentElement.scrollWidth <= width + 1, `${d.documentElement.scrollWidth} / ${width}`)
   check(`${tag} : thème ${theme} appliqué`, d.documentElement.dataset.theme === theme, d.documentElement.dataset.theme || 'aucun')
-  check(`${tag} : titre + trois onglets présents`, /Analyse/.test(d.querySelector('h1')?.textContent || '') && d.querySelectorAll('[data-role="ana-tabs"] button').length === 3, `${d.querySelectorAll('[data-role="ana-tabs"] button').length} onglets`)
+  const anaCards = d.querySelectorAll('.ana-section-card').length
+  check(`${tag} : titre Analyse + sommaire de neuf cartes`, /Analyse/.test(d.querySelector('h1')?.textContent || '') && anaCards === 9 && Boolean(d.querySelector('[data-action="analysis-home"]')), `${anaCards} cartes`)
 
   /* La barre du bas doit loger 5 entrées (Liste, +, Factures, Réglages, Analyse). */
   const bar = d.querySelector('#bottomnav-inner')
@@ -518,15 +532,22 @@ async function renderCombo(width, theme) {
   check(`${tag} : cinq entrées dans la barre du bas`, tabs.length === 5, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
   check(`${tag} : la barre du bas ne déborde pas`, bar ? bar.scrollWidth <= bar.clientWidth + 1 : false, bar ? `${bar.scrollWidth} / ${bar.clientWidth}` : 'barre absente')
 
-  const foot = plain(d.querySelector('[data-role="ana-foot"]')?.textContent || '')
+  /* Fiche du mois : ouverte par sa carte. */
+  d.querySelector('[data-action="analysis-goto"][data-tab="recettes"]')?.click()
+  await sleep(300)
+  const foot = plain(doc().querySelector('[data-role="ana-foot"]')?.textContent || '')
   check(`${tag} : pied Recettes affiché`, ['total', 'total/4', 'moyenne'].every((label) => foot.includes(label)), foot.slice(0, 80))
 
-  d.querySelector('[data-action="analysis-tab"][data-value="comparaison"]')?.click()
+  /* Comparaison : retour au sommaire, puis sa carte. */
+  doc().querySelector('[data-action="analysis-home"]')?.click()
+  await sleep(300)
+  doc().querySelector('[data-action="analysis-goto"][data-tab="comparaison"]')?.click()
   await sleep(300)
   const cmp = doc().body.textContent || ''
   check(`${tag} : Comparaison — année précédente / année en cours`, cmp.includes('année précédente') && cmp.includes('année en cours'), 'colonnes')
 
-  doc().querySelector('[data-action="analysis-tab"][data-value="generale"]')?.click()
+  /* Générale : le bouton Générale ramène au sommaire. */
+  doc().querySelector('[data-action="analysis-home"]')?.click()
   await sleep(300)
   const gen = doc()
   const genText = gen.body.textContent || ''
