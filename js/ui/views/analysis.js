@@ -144,14 +144,19 @@ function dayRow(day, sale, monthLabel) {
   const kind = sale?.kind || ana.SALE_KINDS.AMOUNT
   const marker = saleCell(sale)
   const amount = kind === ana.SALE_KINDS.AMOUNT ? (sale?.amount ?? '') : ''
+  const isToday = day.key === ana.monthKeyOf(new Date())
+  const weekend = day.weekday === 5 || day.weekday === 6 /* vendredi, samedi */
   const toggle = (kindValue, label) => `
     <button type="button" class="btn btn--soft btn--sm ana-toggle ${kind === kindValue ? 'is-on' : ''}"
             data-action="analysis-day-kind" data-date="${day.key}" data-kind="${kindValue}"
             aria-pressed="${kind === kindValue ? 'true' : 'false'}">${label}</button>`
   return `
-    <div class="ana-day" data-date="${day.key}">
-      <span class="ana-day-date">${shortDate(day.key)}</span>
-      <span class="ana-day-week">${esc(ana.WEEKDAYS_LONG[day.weekday])}</span>
+    <div class="ana-day${isToday ? ' is-today' : ''}${weekend ? ' ana-day--we' : ''}" data-date="${day.key}">
+      <span class="ana-day-when">
+        <span class="ana-day-date">${shortDate(day.key)}</span>
+        <span class="ana-day-week">${esc(ana.WEEKDAYS_LONG[day.weekday])}</span>
+        ${isToday ? '<em class="ana-day-now">aujourd’hui</em>' : ''}
+      </span>
       ${
         marker
           ? `<span class="ana-day-slot">${marker}</span>`
@@ -185,20 +190,31 @@ function recettesHtml() {
   const settings = state.settings
   const months = fyMonths()
   const index = monthIndex(monthKey)
-  const title = monthTitle(monthKey)
   const byDate = ana.salesByDate(state.sales)
   const days = ana.daysOfMonth(monthKey)
-  const label = title.split(' ')[0]
+  const label = monthTitle(monthKey).split(' ')[0]
   const stats = ana.monthStats(state.sales, monthKey, settings)
   return `
-    <div class="ana-monthbar">
+    <div class="ana-toolbar">
       <button type="button" class="icon-btn" data-action="analysis-month-prev"
               aria-label="Mois précédent" title="Mois précédent" ${index <= 0 ? 'disabled' : ''}>${icon('chevronLeft', 18)}</button>
-      <strong class="ana-month-title">${esc(title)}</strong>
+      <label class="ana-monthpick">
+        <span class="sr-only">Mois de la fiche</span>
+        <select class="select" data-role="ana-month-select" aria-label="Mois de la fiche">
+          ${months
+            .map(
+              (month) =>
+                `<option value="${month.key}" ${month.key === monthKey ? 'selected' : ''}>${esc(month.title)}</option>`,
+            )
+            .join('')}
+        </select>
+      </label>
       <button type="button" class="icon-btn" data-action="analysis-month-next"
               aria-label="Mois suivant" title="Mois suivant" ${index >= months.length - 1 ? 'disabled' : ''}>${icon('chevronRight', 18)}</button>
+      <button type="button" class="btn btn--soft ana-today" data-action="analysis-today">${icon('calendar', 14)} Aujourd’hui</button>
     </div>
     <div class="ana-days" data-role="ana-days">
+      <div class="ana-days-head" aria-hidden="true"><span>jour</span><span>recette du jour</span><span>bascules</span></div>
       ${days.map((day) => dayRow(day, byDate.get(day.key), label)).join('')}
     </div>
     ${recettesFoot(stats)}`
@@ -222,9 +238,11 @@ function comparaisonHtml() {
   const months = fyMonths()
   const rows = ana.comparisonRows(state.sales, cmpMonthKey)
   const totals = ana.comparisonTotals(rows)
+  const year = String(cmpMonthKey || '').slice(0, 4)
+  const prevYear = year ? String(Number(year) - 1) : ''
   return `
-    <div class="ana-monthbar">
-      <label class="field ana-cmp-filter">
+    <div class="ana-toolbar">
+      <label class="ana-monthpick ana-cmp-filter">
         <span class="sr-only">Mois à comparer</span>
         <select class="select" data-role="ana-cmp-select" aria-label="Mois à comparer">
           ${months
@@ -235,11 +253,12 @@ function comparaisonHtml() {
             .join('')}
         </select>
       </label>
-      <strong class="ana-month-title">${esc(monthTitle(cmpMonthKey))}</strong>
     </div>
     <div class="ana-compare" data-role="ana-compare">
       <div class="ana-compare-head">
-        <span>date</span><span>année précédente</span><span>année en cours</span>
+        <span>date</span>
+        <span>année précédente <small>${prevYear}</small></span>
+        <span>année en cours <small>${year}</small></span>
       </div>
       ${rows
         .map(
@@ -456,16 +475,38 @@ function generaleSettings() {
     </details>`
 }
 
+/* Barre de sauts : une section = un appui, même sur un long feuillet. */
+const GENERALE_SECTIONS = [
+  ['ana-sec-synthese', 'Synthèse'],
+  ['ana-sec-recettes', 'Recettes'],
+  ['ana-sec-invest', 'Investissements'],
+  ['ana-sec-achats', 'Achats'],
+  ['ana-sec-possession', 'Possession'],
+  ['ana-sec-detail', 'Détail'],
+  ['ana-sec-params', 'Paramètres'],
+]
+
+function generaleJump() {
+  return `
+    <nav class="ana-jump" aria-label="Aller à une section">
+      ${GENERALE_SECTIONS.map(
+        ([id, label]) => `
+        <button type="button" class="ana-jump-chip" data-action="analysis-goto" data-target="${id}">${esc(label)}</button>`,
+      ).join('')}
+    </nav>`
+}
+
 function generaleHtml() {
   const s = ana.synthesis(store.getAnalysis(), currentFy())
   return `
-    ${generaleRecettes(s)}
-    ${generaleInvestissements(s)}
-    ${generaleAchats(s)}
-    ${generaleSynthese(s)}
-    ${generalePossession()}
-    ${generalePossessionDetail()}
-    ${generaleSettings()}`
+    ${generaleJump()}
+    <div class="ana-sec" id="ana-sec-synthese">${generaleSynthese(s)}</div>
+    <div class="ana-sec" id="ana-sec-recettes">${generaleRecettes(s)}</div>
+    <div class="ana-sec" id="ana-sec-invest">${generaleInvestissements(s)}</div>
+    <div class="ana-sec" id="ana-sec-achats">${generaleAchats(s)}</div>
+    <div class="ana-sec" id="ana-sec-possession">${generalePossession()}</div>
+    <div class="ana-sec" id="ana-sec-detail">${generalePossessionDetail()}</div>
+    <div class="ana-sec" id="ana-sec-params">${generaleSettings()}</div>`
 }
 
 /* ------------------------------------------------------------------ */
@@ -484,7 +525,7 @@ function paint() {
     <section class="view view--analysis">
       ${header()}
       ${fyBar()}
-      ${tabsHtml()}
+      <div class="ana-chrome" data-role="ana-chrome">${tabsHtml()}</div>
       <div class="ana-body" data-role="ana-body">${bodyHtml()}</div>
     </section>`
   bindBody()
@@ -582,6 +623,11 @@ function bindBody() {
     cmpMonthKey = clampToMonth(event.target.value)
     refresh()
   })
+  const picker = host.querySelector('[data-role="ana-month-select"]')
+  picker?.addEventListener('change', (event) => {
+    monthKey = clampToMonth(event.target.value)
+    refresh()
+  })
   const panel = host.querySelector('[data-role="ana-settings"]')
   panel?.addEventListener('toggle', () => {
     settingsOpen = panel.open
@@ -638,6 +684,23 @@ export const analysisView = {
     if (index < 0 || index >= months.length) return
     monthKey = months[index].key
     refresh()
+  },
+  /** Revenir à la fiche du jour, dans l'exercice en cours. */
+  goToday() {
+    fyStart = ana.fiscalYear().startYear
+    monthKey = defaultMonthKey()
+    tab = 'recettes'
+    refresh()
+  },
+  /** Saut de section dans l'onglet Générale (barre de puces). */
+  gotoSection(id) {
+    if (!host) return
+    if (id === 'ana-sec-params') {
+      settingsOpen = true
+      const panel = host.querySelector('[data-role="ana-settings"]')
+      if (panel) panel.open = true
+    }
+    host.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   },
 }
 

@@ -77,11 +77,11 @@ css/  tokens · base · layout · components · views
 js/
   main.js                démarrage, routeur, 34 actions globales, raccourcis
   core/  utils storage router theme feedback photo app update
-  data/  store model colors github worker sync backup photo-store
-  ui/    shell view icons preview product-card product-form bill-form
-         views/{list,bills,settings}.js
+   data/  store model colors github worker sync backup photo-store analysis analysis-store
+   ui/    shell view icons preview product-card product-form bill-form
+          views/{list,bills,settings,analysis}.js
 worker/  share-list-worker.mjs · wrangler.toml · setup.ps1 · LIEN-PRIVE.txt(git-ignoré)
-tools/   check.mjs · check-page.html · e2e.html · bills.html · preview.html
+tools/   check.mjs · check-page.html · e2e.html · bills.html · analysis.html · preview.html
 icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 ```
 
@@ -186,7 +186,11 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
   et ≥48 px de hauteur tactile.
 - **views.css** — en-tête de liste, barre de filtres, groupes, trois grilles (`grid--card`
   auto-fill 320px, `grid--mosaic` 3→4 colonnes, `grid--row` liste réglée), intérieurs
-  carte/mosaïque/ligne, tuiles de réglages, formulaire produit, roue de couleur, responsive.
+  carte/mosaïque/ligne, tuiles de réglages, formulaire produit, roue de couleur, responsive ;
+  vue **Analyse** (mobile d'abord) : onglets collants sous la barre de statut, sélecteur
+  d'exercice et de mois, fiche mensuelle (jour courant accentué, week-end teinté, pied
+  total/total÷n/écart/moyenne collant au bord bas), feuille de comparaison, barre de sauts
+  de section et panneaux de l'onglet Générale.
 
 ---
 
