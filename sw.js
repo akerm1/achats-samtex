@@ -15,13 +15,22 @@
 /*                                                                     */
 /* La mise à jour de l'application ne passe pas par ici : elle est     */
 /* pilotée par `version.json` et le bouton des Réglages (voir           */
-/* `js/core/update.js`).                                                */
+/* `src/core/update.js`).                                              */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v7.5.1'
+const VERSION = 'mes-achats-v8.4.8'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
-const FALLBACK_URLS = ['./', 'index.html', 'css/tokens.css', 'css/base.css', 'css/layout.css', 'css/components.css', 'css/views.css', 'js/main.js']
+const FALLBACK_URLS = [
+  './',
+  'index.html',
+  'src/styles/tokens.css',
+  'src/styles/base.css',
+  'src/styles/layout.css',
+  'src/styles/components.css',
+  'src/styles/views.css',
+  'src/main.js',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

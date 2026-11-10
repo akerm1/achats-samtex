@@ -12,7 +12,7 @@
 /*                                                                     */
 /* Deux passes :                                                        */
 /*                                                                     */
-/*   1. Sur disque — chaque module `js/` est analysé, et `version.json`  */
+/*   1. Sur disque — chaque module `src/` est analysé, et `version.json`  */
 /*      est comparé à `APP_VERSION` (le repère de mise à jour).         */
 /*   2. Dans un vrai navigateur — `tools/check-page.html` importe les    */
 /*      modules de l'application, rend les cartes, clique, et renvoie   */
@@ -115,7 +115,7 @@ async function diskChecks() {
 
   /* La mise à jour des appareils repose sur ces deux repères : s'ils
      divergent, l'application ne voit jamais la nouvelle version. */
-  const app = fs.readFileSync(path.join(ROOT, 'js/core/app.js'), 'utf8')
+  const app = fs.readFileSync(path.join(ROOT, 'src/core/app.js'), 'utf8')
   const appVersion = app.match(/APP_VERSION\s*=\s*'([^']+)'/)?.[1] || ''
   const appRelease = app.match(/APP_RELEASE\s*=\s*'([^']+)'/)?.[1] || ''
   let published = {}
@@ -142,7 +142,7 @@ async function diskChecks() {
     pass: ignored.includes('worker/LIEN-PRIVE.txt'),
   })
 
-  results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'js')).map(checkSyntax))))
+  results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
 
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
      les vérifie, et une simple accolade en trop les laisse muets jusqu'à

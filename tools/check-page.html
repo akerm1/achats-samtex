@@ -4,7 +4,7 @@
 
   Elle importe les vrais modules de l'application (aucun double des styles ni
   du rendu dans le test) et reproduit fidèlement la délégation de clic de
-  `js/main.js`, pour que les vérifications portent sur le comportement réel.
+  `src/main.js`, pour que les vérifications portent sur le comportement réel.
 
   Elle ne sert à rien en production : `tools/check.mjs` la sert brièvement
   dans un navigateur sans interface, puis lit le rapport qu'elle poste.
@@ -21,11 +21,11 @@
          vérifications de jetons mesureraient toujours le clair. */
       document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light'
     </script>
-    <link rel="stylesheet" href="../css/tokens.css" />
-    <link rel="stylesheet" href="../css/base.css" />
-    <link rel="stylesheet" href="../css/layout.css" />
-    <link rel="stylesheet" href="../css/components.css" />
-    <link rel="stylesheet" href="../css/views.css" />
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/base.css" />
+    <link rel="stylesheet" href="../src/styles/layout.css" />
+    <link rel="stylesheet" href="../src/styles/components.css" />
+    <link rel="stylesheet" href="../src/styles/views.css" />
     <style>
       body { padding: 24px; }
       .chg { max-width: 1100px; margin: 0 auto; }
@@ -46,10 +46,10 @@
     </div>
 
     <script type="module">
-      import { renderProductCard } from '../js/ui/product-card.js'
-      import { openColorPreview, openPhotoPreview } from '../js/ui/preview.js'
-      import { CARD_LAYOUTS, CARD_LAYOUT_VALUES } from '../js/data/model.js'
-      import { icon } from '../js/ui/icons.js'
+      import { renderProductCard } from '../src/screens/list/card.js'
+      import { openColorPreview, openPhotoPreview } from '../src/ui/preview.js'
+      import { CARD_LAYOUTS, CARD_LAYOUT_VALUES } from '../src/data/products-model.js'
+      import { icon } from '../src/ui/icons.js'
 
       const results = []
       const check = (name, pass, detail = '') => results.push({ name, pass: Boolean(pass), detail: String(detail) })
@@ -95,11 +95,11 @@
           .join('')}</div>`,
       ).join('')
 
-      /* --- Délégation de clic, calquée sur js/main.js (initActions) --------- */
+      /* --- Délégation de clic, calquée sur src/main.js (initActions) --------- */
       const HANDLERS = {
         'preview-color': (node) => openColorPreview(byId(node.dataset.id)),
         'preview-photo': (node) => openPhotoPreview(byId(node.dataset.id)),
-        /* Comme dans `js/main.js`, la coche est une action à part entière :
+        /* Comme dans `src/main.js`, la coche est une action à part entière :
            sans ce gestionnaire, le clic retomberait sur l'ouverture de la
            fiche et le banc ne mesurerait pas le vrai comportement. */
         toggle: (node) => toggled.push(node.dataset.id),

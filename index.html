@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Liste des produits à acheter en gros — sashes et tissus, avec photos, couleurs et prix. Synchronisée automatiquement entre tous les appareils via GitHub." />
@@ -28,15 +28,15 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,500;600;700&display=swap"
     />
 
-    <link rel="stylesheet" href="css/tokens.css" />
-    <link rel="stylesheet" href="css/base.css" />
-    <link rel="stylesheet" href="css/layout.css" />
-    <link rel="stylesheet" href="css/components.css" />
-    <link rel="stylesheet" href="css/views.css" />
+    <link rel="stylesheet" href="src/styles/tokens.css" />
+    <link rel="stylesheet" href="src/styles/base.css" />
+    <link rel="stylesheet" href="src/styles/layout.css" />
+    <link rel="stylesheet" href="src/styles/components.css" />
+    <link rel="stylesheet" href="src/styles/views.css" />
 
-    <title>Mes achats — Sashes & Tissus</title>
+    <title>Mes achats — Sashes &amp; Tissus</title>
     <!--
-  Note: Service worker registration is handled by js/main.js (initServiceWorker).
+  Note: Service worker registration is handled by src/main.js (initServiceWorker).
   We avoid unregistering here to prevent race conditions and allow the
   recovery script below to properly detect the SW state.
 -->
@@ -156,15 +156,14 @@
               return
             }
             registration.update()
-            if (!registration.waiting) {
-              // No waiting worker yet – try to skip it, then reload if needed
+            if (registration.waiting) {
+              // A newer worker is waiting: skip it and reload on takeover.
               registration.waiting.postMessage({ type: 'SKIP_WAITING' })
               navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
               return
             }
-            // We have a waiting worker – skip it and reload
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-            navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
+            // Nothing waiting: a single reload is enough.
+            reloadOnce()
           }).catch(reloadOnce)
         }
 
@@ -185,6 +184,6 @@
         })
       })()
     </script>
-    <script type="module" src="js/main.js?v=2"></script>
+    <script type="module" src="src/main.js?v=4"></script>
   </body>
 </html>

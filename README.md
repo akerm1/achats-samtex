@@ -234,7 +234,7 @@ l'application* affiche en permanence un bouton :
    page avec une empreinte dans l'URL.
 
 Pour publier une version : modifier `version.json` **et** `APP_VERSION` dans
-`js/core/app.js` (le test de fumée vérifie que les deux concordent).
+`src/core/app.js` (le test de fumée vérifie que les deux concordent).
 
 ### Version 7.1 — le jeton devient facultatif
 
@@ -556,7 +556,7 @@ fournisseur (autocomplétion), quantité avec curseur, unité, prix unitaire, pr
 La saisie du libellé de couleur est assistée : tapez « rose bébé », « bleu roi », « ivoire »… et
 la boîte de couleur et l'aperçu se remplissent automatiquement. Un toucher sur une tuile de la
 palette remplit le libellé et la couleur d'un coup. Un nom reconnu affiche aussi une pastille dans
-les cartes, même sans valeur RGB enregistrée (voir `js/data/colors.js`).
+les cartes, même sans valeur RGB enregistrée (voir `src/data/colors.js`).
 
 ## Structure du projet
 
@@ -566,20 +566,25 @@ manifest.webmanifest        manifeste PWA (Ajouter, Liste)
 version.json                version publiée de l'application (repère des mises à jour)
 sync-defaults.json          dépôt public lu en lecture seule au premier lancement (sans configuration)
 sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
+ARCHITECTURE.md             carte des dossiers et « où changer quoi »
 worker/
   share-list-worker.mjs     code du Cloudflare Worker du lien privé (à coller dans le dashboard)
   wrangler.toml             configuration de déploiement (namespace KV, Workers.dev)
   setup.ps1                 mise en service en un seul lancement (connexion, KV, secret, déploiement)
-css/
-  tokens.css                variables de design (papier chaud en base, variante sombre chaude)
-  base.css                  réinitialisation, typographie, utilitaires
-  layout.css                barre du haut, navigation, toasts, responsive
-  components.css            boutons, champs, cartes, pastilles de couleur, dialogues
-  views.css                 styles des vues (liste, réglages, formulaire)
-js/
-  main.js                   démarrage, routeur, actions globales, raccourcis, PWA
+src/
+  main.js                   démarrage : thème, routes, actions, raccourcis, PWA
+  app/
+    routes.js               écrans disponibles, route affichée (hash), route par défaut
+    actions.js              table `data-action` → fonction (un seul clic délégué)
+    handlers.js             suppressions et vidages (confirmation + annulation)
+    shortcuts.js            N, /, S, 1…5
+    pwa.js                  service worker, installation, mises à jour
   core/
-    utils.js                DOM, formatage (€, dates, quantités), échappement, presse-papiers
+    utils.js                point d'entrée unique des utilitaires (barrel)
+    dom.js                  sélecteurs, échappement HTML, presse-papiers, téléchargement
+    format.js               montants (€ et DA), dates, nombres, pourcentages
+    math.js                 clamp, arrondi à deux décimales
+    ids.js                  fabrication des identifiants
     storage.js              localStorage sûr (navigation privée, quota)
     router.js               routeur par hash (#/liste, #/reglages…)
     theme.js                thème clair/sombre/système
@@ -588,22 +593,38 @@ js/
     app.js                  version installée de l'application
     update.js               lecture de version.json, recherche et installation des mises à jour
   data/
-    model.js                catégories, unités, priorités, couleurs RGB, normalisation, statistiques
+    products-model.js       catégories, unités, priorités, couleurs RGB, normalisation, statistiques
+    bills-model.js          factures : statuts, tri, filtres, totaux
+    analysis-model.js       calculs de l'écran Analyse (ventes, exercices, comparaisons)
+    expenses-model.js       calculs des dépenses (catégories, transferts, recettes)
+    analysis-store.js       état et sauvegarde locale de l'analyse
+    expenses-store.js       état et sauvegarde locale des dépenses
     colors.js               ~160 noms de couleurs français (+ palette et détection automatique)
     github.js               client API GitHub (lecture, écriture, test, conflits)
-    worker.js               client du lien privé Cloudflare (lecture, écriture, fusion)
+    worker-api.js           client du lien privé Cloudflare (lecture, écriture, fusion)
     sync.js                 aiguillage GitHub / lien privé pour le store
     store.js                état global, rafraîchissement, actions métier, préférences
+    photo-store.js          photos en IndexedDB (hors localStorage)
     backup.js               export/import JSON et CSV, fusion
+  screens/
+    list/                   index.js (écran) · card.js (carte) · form.js (fiche produit)
+    bills/                  index.js (écran) · form.js (fiche facture)
+    analysis/index.js       écran Analyse (une seule feuille, volontairement)
+    expenses/               index.js · state.js · header.js · filters.js · cards.js
+                            expenses-tab.js · categories-tab.js · investments-tab.js
+                            revenues-tab.js · forms/*.js
+    settings/index.js       écran Réglages
   ui/
-    icons.js               icônes SVG inline
-    shell.js               barre du haut, navigations, bandeaux, pastille de sync
-    preview.js             aperçu agrandi (couleur, photo) au clic
-    view.js                helpers de vue (ne pas casser une saisie en cours)
-    product-card.js         carte produit
-    product-form.js         formulaire produit (ajout / modification)
-    views/
-      list.js  settings.js
+    icons.js                icônes SVG inline
+    shell.js                barre du haut, navigations, bandeaux, pastille de sync
+    preview.js              aperçu agrandi (couleur, photo) au clic
+    dialog.js               helpers de vue (ne pas casser une saisie en cours)
+  styles/
+    tokens.css              variables de design (papier chaud en base, variante sombre chaude)
+    base.css                réinitialisation, typographie, utilitaires
+    layout.css              barre du haut, navigation, toasts, responsive
+    components.css          boutons, champs, cartes, pastilles de couleur, dialogues
+    views.css               styles des vues (liste, analyse, dépenses, réglages)
 icons/                      icônes de l'application (PWA)
 tools/
   check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic

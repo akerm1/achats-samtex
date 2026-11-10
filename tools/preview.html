@@ -18,11 +18,11 @@
       const params = new URLSearchParams(location.search)
       document.documentElement.dataset.theme = params.get('theme') === 'dark' ? 'dark' : 'light'
     </script>
-    <link rel="stylesheet" href="../css/tokens.css" />
-    <link rel="stylesheet" href="../css/base.css" />
-    <link rel="stylesheet" href="../css/layout.css" />
-    <link rel="stylesheet" href="../css/components.css" />
-    <link rel="stylesheet" href="../css/views.css" />
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/base.css" />
+    <link rel="stylesheet" href="../src/styles/layout.css" />
+    <link rel="stylesheet" href="../src/styles/components.css" />
+    <link rel="stylesheet" href="../src/styles/views.css" />
     <style>
       /* Le banc occupe tout l'écran : on juge la page, pas une marge. */
       body { padding: 0; }
@@ -44,9 +44,9 @@
       })
     </script>
     <script type="module">
-      import { renderProductCard } from '../js/ui/product-card.js'
-      import { normalizeProduct, productView, groupByCategory, categoryLabel, sumTotal } from '../js/data/model.js'
-      import { esc, formatMoney } from '../js/core/utils.js'
+      import { renderProductCard } from '../src/screens/list/card.js'
+      import { normalizeProduct, productView, groupByCategory, categoryLabel, sumTotal } from '../src/data/products-model.js'
+      import { esc, formatMoney } from '../src/core/utils.js'
 
       const params = new URLSearchParams(location.search)
       const layout = params.get('layout') || 'mosaic'

@@ -232,7 +232,7 @@ async function workerBench() {
 /* La sauvegarde est le seul endroit où les deux collections sortent du
    navigateur : si elle perd les factures, une restauration est un demi-effort. */
 async function backupBench() {
-  const backup = await import('/js/data/backup.js')
+  const backup = await import('/src/data/backup.js')
   const text = backup.toJSON([{ id: 'p1', name: 'Ruban de satin' }], [{ id: 'b1', supplier: 'Marché', amount: 12 }])
   const parsed = backup.parseBackup(text)
   check('sauvegarde : les factures sortent avec les produits', parsed.ok && parsed.bills?.[0]?.id === 'b1', `${parsed.bills?.length ?? 'aucune'} facture(s)`)
@@ -298,8 +298,8 @@ async function run() {
        localStorage et même IndexedDB. `detach()` a retiré l'application
        affichée : un seul instantiateur écrit pendant les essais. */
     log('store…')
-    const store = await import('/js/data/store.js')
-    const photoStore = await import('/js/data/photo-store.js')
+    const store = await import('/src/data/store.js')
+    const photoStore = await import('/src/data/photo-store.js')
     await store.load()
 
     await photoBench(store, photoStore)

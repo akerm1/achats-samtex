@@ -25,7 +25,7 @@ vérifiable en une commande : `node tools/check.mjs`.
 
 ### Séquence de démarrage
 1. `index.html` charge 5 feuilles de style, les polices (DM Sans + Fraunces), puis
-   `js/main.js` (module ES).
+   `src/main.js` (module ES).
 2. Un **watchdog en ligne (script non-module)** dans `index.html` protège le démarrage : si
    `#view` affiche encore « Chargement de la liste… » après 8 s, ou si une erreur JS survient,
    il force la mise à jour du service worker puis recharge (2 tentatives max, cooldown 60 s).
@@ -42,7 +42,7 @@ vérifiable en une commande : `node tools/check.mjs`.
 le fournisseur si configuré ; en cas d'échec le drapeau `dirty` est conservé — jamais de perte
 de modification locale).
 
-### Synchronisation (deux fournisseurs, une seule interface `js/data/sync.js`)
+### Synchronisation (deux fournisseurs, une seule interface `src/data/sync.js`)
 | | GitHub | Cloudflare « lien privé » |
 |---|---|---|
 | Point d'entrée | `api.github.com/.../contents/products.json` | `https://…workers.dev/<clé de 32 caractères>` |
@@ -56,8 +56,8 @@ Pas d'arrière-plan ni de scrutation : **un rafraîchissement = une lecture dist
 de page, clic sur la pastille, ou « Synchroniser »).
 
 ### Mécanisme de mise à jour
-`version.json` (racine) est le seul repère de version publié. `js/core/update.js` le lit avec
-`cache:no-store` et le compare à `APP_VERSION` de `js/core/app.js` ; l'installation n'a lieu
+`version.json` (racine) est le seul repère de version publié. `src/core/update.js` le lit avec
+`cache:no-store` et le compare à `APP_VERSION` de `src/core/app.js` ; l'installation n'a lieu
 qu'au clic explicite (vidage de tous les caches → rafraîchissement du SW → rechargement avec
 empreinte `?v=`). `sw.js` **ne met jamais le code en cache** — réseau d'abord uniquement, le cache
 ne servant qu'en repli hors-ligne → impossible d'avoir un mélange de versions.
@@ -69,17 +69,26 @@ ne servant qu'en repli hors-ligne → impossible d'avoir un mélange de versions
 ```
 index.html               coquille de l'app + script watchdog en ligne
 manifest.webmanifest     manifeste PWA (raccourcis : Ajouter, Liste)
-version.json              8.3.0 / 2026-09-29 — repère de mise à jour
+version.json             8.4.8 / 2026-11-10 — repère de mise à jour
 sync-defaults.json       dépôt GitHub par défaut (akerm1/achats-test/main)
 products.json            liste publiée (v3) dans le dépôt public
 sw.js                    service worker : repli hors-ligne uniquement
-css/  tokens · base · layout · components · views
-js/
-  main.js                démarrage, routeur, 34 actions globales, raccourcis
-  core/  utils storage router theme feedback photo app update
-   data/  store model colors github worker sync backup photo-store analysis analysis-store
-   ui/    shell view icons preview product-card product-form bill-form
-          views/{list,bills,settings,analysis}.js
+ARCHITECTURE.md          carte « où changer quoi » (à lire en premier)
+src/
+  main.js                démarrage : thème, routes, actions, raccourcis, PWA
+  app/    routes actions handlers shortcuts pwa
+  core/   utils(barrel) dom format math ids storage router theme feedback
+          photo app update
+  data/   store products-model bills-model analysis-model analysis-store
+          expenses-model expenses-store colors github worker-api sync
+          backup photo-store
+  screens/list/{index,card,form}.js
+  screens/bills/{index,form}.js
+  screens/expenses/{index,state,header,filters,cards,expenses-tab,
+          categories-tab,investments-tab,revenues-tab}.js + forms/*.js
+  screens/analysis/index.js · screens/settings/index.js
+  ui/     shell dialog icons preview
+  styles/ tokens base layout components views
 worker/  share-list-worker.mjs · wrangler.toml · setup.ps1 · LIEN-PRIVE.txt(git-ignoré)
 tools/   check.mjs · check-page.html · e2e.html · bills.html · analysis.html · preview.html
 icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
@@ -89,7 +98,7 @@ icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 
 ## 4. Chaque fichier, chaque fonction
 
-### `js/main.js` (point d'entrée, 471 lignes)
+### `src/main.js` + `src/app/*` (démarrage, 5 modules)
 | Fonction | Rôle |
 |---|---|
 | `showRoute(route)` | résout redirection/inconnu → `liste`, scroll haut, monte la vue dans `#view` |
@@ -111,7 +120,7 @@ clear-bills-search, set-filter, set-category, clear-search, share-list, go-setti
 disconnect-github, export-json, export-csv, install-update, install-app, hide-install,
 hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'erreur.
 
-### `js/core/*`
+### `src/core/*`
 | Fichier | Exports (une ligne chacun) |
 |---|---|
 | **utils.js** | `$`, `$$` raccourcis DOM · `esc`/`escAttr` échappement HTML · `debounce` · `clamp` · `round2` · `toNumber` (`"1,50"`→1.5) · `uid(prefix)` générateur d'id · `NO_VALUE` (`—`) · `formatMoney` (EUR fr-FR) · `formatNumber` · `formatDate`/`formatDateLong`/`formatTime`/`formatRelative` (français) · `toDate` · `plural` · `percent` · `downloadText` (Blob+`<a>` temporaire) · `copyText` (clipboard + repli textarea) · `slug` · `readableBytes` (o/Ko/Mo) |
@@ -123,32 +132,32 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 | **app.js** | `APP_VERSION='8.4.6'`, `APP_RELEASE='2026-10-06'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
-### `js/data/*`
+### `src/data/*`
 | Fichier | Contenu |
 |---|---|
 | **store.js** (1140 lignes, le cœur) | **État :** `products, bills, config, prefs, sha, remoteRev, state{loaded,status,message,messageKind,lastSyncAt,pending,dirty}`, `usage`, `storageProblem`, `writeChain` (écritures sérialisées). **Exports :** `DEFAULT_PREFS`, `subscribe`, `statusLabel` (À jour/Connexion…/Envoi…/Hors ligne/Erreur/Local seul), `getState` (ajoute `provider, readOnly, unpublished, pendingCount, storageFull, usage…`), `isStorageFull`, `arePhotosSeparated`, `getProducts/getBills`, `isLoaded/getStatus/getSyncMessage/getConfig/getLastSyncAt/getPrefs/isPending`, `setPrefs` (prefs partagées poussées), `saveConfig`, `setSyncMessage`, `clearConfig` (drapeau d'opt-out), `load`, `refresh` (la seule lecture distante), `push({force})` (publie produits+réglages+factures), `importFromGithub` (migration GitHub → Worker en un clic), **CRUD produit** `addProduct/updateProduct/toggleBought/setBought/deleteProduct/restoreProduct/clearBought/restoreMany/clearAll/importProducts/replaceAll`, **CRUD facture** `addBill/updateBill/toggleBillPaid/deleteBill/restoreBill/importBills`. **Internes :** `persistLocal/persistBills` (photos séparées dans IndexedDB, rapport de quota), `writePhotos` (nettoie les orphelins avec produits ∪ factures), `syncWithRemote` (garde anti-version-ancienne, `dirty` → push sinon adoption du distant), `markTokenRejected`, `readOnlyNote`, `settingsSnapshot/applyRemoteSettings`, `connectDefault`, `notify` (cooldown 8 s). |
-| **model.js** (420) | Enums : `STATUS`, `CATEGORIES` (8 catégories avec unité par défaut), `UNITS` (piece/metre/rouleau), `PRIORITIES`, `SORTS` (recent/name/price/qty/priority), `CARD_LAYOUTS` (card/mosaic/row), `BILL_STATUS`. Fonctions : `colorCss/colorHex`, `displayName`, `categoryLabel`, `unitLabel/unitShort`, `priorityMeta`, `defaultUnitFor`, `normalizeProduct`/`normalizeList` (tolérant, conserve les champs inconnus), `productView`, `describeQty`, `matchesQuery` (AND de jetons, insensible accents), `sortProducts` (achetés toujours en bas), `filterProducts`, `groupByCategory`, `sumTotal`, `computeStats`, `knownSuppliers`, `listSummaryText` (texte à partager), `normalizeBill`/`normalizeBillList`, `billView`, `sortBills`, `filterBills`, `sumBills` (total/payé/à venir), `knownBillSuppliers`. |
+| **products-model.js** (`bills-model.js` pour les factures) (420) | Enums : `STATUS`, `CATEGORIES` (8 catégories avec unité par défaut), `UNITS` (piece/metre/rouleau), `PRIORITIES`, `SORTS` (recent/name/price/qty/priority), `CARD_LAYOUTS` (card/mosaic/row), `BILL_STATUS`. Fonctions : `colorCss/colorHex`, `displayName`, `categoryLabel`, `unitLabel/unitShort`, `priorityMeta`, `defaultUnitFor`, `normalizeProduct`/`normalizeList` (tolérant, conserve les champs inconnus), `productView`, `describeQty`, `matchesQuery` (AND de jetons, insensible accents), `sortProducts` (achetés toujours en bas), `filterProducts`, `groupByCategory`, `sumTotal`, `computeStats`, `knownSuppliers`, `listSummaryText` (texte à partager), `normalizeBill`/`normalizeBillList`, `billView`, `sortBills`, `filterBills`, `sumBills` (total/payé/à venir), `knownBillSuppliers`. |
 | **colors.js** (350) | ~157 couleurs françaises → hex ; `normalize`, `colorFromText` (exact puis sous-chaîne la plus longue), `colorList`, `hexToRgb`, `rgbToHex`, `hslToHex`, `rgbToHsl`, `searchColors(text,limit=8)` (exact→préfixe→mot→sous-chaîne), `nearestColor(hex)` (distance HSL pondérée — nomme les couleurs choisies à la roue). |
 | **github.js** (394) | `normalizeConfig` (jeton/owner/repo/branche), `canWrite` (jeton && !tokenRejected), `fetchDefaultConfig` (lit `sync-defaults.json`), `fetchRemoteList` (GET contents ; 404→sondage du dépôt ; **401→un nouvel essai anonyme** → lecture seule ; 403/429→messages distincts ; hors-ligne), `putRemoteList` (PUT base64 ; ignoré en lecture seule ; 404→création sans sha ; 409/422→sha frais + un nouvel essai), `testConnection`, `READ_ONLY_MESSAGE`. |
-| **worker.js** (248) | `normalizeConfig` (nettoie le lien collé, valide `https://hôte/chemin`, rejette le gabarit), `canWrite` (lien présent), `fetchRemoteList` (`GET`, `empty:true` → « publiez la vôtre »), `putRemoteList(config,list,sha,settings,bills)` (`PUT` avec `X-Rev` ; **409 → fusion produits+factures, un nouvel essai**), `testConnection` (rapporte nombre + révision), `LINK_PLACEHOLDER`. |
+| **worker-api.js** (248) | `normalizeConfig` (nettoie le lien collé, valide `https://hôte/chemin`, rejette le gabarit), `canWrite` (lien présent), `fetchRemoteList` (`GET`, `empty:true` → « publiez la vôtre »), `putRemoteList(config,list,sha,settings,bills)` (`PUT` avec `X-Rev` ; **409 → fusion produits+factures, un nouvel essai**), `testConnection` (rapporte nombre + révision), `LINK_PLACEHOLDER`. |
 | **sync.js** (66) | Bascule de fournisseur : `PROVIDER_GITHUB/PROVIDER_WORKER`, `providerOf`, `normalizeConfig`, `canWrite`, `fetchRemoteList`, `putRemoteList` (**écarte les factures pour GitHub**), `testConnection`, `fetchDefaultConfig`. |
 | **backup.js** (137) | `BACKUP_VERSION=2`, `buildBackup(products,bills)`, `toJSON`, `backupFilename`, `toCSV` (`;`+BOM+CRLF, 13 colonnes, sans photos), `parseBackup` (accepte les tableaux nus v1), `mergeProducts`/`mergeBills` (par `id`, **l'entrant gagne**, `updatedAt=now`), `exportJSON`, `exportCSV`. |
 | **photo-store.js** (236) | IndexedDB `purchase-gros-photos` / store `photos` / keyPath `id`, enregistrements `{id, photo, receipt}`. `failureReason`, `isAvailable`, `ensureReady`, `put(id,dataUrl,type)` (une valeur vide **supprime ce champ**, évite la résurrection d'une photo), `get`, `getAllWithReceipts` (une lecture → deux Maps), `remove`, `prune(validIds)` (nettoyage des orphelins), `clear`. |
 | **products.json** | Document v3 publié avec 2 produits de démonstration ; photos en base64 en ligne ; ne contient jamais de factures. |
 
-### `js/ui/*`
+### `src/ui/*` et `src/screens/*`
 | Fichier | Contenu |
 |---|---|
 | **shell.js** (339) | `NAV_ITEMS` (Liste/Factures/Réglages), `setActiveRoute`, `renderSyncPill` (6 états), `setInstallEvent`, `setUpdateAvailable`, `setOfflineReady`, `dismissInstall`, `promptInstall`, `isInstalled`, `canPromptInstall`, `isMobile`, `showInstallHelp` (dialogue par plateforme), `renderBanners` (priorité : non publié → erreur sync → mise à jour → hors-ligne → installation), `hideOfflineNotice`, `dismissSyncError`, `renderChrome` ; internes `tabItems` (bouton `+` central), `renderNav` (titre, nav haute, onglets bas + badge d'attente). |
-| **view.js** | `deferWhileEditing(host,paint)` (ne vole jamais le curseur en cours de saisie), `loadingBlock()`. |
+| **dialog.js** | `deferWhileEditing(host,paint)` (ne vole jamais le curseur en cours de saisie), `loadingBlock()`. |
 | **icons.js** | `icons` (~70 SVG inline 24px), `icon(name,size=14)`. |
 | **preview.js** | `openColorPreview` (aplat + nom + Hex + RVB), `openPhotoPreview`, `openReceiptPreview` ; `<dialog>` unique, fermeture ✕/Esc/fond. |
-| **product-card.js** (273) | `renderProductCard(item,layout)` → `renderCard` (visuel photo/couleur + corps + actions), `renderMosaic` (case carrée + barre + coche ronde), `renderRow` (vignette 56px) ; aides `heroBlock, compactVisual, priceBlock, metaBlock, toggleButton, editButton, priorityTag, boughtTag, shortPrice, articleClass`. |
-| **product-form.js** (624) | `openProductForm(product?,{onSaved})`, `isProductFormOpen`. Photo (caméra/galerie, compression, garde quota), nom, catégorie→unité auto, **combobox couleur** (suggestions `searchColors`, flèches/Entrée/Échap, fermeture différée au blur), **roue de couleur HSL** (glisser pointeur, clavier flèches/Shift×10/Home/End, nom de couleur le plus proche), fournisseur (datalist), priorité segmentée, quantité (stepper), unité, prix, détails. |
-| **bill-form.js** (204) | `openBillForm(bill?,{onSaved})`, `isBillFormOpen` ; fournisseur obligatoire, montant, note, statut segmenté (En attente/Payée), photo caméra/galerie + retirer. |
-| **views/list.js** (322) | `listView` : `mount/update/resetFilters/clearSearch/focusSearch` ; internes `counts, header (compteur + total €), filterbar (recherche + onglets statut + puces catégorie), results (groupées par catégorie, à plat si tri priorité), emptyState (CTA contextuel + carte d'installation/erreur GitHub), sectionHtml, paint/refresh* (différés si saisie en cours)`. |
-| **views/bills.js** (276) | `billsView` : `mount/update/resetFilters/clearSearch/focusSearch/setStatus` ; `syncNote` prévient que les factures ne synchronisent qu'avec le lien privé ; cartes de facture avec photo, montant, statut, bascule payée, modifier/supprimer. |
-| **views/settings.js** (~640) | `settingsView` : `mount/update/repaint`. Tuiles : **Affichage** (thème, présentation) · **Partage** (lien privé : endpoint ; Tester, Enregistrer, Synchroniser, Importer depuis GitHub, Déconnecter ; bloc d'état : état, dernière synchro, produits/factures partagés, accès — **l'onglet GitHub lecture seule a été retiré**) · **Données** (export JSON/CSV, import fusion/remplacement, Vider la liste) · **Application** (installation, vérification→installation, à propos : version, stockage y compris photos de factures, raccourcis). |
+| **screens/list/card.js** (273) | `renderProductCard(item,layout)` → `renderCard` (visuel photo/couleur + corps + actions), `renderMosaic` (case carrée + barre + coche ronde), `renderRow` (vignette 56px) ; aides `heroBlock, compactVisual, priceBlock, metaBlock, toggleButton, editButton, priorityTag, boughtTag, shortPrice, articleClass`. |
+| **screens/list/form.js** (624) | `openProductForm(product?,{onSaved})`, `isProductFormOpen`. Photo (caméra/galerie, compression, garde quota), nom, catégorie→unité auto, **combobox couleur** (suggestions `searchColors`, flèches/Entrée/Échap, fermeture différée au blur), **roue de couleur HSL** (glisser pointeur, clavier flèches/Shift×10/Home/End, nom de couleur le plus proche), fournisseur (datalist), priorité segmentée, quantité (stepper), unité, prix, détails. |
+| **screens/bills/form.js** (204) | `openBillForm(bill?,{onSaved})`, `isBillFormOpen` ; fournisseur obligatoire, montant, note, statut segmenté (En attente/Payée), photo caméra/galerie + retirer. |
+| **screens/list/index.js** (322) | `listView` : `mount/update/resetFilters/clearSearch/focusSearch` ; internes `counts, header (compteur + total €), filterbar (recherche + onglets statut + puces catégorie), results (groupées par catégorie, à plat si tri priorité), emptyState (CTA contextuel + carte d'installation/erreur GitHub), sectionHtml, paint/refresh* (différés si saisie en cours)`. |
+| **screens/bills/index.js** (276) | `billsView` : `mount/update/resetFilters/clearSearch/focusSearch/setStatus` ; `syncNote` prévient que les factures ne synchronisent qu'avec le lien privé ; cartes de facture avec photo, montant, statut, bascule payée, modifier/supprimer. |
+| **screens/settings/index.js** (~640) | `settingsView` : `mount/update/repaint`. Tuiles : **Affichage** (thème, présentation) · **Partage** (lien privé : endpoint ; Tester, Enregistrer, Synchroniser, Importer depuis GitHub, Déconnecter ; bloc d'état : état, dernière synchro, produits/factures partagés, accès — **l'onglet GitHub lecture seule a été retiré**) · **Données** (export JSON/CSV, import fusion/remplacement, Vider la liste) · **Application** (installation, vérification→installation, à propos : version, stockage y compris photos de factures, raccourcis). |
 
 ### `worker/*` (backend optionnel)
 | Fichier | Contenu |

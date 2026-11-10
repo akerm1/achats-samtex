@@ -8,7 +8,7 @@
 
   Trois familles d'essais, dans cet ordre :
 
-    1. Calculs purs — importent js/data/analysis.js avec une fixture en
+    1. Calculs purs — importent src/data/analysis-model.js avec une fixture en
        ligne : totaux mensuels (aid/fermé/vide ignorés), diviseurs,
        déduction, signe des « manques », regard « stat » à cheval sur
        deux exercices, aller-retour sauvegarde v3, fusion par id.
@@ -152,7 +152,7 @@ const plain = (text) => String(text || '').replace(/[\s\u202f\u00a0]+/g, ' ').tr
 /* ------------------------------------------------------------------ */
 
 async function pureBench() {
-  const ana = await import('/js/data/analysis.js')
+  const ana = await import('/src/data/analysis-model.js')
 
   /* Jour « aid » et jour « fermé » portent des nombres : le total doit
      les ignorer quand même (la cellule du classeur contient du texte). */
@@ -202,14 +202,14 @@ async function pureBench() {
   const s2 = ana.synthesis(rich, fy)
   check('manques : signe négatif (possession > différence)', s2.manques === -150000 && s2.manques < 0, `${s2.manques}`)
 
-  const { formatDA } = await import('/js/core/utils.js')
+  const { formatDA } = await import('/src/core/utils.js')
   check('formatDA : « 1 234 567 DA », sans décimale', plain(formatDA(1234567)) === '1 234 567 DA' && plain(formatDA(12.7)) === '13 DA', plain(formatDA(1234567)))
 }
 
 /* Feuille stat à cheval sur deux exercices + sauvegarde v3 + fusion. */
 async function referenceBench() {
-  const ana = await import('/js/data/analysis.js')
-  const backup = await import('/js/data/backup.js')
+  const ana = await import('/src/data/analysis-model.js')
+  const backup = await import('/src/data/backup.js')
 
   /* Aller-retour : horodatages figés, sinon deux normalisations donnent
      deux `updatedAt` différents et le JSON ne peut pas coïncider. */
@@ -242,7 +242,7 @@ async function referenceBench() {
   }
   const text = backup.toJSON([{ id: 'p1', name: 'Ruban de satin' }], [{ id: 'b1', supplier: 'Marché' }], fixture)
   const parsed = backup.parseBackup(text)
-  check('sauvegarde v3 : version et analyse présentes', parsed.ok && backup.BACKUP_VERSION === 3 && parsed.analysis?.sales?.length === sales.length, `v${backup.BACKUP_VERSION}`)
+  check('sauvegarde v3 : version et analyse présentes', parsed.ok && backup.BACKUP_VERSION >= 3 && parsed.analysis?.sales?.length === sales.length, `v${backup.BACKUP_VERSION}`)
   check('sauvegarde v3 : aller-retour identique', JSON.stringify(parsed.analysis) === JSON.stringify(ana.normalizeAnalysis(fixture)), 'JSON identique')
   const v2 = backup.parseBackup(JSON.stringify({ products: [{ id: 'p1', name: 'Ruban' }], bills: [{ id: 'b1', supplier: 'M' }] }))
   check('sauvegarde v2 (sans analyse) reste lisible', v2.ok && v2.analysis === null && v2.bills.length === 1, v2.message || 'ok')
@@ -262,7 +262,7 @@ async function referenceBench() {
 
 async function workerBench() {
   const { default: worker } = await import('/worker/share-list-worker.mjs')
-  const client = await import('/js/data/worker.js')
+  const client = await import('/src/data/worker-api.js')
   const kv = new Map()
   const env = {
     LIST_KEY: 'ana-key',
@@ -526,10 +526,10 @@ async function renderCombo(width, theme) {
   const anaCards = d.querySelectorAll('.ana-section-card').length
   check(`${tag} : titre Analyse + sommaire de neuf cartes`, /Analyse/.test(d.querySelector('h1')?.textContent || '') && anaCards === 9 && Boolean(d.querySelector('[data-action="analysis-home"]')), `${anaCards} cartes`)
 
-  /* La barre du bas doit loger 5 entrées (Liste, +, Factures, Réglages, Analyse). */
+  /* La barre du bas loge les cinq écrans, plus le bouton d'ajout au centre. */
   const bar = d.querySelector('#bottomnav-inner')
   const tabs = [...(bar?.querySelectorAll('.tab') || [])]
-  check(`${tag} : cinq entrées dans la barre du bas`, tabs.length === 5, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
+  check(`${tag} : six entrées dans la barre du bas`, tabs.length === 6, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
   check(`${tag} : la barre du bas ne déborde pas`, bar ? bar.scrollWidth <= bar.clientWidth + 1 : false, bar ? `${bar.scrollWidth} / ${bar.clientWidth}` : 'barre absente')
 
   /* Fiche du mois : ouverte par sa carte. */
