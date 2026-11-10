@@ -8,14 +8,12 @@ import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 
 export const NAV_ITEMS = [
-  { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
-  { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
+  { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
   { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' },
-  { route: 'analyse', label: 'Analyse', short: 'Analyse', icon: 'analysis' },
 ]
 
 const shell = {
-  activeRoute: 'liste',
+  activeRoute: 'reglages',
   installEvent: null,
   updateAvailable: false,
   offlineReady: false,
@@ -33,22 +31,21 @@ export function setActiveRoute(route) {
 }
 
 /**
- * Les onglets de la barre du bas. L'ajout est intercalé après la Liste,
- * car c'est l'action la plus fréquente, et le pouce porte naturellement
- * au centre de l'écran.
+ * Les onglets de la barre du bas. L'ajout est affiché après l'onglet Dépenses.
  */
 function tabItems() {
   const items = []
   NAV_ITEMS.forEach((item, index) => {
-    if (index === 1) {
+    items.push(item)
+    // Après l'onglet Dépenses (premier), ajouter le bouton "Ajouter"
+    if (index === 0) {
       items.push({
         route: '__add',
         label: 'Ajouter',
         icon: 'plus',
-        action: 'open-form',
+        action: 'open-expense-form',
       })
     }
-    items.push(item)
   })
   return items
 }
@@ -82,7 +79,7 @@ function renderNav() {
       const isAdd = item.route === '__add'
       const active = !isAdd && item.route === shell.activeRoute
       const badge =
-        item.route === 'liste' && pendingCount ? `<span class="tab-badge">${pendingCount}</span>` : ''
+        item.route === '__add' ? '' : '' // Badge removed as we only have settings view
       const attrs = isAdd
         ? `type="button" class="tab tab--add" data-action="open-form"`
         : `class="tab ${active ? 'is-active' : ''}" href="#/${item.route}"

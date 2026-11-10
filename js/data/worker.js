@@ -15,7 +15,7 @@
 /* que ce qu'elle a déjà publié (KV est cohérent à terme).             */
 /* ------------------------------------------------------------------ */
 
-import { mergeAnalysis, mergeBills, mergeProducts } from './backup.js'
+import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
 
 export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.workers.dev/<clé-secrète>'
 
@@ -62,14 +62,14 @@ function parseDocument(payload) {
   const rev = Number(payload?.rev)
   return {
     list: Array.isArray(payload?.products) ? payload.products : [],
-    /* `null` = le document publié ne parle pas encore de factures. Le store
-       s'en sert pour ne rien écraser : voir `syncWithRemote`. */
     bills: Array.isArray(payload?.bills) ? payload.bills : null,
-    /* `null` = document écrit avant l'analyse (Worker v4) : même contrat,
-       l'analyse locale n'est jamais écrasée par ce silence. */
     analysis:
       payload?.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)
         ? payload.analysis
+        : null,
+    expenses:
+      payload?.expenses && typeof payload.expenses === 'object' && !Array.isArray(payload.expenses)
+        ? payload.expenses
         : null,
     settings,
     sha: String(payload?.rev ?? 0),
@@ -121,54 +121,56 @@ export async function fetchRemoteList(config) {
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings, bills, analysis) {
+function buildBody(list, settings, bills, analysis, expenses) {
   return JSON.stringify({
     version: 5,
     updatedAt: new Date().toISOString(),
     settings: settings || null,
     products: list,
-    /* `null` quand on n'en a pas : c'est le marqueur « ce document ignore
-       les factures » (ou l'analyse), à ne pas confondre avec un vide. */
     bills: bills ?? null,
     analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null,
+    expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null,
   })
 }
 
 /**
  * Publie la liste. En cas de conflit (révision plus récente que celle
  * que l'appareil a lue), on fusionne avec l'état distant puis on retente —
- * aucune modification n'est donc écrasée en silence. Factures et analyse
+ * aucune modification n'est donc écrasée en silence. Factures, analyse et dépenses
  * suivent exactement le même chemin, chacune avec leur propre fusion par
  * `id` (l'état distant gagne).
  * @param {Array|null} bills factures à publier, `null` pour ne rien changer
  * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
- * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, status:string, message?:string}>}
+ * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
+ * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, analysis) {
+export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev, payloadBills, payloadAnalysis) =>
+  const send = (payload, rev, payloadBills, payloadAnalysis, payloadExpenses) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings, payloadBills, payloadAnalysis),
+      body: buildBody(payload, settings, payloadBills, payloadAnalysis, payloadExpenses),
     })
 
   let out = list
   let outBills = bills ?? null
   let outAnalysis = analysis ?? null
+  let outExpenses = expenses ?? null
   let mergedBills = null
   let mergedAnalysis = null
+  let mergedExpenses = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev, outBills, outAnalysis)
+    response = await send(out, outRev, outBills, outAnalysis, outExpenses)
   } catch (error) {
     return {
       ok: false,
@@ -185,22 +187,21 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     }
     const merged = mergeProducts(out, current.products)
     out = merged.list
-    /* Le Worker ne renvoie `bills: null` que pour un document écrit avant
-       les factures : dans ce cas on garde ce qu'on avait, plutôt que de
-       repartir d'un tableau vide qui effacerait tout. */
     if (Array.isArray(current.bills)) {
       mergedBills = mergeBills(outBills || [], current.bills).list
       outBills = mergedBills
     }
-    /* Même contrat pour l'analyse (objet = fusionnée, `null` = document
-       encore v4) : fusion par `id` des cinq collections, distant gagne. */
     if (current.analysis && typeof current.analysis === 'object' && !Array.isArray(current.analysis)) {
       mergedAnalysis = mergeAnalysis(outAnalysis || {}, current.analysis).analysis
       outAnalysis = mergedAnalysis
     }
+    if (current.expenses && typeof current.expenses === 'object' && !Array.isArray(current.expenses)) {
+      mergedExpenses = mergeExpenses(outExpenses || {}, current.expenses).expenses
+      outExpenses = mergedExpenses
+    }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev, outBills, outAnalysis)
+      response = await send(out, outRev, outBills, outAnalysis, outExpenses)
     } catch (error) {
       return {
         ok: false,
@@ -224,10 +225,10 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     ok: true,
     sha: data?.rev === undefined ? sha : String(data.rev),
     rev: Number.isFinite(rev) ? rev : null,
-    /* La fusion d'un conflit est proposée à l'appelant pour qu'il l'adopte. */
     list: out === list ? null : out,
     bills: mergedBills,
     analysis: mergedAnalysis,
+    expenses: mergedExpenses,
     status: 'ok',
   }
 }

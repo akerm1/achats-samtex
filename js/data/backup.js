@@ -4,18 +4,18 @@
 
 import { normalizeBillList, normalizeList } from './model.js'
 import { mergeAnalysis as mergeAnalysisState, normalizeAnalysis } from './analysis.js'
+import { mergeExpenses as mergeExpensesState, normalizeExpenses } from './expenses.js'
 import { downloadText } from '../core/utils.js'
 
-/* v1 : produits seuls · v2 : + factures · v3 : + analyse (l'ancien format
-   reste lisible : `analysis` absent → null, jamais une perte d'import). */
-export const BACKUP_VERSION = 3
+/* v1 : produits seuls · v2 : + factures · v3 : + analyse · v4 : + dépenses */
+export const BACKUP_VERSION = 4
 
 /**
- * La sauvegarde emporte factures ET analyse avec les produits : c'est le
+ * La sauvegarde emporte factures, analyse ET dépenses avec les produits : c'est le
  * seul endroit où les collections sortent du navigateur (GitHub ne porte
  * ni l'une ni l'autre). Le CSV reste produits seul.
  */
-export function buildBackup(products, bills, analysis = null) {
+export function buildBackup(products, bills, analysis = null, expenses = null) {
   return {
     app: 'mes-achats',
     version: BACKUP_VERSION,
@@ -25,11 +25,14 @@ export function buildBackup(products, bills, analysis = null) {
     analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis)
       ? normalizeAnalysis(analysis)
       : null,
+    expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses)
+      ? normalizeExpenses(expenses)
+      : null,
   }
 }
 
-export function toJSON(products, bills, analysis = null) {
-  return JSON.stringify(buildBackup(products, bills, analysis), null, 2)
+export function toJSON(products, bills, analysis = null, expenses = null) {
+  return JSON.stringify(buildBackup(products, bills, analysis, expenses), null, 2)
 }
 
 export function backupFilename(extension, prefix = 'mes-achats') {
@@ -96,8 +99,12 @@ export function parseBackup(text) {
     parsed?.analysis && typeof parsed.analysis === 'object' && !Array.isArray(parsed.analysis)
       ? normalizeAnalysis(parsed.analysis)
       : null
-  if (!products.length) return { ok: false, products: [], bills: [], analysis: null, message: 'Aucun produit valide dans ce fichier.' }
-  return { ok: true, products, bills, analysis }
+  const expenses =
+    parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
+      ? normalizeExpenses(parsed.expenses)
+      : null
+  if (!products.length) return { ok: false, products: [], bills: [], analysis: null, expenses: null, message: 'Aucun produit valide dans ce fichier.' }
+  return { ok: true, products, bills, analysis, expenses }
 }
 
 /**
@@ -116,6 +123,11 @@ export function mergeBills(current, incoming) {
 /** L'analyse suit la même règle « incoming wins » (v3 + conflit 409). */
 export function mergeAnalysis(current, incoming) {
   return mergeAnalysisState(current, incoming)
+}
+
+/** Les dépenses suivent la même règle « incoming wins ». */
+export function mergeExpenses(current, incoming) {
+  return mergeExpensesState(current, incoming)
 }
 
 /**

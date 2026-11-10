@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Liste des produits à acheter en gros — sashes et tissus, avec photos, couleurs et prix. Synchronisée automatiquement entre tous les appareils via GitHub." />
@@ -34,7 +34,12 @@
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/views.css" />
 
-    <title>Mes achats — Sashes &amp; Tissus</title>
+    <title>Mes achats — Sashes & Tissus</title>
+    <!--
+  Note: Service worker registration is handled by js/main.js (initServiceWorker).
+  We avoid unregistering here to prevent race conditions and allow the
+  recovery script below to properly detect the SW state.
+-->
   </head>
   <body>
     <a class="skip-link" href="#page">Aller à la liste</a>
@@ -136,26 +141,31 @@
         }
 
         function recover() {
-          if (!navigator.serviceWorker || !window.isSecureContext) {
+          if (!navigator.serviceWorker) {
+            // No Service Worker support – just reload once
             reloadOnce()
             return
           }
-          navigator.serviceWorker
-            .getRegistration()
-            .then(function (registration) {
-              if (!registration) {
-                reloadOnce()
-                return
-              }
-              registration.update()
-              if (!registration.waiting) {
-                reloadOnce()
-                return
-              }
+          // On localhost (non-secure context), we still try the SW update flow
+          // because the SW may have been registered earlier. Skip the isSecureContext
+          // guard that would otherwise force a reload on HTTP and cause a loop.
+          navigator.serviceWorker.getRegistration().then(function (registration) {
+            if (!registration) {
+              // No SW registered – reload once to try the main.js registration
+              reloadOnce()
+              return
+            }
+            registration.update()
+            if (!registration.waiting) {
+              // No waiting worker yet – try to skip it, then reload if needed
               registration.waiting.postMessage({ type: 'SKIP_WAITING' })
               navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
-            })
-            .catch(reloadOnce)
+              return
+            }
+            // We have a waiting worker – skip it and reload
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+            navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
+          }).catch(reloadOnce)
         }
 
         window.addEventListener(
@@ -175,6 +185,6 @@
         })
       })()
     </script>
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js?v=2"></script>
   </body>
 </html>

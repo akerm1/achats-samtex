@@ -40,6 +40,7 @@ import {
 import { mergeBills, mergeProducts } from './backup.js'
 import * as analysisStore from './analysis-store.js'
 import * as photoStore from './photo-store.js'
+import * as expensesStore from './expenses-store.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
@@ -69,6 +70,14 @@ export const DEFAULT_PREFS = {
    la même mécanique que `touchBills()` + `push()`. Le module d'analyse
    n'importe pas ce store — le branchement se fait ici, à sens unique. */
 analysisStore.onAnalysisChange(() => {
+  state.dirty = true
+  storage.set(DIRTY_KEY, true)
+  emit()
+  push()
+})
+
+/* Les dépenses partagent le même drapeau : toute modification pousse. */
+expensesStore.subscribe(() => {
   state.dirty = true
   storage.set(DIRTY_KEY, true)
   emit()
@@ -658,6 +667,8 @@ async function syncWithRemote() {
   /* `analysis: null` = document écrit avant l'analyse (Worker v4) : on
      garde alors l'analyse locale, exactement comme pour les factures. */
   if (analysisStore.applyRemoteAnalysis(remote.analysis)) changed = true
+  /* `expenses: null` = document écrit avant les dépenses : on garde les locales. */
+  if (expensesStore.applyRemoteExpenses(remote.expenses)) changed = true
   if (applyRemoteSettings(remote.settings)) changed = true
   return markReady(changed)
 }
@@ -784,7 +795,7 @@ export async function push({ force = false } = {}) {
   state.status = 'saving'
   emit()
 
-  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills, analysisStore.getSnapshot())
+  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills, analysisStore.getSnapshot(), expensesStore.getSnapshot())
   state.pending = false
 
   if (result.ok) {
@@ -810,6 +821,8 @@ export async function push({ force = false } = {}) {
     }
     /* Idem pour l'analyse fusionnée par le 409 (objet, sinon `null`). */
     analysisStore.applyRemoteAnalysis(result.analysis)
+    /* Idem pour les dépenses fusionnées par le 409 (objet, sinon `null`). */
+    expensesStore.applyRemoteExpenses(result.expenses)
     state.dirty = false
     storage.remove(DIRTY_KEY)
     state.status = 'ready'
@@ -861,7 +874,7 @@ export async function importFromGithub() {
   /* Les produits viennent de GitHub, les factures restent locales : on ne
      copie que ce que GitHub sait porter. Sans cela, la copie viderait les
      factures d'un appareil qui en a — l'analyse fait de même. */
-  const result = await putRemoteList(config, list, null, remote.settings, bills, analysisStore.getSnapshot())
+  const result = await putRemoteList(config, list, null, remote.settings, bills, analysisStore.getSnapshot(), expensesStore.getSnapshot())
   if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
 
   sha = result.sha

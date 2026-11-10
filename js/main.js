@@ -42,6 +42,22 @@ import {
   getAnalysis,
   toggleSaleKind,
 } from './data/analysis-store.js'
+import {
+  addCategory,
+  addExpense,
+  addInvestment as addExpenseInvestment,
+  addRevenue,
+  deleteCategory,
+  deleteExpense,
+  deleteInvestment as deleteExpenseInvestment,
+  deleteRevenue,
+  getExpenses,
+  reorderCategories,
+  updateCategory,
+  updateExpense,
+  updateInvestment as updateExpenseInvestment,
+  updateRevenue,
+} from './data/expenses-store.js'
 import { openProductForm } from './ui/product-form.js'
 import { openBillForm } from './ui/bill-form.js'
 import { openColorPreview, openPhotoPreview, openReceiptPreview } from './ui/preview.js'
@@ -58,23 +74,26 @@ import {
   setUpdateAvailable,
   showInstallHelp,
 } from './ui/shell.js'
-import { listView } from './ui/views/list.js'
-import { billsView } from './ui/views/bills.js'
-import { analysisView } from './ui/views/analysis.js'
 import { settingsView } from './ui/views/settings.js'
+import { expensesView } from './ui/views/expenses.js'
+import {
+  openCategoryForm,
+  openExpenseForm,
+  openInvestmentForm,
+  openRevenueDayForm,
+  openRevenueForm,
+  openRevenueQuickForm,
+} from './ui/expense-form.js'
 
 const VIEWS = {
-  liste: listView,
-  factures: billsView,
   reglages: settingsView,
-  /* En dernière position : le raccourci « 4 » ouvre l'Analyse. */
-  analyse: analysisView,
+  depenses: expensesView,
 }
 const ROUTE_ORDER = Object.keys(VIEWS)
-/** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
-const REDIRECT = { accueil: 'liste', marche: 'liste' }
+/** Anciennes adresses (Accueil, Marché) : on bascule sur les réglages. */
+const REDIRECT = { accueil: 'reglages', marche: 'reglages' }
 
-let activeRoute = 'liste'
+let activeRoute = 'reglages'
 let viewHost = null
 
 /* ------------------------------------------------------------------ */
@@ -82,7 +101,7 @@ let viewHost = null
 /* ------------------------------------------------------------------ */
 
 function showRoute(route) {
-  const next = REDIRECT[route] || (ROUTE_ORDER.includes(route) ? route : 'liste')
+  const next = REDIRECT[route] || (ROUTE_ORDER.includes(route) ? route : 'reglages')
   if (activeRoute !== next && viewHost) window.scrollTo({ top: 0, behavior: 'auto' })
   activeRoute = next
   setActiveRoute(next)
@@ -93,7 +112,7 @@ function initRouting() {
   startRouter((route) => {
     /* Raccourci PWA : #/ajouter ouvre directement le formulaire. */
     if (route === 'ajouter') {
-      navigate('liste', { replace: true })
+      navigate('reglages', { replace: true })
       openProductForm()
       return
     }
@@ -141,6 +160,77 @@ async function handleDelete(id) {
     actionLabel: 'Annuler',
     onAction: () => restoreProduct(removed.product, removed.index),
   })
+}
+
+async function handleDeleteExpense(id) {
+  const expenses = getExpenses()
+  const expense = expenses.expenses.find((e) => e.id === id)
+  if (!expense) return
+  const catLabel = expenses.categories.find((c) => c.id === expense.categoryId)?.label || expense.categoryId
+  const confirmed = await confirmAction({
+    title: 'Supprimer cette dépense ?',
+    message: `« ${catLabel} » (${expense.amount !== null ? expense.amount.toFixed(2) : '—'}) sera retirée.`,
+    confirmLabel: 'Supprimer',
+    danger: true,
+  })
+  if (!confirmed) return
+  const removed = deleteExpense(id)
+  if (!removed) return
+  toast('Dépense supprimée.', {
+    type: 'info',
+    actionLabel: 'Annuler',
+    onAction: () => {
+      // Note: restore not implemented for expenses yet
+    },
+  })
+}
+
+async function handleDeleteCategory(id) {
+  const expenses = getExpenses()
+  const category = expenses.categories.find((c) => c.id === id)
+  if (!category) return
+  if (category.isDefault) return toast('Impossible de supprimer une catégorie par défaut.', { type: 'error' })
+  const count = expenses.expenses.filter((e) => e.categoryId === id).length
+  const confirmed = await confirmAction({
+    title: 'Supprimer cette catégorie ?',
+    message: `${count} dépense(s) utilisent cette catégorie. Elles la garderont mais elle ne sera plus proposée.`,
+    confirmLabel: 'Supprimer',
+    danger: true,
+  })
+  if (!confirmed) return
+  deleteCategory(id)
+  toast('Catégorie supprimée.', { type: 'info' })
+}
+
+async function handleDeleteInvestment(id) {
+  const expenses = getExpenses()
+  const investment = expenses.investments.find((i) => i.id === id)
+  if (!investment) return
+  const transferCount = expenses.expenses.filter((e) => e.linkedInvestmentId === id).length
+  const confirmed = await confirmAction({
+    title: 'Supprimer cet investissement ?',
+    message: `${transferCount} transfert(s) lié(s) seront détachés mais conservés.`,
+    confirmLabel: 'Supprimer',
+    danger: true,
+  })
+  if (!confirmed) return
+  deleteExpenseInvestment(id)
+  toast('Investissement supprimé.', { type: 'info' })
+}
+
+async function handleDeleteRevenue(id) {
+  const expenses = getExpenses()
+  const revenue = expenses.revenues.find((r) => r.id === id)
+  if (!revenue) return
+  const confirmed = await confirmAction({
+    title: 'Supprimer cette recette ?',
+    message: `Recette du ${revenue.date} (${revenue.amount !== null ? revenue.amount.toFixed(2) : '—'}) sera retirée.`,
+    confirmLabel: 'Supprimer',
+    danger: true,
+  })
+  if (!confirmed) return
+  deleteRevenue(id)
+  toast('Recette supprimée.', { type: 'info' })
 }
 
 async function handleClearBought() {
@@ -192,20 +282,9 @@ const ACTIONS = {
   'open-form': () => {
     openProductForm()
   },
-  'open-bill-form': () => {
-    openBillForm()
-  },
   edit: (node) => {
     const product = productById(node.dataset.id)
     if (product) openProductForm(product)
-  },
-  'edit-bill': (node) => {
-    const bill = getBills().find((b) => b.id === node.dataset.id)
-    if (bill) openBillForm(bill)
-  },
-  'preview-bill-photo': (node) => {
-    const bill = getBills().find((b) => b.id === node.dataset.id)
-    if (bill?.photo) openReceiptPreview({ name: bill.supplier, receipt: bill.photo })
   },
   'preview-color': (node) => {
     const product = productById(node.dataset.id)
@@ -232,46 +311,11 @@ const ACTIONS = {
   delete: (node) => {
     handleDelete(node.dataset.id)
   },
-  'delete-bill': async (node) => {
-    const bill = getBills().find((b) => b.id === node.dataset.id)
-    if (!bill) return
-    const confirmed = await confirmAction({
-      title: 'Supprimer cette facture ?',
-      message: `« ${bill.supplier} » sera retirée.`,
-      confirmLabel: 'Supprimer',
-      danger: true,
-    })
-    if (!confirmed) return
-    const removed = deleteBill(bill.id)
-    if (!removed) return
-    toast(`Facture « ${bill.supplier} » supprimée.`, {
-      type: 'info',
-      actionLabel: 'Annuler',
-      onAction: () => restoreBill(removed.bill, removed.index),
-    })
-  },
   'clear-bought': () => {
     handleClearBought()
   },
   'clear-all': () => {
     handleClearAll()
-  },
-  'reset-filters': () => {
-    if (activeRoute === 'factures') billsView.resetFilters()
-    else listView.resetFilters()
-    toast('Filtres réinitialisés.', { type: 'info' })
-  },
-  'reset-bill-filters': () => {
-    billsView.resetFilters()
-    toast('Filtres réinitialisés.', { type: 'info' })
-  },
-  'set-bill-status': (node) => billsView.setStatus(node.dataset.value),
-  'clear-bills-search': () => billsView.clearSearch(),
-  'set-filter': (node) => setPrefs({ filter: node.dataset.value }),
-  'set-category': (node) => setPrefs({ category: node.dataset.value }),
-  'clear-search': () => {
-    if (activeRoute === 'factures') billsView.clearSearch()
-    else listView.clearSearch()
   },
   'share-list': () => shareList(),
   'go-settings': () => navigate('reglages'),
@@ -285,10 +329,10 @@ const ACTIONS = {
   },
   'disconnect-github': () => handleDisconnect(),
   'export-json': () => {
-    /* Factures ET analyse voyagent avec la sauvegarde : c'est le seul
+    /* Factures, analyse ET dépenses voyagent avec la sauvegarde : c'est le seul
        endroit où ces collections sortent du navigateur (GitHub ni le
        CSV ne les portent). */
-    exportJSON(getProducts(), getBills(), getAnalysis())
+    exportJSON(getProducts(), getBills(), getAnalysis(), getExpenses())
     toast('Sauvegarde JSON générée.', { type: 'ok' })
   },
   'export-csv': () => {
@@ -297,28 +341,43 @@ const ACTIONS = {
   },
   /* Analyse — les mutations vont au store d'analyse ; l'écran se
      redessine par l'abonnement (même enveloppe try/catch que les autres). */
-  'analysis-home': () => analysisView.setTab('generale'),
-  'analysis-fy-prev': () => analysisView.shiftFy(-1),
-  'analysis-fy-next': () => analysisView.shiftFy(1),
-  'analysis-month-prev': () => analysisView.shiftMonth(-1),
-  'analysis-month-next': () => analysisView.shiftMonth(1),
-  'analysis-today': () => analysisView.goToday(),
-  'analysis-goto': (node) => analysisView.gotoSection(node.dataset.target, node.dataset.tab),
-  'analysis-day-kind': (node) => toggleSaleKind(node.dataset.date, node.dataset.kind),
-  'analysis-day-clear': (node) => clearSale(node.dataset.date),
-  'analysis-investment-add': () => addInvestment({}),
-  'analysis-investment-del': (node) => deleteInvestment(node.dataset.id),
-  'analysis-purchase-add': () => addPurchase({}),
-  'analysis-purchase-del': (node) => deletePurchase(node.dataset.id),
-  'analysis-holding-add': (node) => addHolding({ holder: node.dataset.holder }),
-  'analysis-holding-del': (node) => deleteHolding(node.dataset.id),
-  'analysis-place-add': () => addPlace({}),
-  'analysis-place-del': (node) => deletePlace(node.dataset.id),
   'install-update': () => installUpdate(),
   'install-app': () => (canPromptInstall() ? promptInstall() : showInstallHelp()),
   'hide-install': () => dismissInstall(),
   'hide-offline': () => hideOfflineNotice(),
   'hide-sync-error': () => dismissSyncError(),
+
+  /* Dépenses */
+  'open-expense-form': () => openExpenseForm(),
+  'edit-expense': (node) => {
+    const expenses = getExpenses()
+    const expense = expenses.expenses.find((e) => e.id === node.dataset.id)
+    if (expense) openExpenseForm(expense)
+  },
+  'delete-expense': (node) => handleDeleteExpense(node.dataset.id),
+  'open-category-form': () => openCategoryForm(),
+  'edit-category': (node) => {
+    const expenses = getExpenses()
+    const category = expenses.categories.find((c) => c.id === node.dataset.id)
+    if (category) openCategoryForm(category)
+  },
+  'delete-category': (node) => handleDeleteCategory(node.dataset.id),
+  'open-investment-form': () => openInvestmentForm(),
+  'edit-investment': (node) => {
+    const expenses = getExpenses()
+    const investment = expenses.investments.find((i) => i.id === node.dataset.id)
+    if (investment) openInvestmentForm(investment)
+  },
+  'delete-investment': (node) => handleDeleteInvestment(node.dataset.id),
+  'open-revenue-form': () => openRevenueForm(),
+  'open-revenue-quick': () => openRevenueQuickForm(),
+  'open-revenue-day': (node) => openRevenueDayForm(node.dataset.date),
+  'edit-revenue': (node) => {
+    const expenses = getExpenses()
+    const revenue = expenses.revenues.find((r) => r.id === node.dataset.id)
+    if (revenue) openRevenueForm(revenue)
+  },
+  'delete-revenue': (node) => handleDeleteRevenue(node.dataset.id),
 }
 
 function initActions() {
@@ -385,12 +444,6 @@ function initShortcuts() {
     if (key === 'n') {
       event.preventDefault()
       openProductForm()
-      return
-    }
-    if (key === '/') {
-      event.preventDefault()
-      if (activeRoute !== 'liste') navigate('liste')
-      requestAnimationFrame(() => listView.focusSearch())
       return
     }
     if (key === 's') {

@@ -2399,3 +2399,537 @@ input.color-box::-webkit-color-swatch {
     gap: 6px;
   }
 }
+
+/* ================================================================ */
+/* Vue Dépenses                                                     */
+/* ================================================================ */
+
+.view--expenses {
+  display: flex;
+  flex-direction: column;
+}
+
+.expenses-tabs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: 0 var(--space-4) var(--space-3);
+  margin: 0 calc(-1 * var(--space-4));
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.expense-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: color var(--fast), background var(--fast);
+  white-space: nowrap;
+}
+
+.expense-tab:hover {
+  color: var(--ink-1);
+  background: var(--surface-2);
+}
+
+.expense-tab.is-active {
+  color: var(--ink-1);
+  background: var(--primary);
+}
+
+.expense-tab svg {
+  flex-shrink: 0;
+}
+
+.list-head-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.kpi {
+  flex: 1;
+  min-width: 120px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.kpi-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  margin-bottom: 2px;
+}
+
+.kpi-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-value.text-success {
+  color: var(--teal);
+}
+
+.kpi-value.text-danger {
+  color: var(--red);
+}
+
+/* Catégories */
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.category-card {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+
+.category-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.category-card.is-default {
+  opacity: 0.7;
+}
+
+.category-color {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  color: white;
+}
+
+.category-info {
+  min-width: 0;
+}
+
+.category-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.category-stats {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.category-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.drag-handle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--ink-3);
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.category-card.dragging {
+  opacity: 0.5;
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+}
+
+/* Investissements */
+.investments-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin: 0 calc(-1 * var(--space-4));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.kpi-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  text-align: center;
+  border: 1px solid var(--line);
+}
+
+.kpi-card.danger {
+  border-color: var(--red);
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.kpi-card .kpi-label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  margin-bottom: var(--space-2);
+}
+
+.kpi-card .kpi-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.investment-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.investment-card {
+  border: 1px solid var(--line);
+}
+
+.investment-progress {
+  margin: var(--space-3) 0;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--teal));
+  transition: width var(--normal);
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.investment-transfers {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.investment-transfers summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.transfer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.transfer-item span:first-child {
+  color: var(--ink-3);
+}
+
+.transfer-item strong {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recettes */
+.revenues-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin: 0 calc(-1 * var(--space-4));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.revenue-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.revenue-day-card {
+  border-left: 4px solid var(--teal);
+}
+
+.revenue-day-card .card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.revenue-day-card .card-amount.text-success {
+  color: var(--teal);
+}
+
+.quick-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  margin-top: var(--space-3);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.quick-total span {
+  color: var(--ink-2);
+}
+
+.quick-total strong {
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-entry {
+  display: grid;
+  grid-template-columns: 100px 1fr 48px;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.quick-entry .input {
+  min-height: 44px;
+}
+
+.day-entry {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.day-entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-entry-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+}
+
+.day-entry-note {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.day-entry-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Carte dépense avec couleur de catégorie */
+.card-media--category {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+}
+
+.card-media--category svg {
+  width: 28px;
+  height: 28px;
+  color: white;
+}
+
+.card--transfer .card-top {
+  border-left: 3px solid var(--purple);
+}
+
+.badge--purple {
+  background: rgba(123, 31, 162, 0.12);
+  color: var(--purple);
+}
+
+.card-link {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.card-meta svg {
+  flex-shrink: 0;
+}
+
+.ana-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 calc(-1 * var(--space-4));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.ana-toolbar .btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+.ana-today {
+  flex: 1 1 100%;
+}
+
+/* Saisie rapide */
+#revenue-quick-form .dialog-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.quick-entry {
+  display: grid;
+  grid-template-columns: 100px 1fr 48px;
+  gap: var(--space-2);
+}
+
+.quick-entry .input {
+  min-height: 44px;
+}
+
+/* Icon & Color pickers */
+.icon-picker,
+.color-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-2);
+}
+
+.icon-choice,
+.color-choice {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color var(--fast), transform var(--fast);
+}
+
+.icon-choice:hover,
+.color-choice:hover {
+  transform: scale(1.05);
+}
+
+.icon-choice.is-active,
+.color-choice.is-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary);
+}
+
+.color-choice {
+  border-radius: 50%;
+}
+
+.color-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .expenses-tabs {
+    padding: 0 var(--space-3) var(--space-2);
+  }
+
+  .expense-tab {
+    padding: var(--space-2) var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  .icon-picker,
+  .color-picker {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .quick-entry {
+    grid-template-columns: 80px 1fr 40px;
+  }
+
+  .day-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .day-entry-actions {
+    justify-content: flex-end;
+  }
+}
