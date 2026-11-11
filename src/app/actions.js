@@ -77,6 +77,16 @@ const expenseById = (id) => getExpenses().expenses.find((item) => item.id === id
 export const ACTIONS = {
   /* Produits */
   'open-form': () => openProductForm(),
+  /* Le bouton flottant suit l'écran : il ajoute ce que l'on regarde. */
+  'fab-add': () => {
+    const route = getActiveRoute()
+    if (route === 'factures') return openBillForm()
+    if (route === 'depenses') return openExpenseForm()
+    if (route === 'analyse') return openRevenueQuickForm()
+    return openProductForm()
+  },
+  'set-sort': (node) => setPrefs({ sort: node.value }),
+  'set-layout': (node) => setPrefs({ layout: node.dataset.value }),
   edit: (node) => {
     const product = productById(node.dataset.id)
     if (product) openProductForm(product)
@@ -165,6 +175,11 @@ export const ACTIONS = {
     }
     openExpenseForm(null, prefill)
   },
+  /* Une case de catégorie de l'écran : la dépense s'ouvre déjà catégorisée. */
+  'quick-expense': (node) => {
+    const categoryId = node?.dataset?.category || ''
+    openExpenseForm(null, categoryId ? { categoryId } : {})
+  },
   'edit-expense': (node) => {
     const expense = expenseById(node.dataset.id)
     if (expense) openExpenseForm(expense)
@@ -248,6 +263,21 @@ export function initActions() {
       const article = card.closest('[data-id]')
       const product = article?.dataset.id ? productById(article.dataset.id) : null
       if (product) openProductForm(product)
+    }
+  })
+
+  /* Les listes déroulantes d'action (tri de la liste) passent par `change`,
+     pas par `click` : un clic sur une option ne déclencherait rien. */
+  document.addEventListener('change', (event) => {
+    const node = event.target.closest('select[data-action]')
+    if (!node) return
+    const handler = ACTIONS[node.dataset.action]
+    if (!handler) return
+    try {
+      handler(node)
+    } catch (error) {
+      console.error(error)
+      toast(error.message || 'Action impossible.', { type: 'error' })
     }
   })
 

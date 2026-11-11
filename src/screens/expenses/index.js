@@ -133,7 +133,7 @@ function refreshResults() {
 }
 
 function refreshHeader() {
-  const head = state.host?.querySelector('.list-head')
+  const head = state.host?.querySelector('.screen-head')
   if (head) head.outerHTML = header()
 }
 

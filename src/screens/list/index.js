@@ -1,16 +1,10 @@
 /* ------------------------------------------------------------------ */
 /* Vue Liste — filtres, tri, groupes par catégorie                     */
 /*                                                                      */
-/* Refonte 8.4 : la barre d'outils devient une **barre de filtres**    */
-/* réellement collante, qui reste en place pendant toute la liste.      */
-/* Avant, elle flottait dans le flux et disparaissait au défilement —   */
-/* or c'est justement quand on scrolle qu'on veut changer de filtre.    */
+/* Refonte 9.0 : l'écran s'ouvre sur un en-tête qui compte et chiffre la */
+/* vue, puis une barre de filtres en trois couches, puis une barre      */
+/* d'outils discrète pour le tri et la présentation.                    */
 /*                                                                      */
-/* La structure est en trois couches superposées et non imbriquées :    */
-/*   .filterbar  — le conteneur collant                              */
-/*     .filterbar-search  — la recherche, qui se replie sur téléphone  */
-/*     .filterbar-tabs    — le statut, toujours visible              */
-/*     .filterbar-chips   — les catégories, défilement horizontal     */
 /* Trois couches plutôt qu'un seul bloc, parce qu'elles se pilotent     */
 /* séparément : la recherche a son propre cycle de vie (on ne veut pas */
 /* la repeindre à chaque frappe), les filtres non.                     */
@@ -18,7 +12,9 @@
 
 import { esc, formatMoney } from '../../core/utils.js'
 import {
+  CARD_LAYOUTS,
   CATEGORY_VALUES,
+  SORTS,
   STATUS,
   categoryLabel,
   filterProducts,
@@ -57,14 +53,26 @@ function header() {
   const scoped = filterProducts(products, { status: prefs.filter, category: prefs.category, query })
   const estimate = sumTotal(sortProducts(scoped, prefs.sort))
   const count = scoped.length
+  const total = counts()
   return `
-    <header class="list-head">
-      <div class="list-head-copy">
-        <h1>Ma liste</h1>
-        <p class="list-head-sub">
+    <header class="screen-head">
+      <div class="screen-head-main">
+        <span class="screen-eyebrow">Carnet d'achats</span>
+        <h1 class="screen-title">Ma liste</h1>
+        <p class="screen-sub">
           <strong>${count}</strong> produit${count > 1 ? 's' : ''}
-          ${estimate.priced ? ` · <span class="list-head-total">${formatMoney(estimate.total)}</span>` : ''}
+          ${estimate.priced ? ` · <span class="screen-total">${formatMoney(estimate.total)}</span>` : ''}
         </p>
+      </div>
+      <div class="screen-stats">
+        <div class="stat">
+          <span class="stat-label">À acheter</span>
+          <span class="stat-value">${total.todo}</span>
+        </div>
+        <div class="stat stat--accent">
+          <span class="stat-label">Total estimé</span>
+          <span class="stat-value">${estimate.priced ? formatMoney(estimate.total) : '—'}</span>
+        </div>
       </div>
     </header>`
 }
@@ -93,6 +101,31 @@ function filterbar() {
       </div>
       <div class="filterbar-chips scroller" data-role="category-chips">
         ${categoryChipsHtml(counts())}
+      </div>
+    </div>`
+}
+
+function toolbar() {
+  const prefs = getPrefs()
+  return `
+    <div class="list-toolbar">
+      <span class="list-toolbar-label">Tri &amp; présentation</span>
+      <label class="sr-only" for="list-sort">Trier la liste</label>
+      <select id="list-sort" class="select list-sort" data-action="set-sort">
+        ${SORTS.map(
+          (sort) => `<option value="${sort.value}" ${prefs.sort === sort.value ? 'selected' : ''}>${esc(sort.label)}</option>`,
+        ).join('')}
+      </select>
+      <div class="layout-switch" role="group" aria-label="Présentation de la liste">
+        ${CARD_LAYOUTS.map(
+          (layout) => `
+          <button type="button" class="${prefs.layout === layout.value ? 'is-active' : ''}"
+                  data-action="set-layout" data-value="${layout.value}"
+                  aria-pressed="${prefs.layout === layout.value ? 'true' : 'false'}"
+                  aria-label="${esc(layout.label)}" title="${esc(layout.label)}">
+            ${icon(layout.icon, 15)}
+          </button>`,
+        ).join('')}
       </div>
     </div>`
 }
@@ -226,6 +259,7 @@ function paint() {
     <section class="view view--list">
       ${header()}
       ${filterbar()}
+      ${toolbar()}
       <div class="list-results" data-role="results">${results()}</div>
     </section>`
   bindFilterbar()
@@ -266,7 +300,7 @@ function refreshFilterbar() {
  * qu'au redessin complet avant ; il suit maintenant les filtres.
  */
 function refreshHeader() {
-  const head = host?.querySelector('.list-head')
+  const head = host?.querySelector('.screen-head')
   if (head) head.outerHTML = header()
 }
 
@@ -278,10 +312,11 @@ function refresh() {
   }
   /* On ne casse jamais une saisie en cours (recherche…). */
   if (deferWhileEditing(host, refresh)) return
-  host.querySelector('.list-head')?.remove()
+  host.querySelector('.screen-head')?.remove()
   host.querySelector('.filterbar')?.remove()
+  host.querySelector('.list-toolbar')?.remove()
   const section = host.querySelector('section.view')
-  section?.insertAdjacentHTML('afterbegin', `${header()}${filterbar()}`)
+  section?.insertAdjacentHTML('afterbegin', `${header()}${filterbar()}${toolbar()}`)
   bindFilterbar()
   refreshResults()
 }

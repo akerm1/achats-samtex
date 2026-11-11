@@ -265,7 +265,12 @@ async function run() {
       check('le parcours liste → réglages → liste fonctionne', false, start.screen)
     } else {
       const d0 = doc()
-      const nav = [...d0.querySelectorAll('.navlink')].find((a) => /reglages/i.test(a.getAttribute('href') || ''))
+      /* Le lien des réglages vit dans le pied du rail (bureau) ou dans la
+         barre haute (téléphone) : on prend celui qui est réellement rendu. */
+      const linkTo = (route) =>
+        [...d0.querySelectorAll(`a[href="#/${route}"]`)].find((a) => a.getClientRects().length > 0) ||
+        d0.querySelector(`a[href="#/${route}"]`)
+      const nav = linkTo('reglages')
       check('la liste offre un accès aux réglages', !!nav, nav ? nav.textContent.trim() : 'lien absent')
       nav?.click()
       let buttons = null
@@ -285,7 +290,7 @@ async function run() {
         const rowBtn = [...buttons].find((b) => b.dataset.layoutChoice === 'row')
         rowBtn?.click()
         await sleep(500)
-        const back = [...doc().querySelectorAll('.navlink')].find((a) => /liste/i.test(a.getAttribute('href') || ''))
+        const back = [...doc().querySelectorAll('a[href="#/liste"]')].find((a) => a.getClientRects().length > 0)
         back?.click()
         let rendered = null
         for (let i = 0; i < 60; i += 1) {

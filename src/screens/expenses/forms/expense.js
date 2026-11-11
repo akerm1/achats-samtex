@@ -1,5 +1,10 @@
 /* ------------------------------------------------------------------ */
 /* Formulaire Dépense                                                  */
+/*                                                                     */
+/* Une dépense ne touche jamais un investissement : on choisit une      */
+/* catégorie, on complète le montant et la date, c'est tout. Le mode    */
+/* « transfert » n'apparaît que lorsqu'on part d'un investissement      */
+/* (bouton « Transférer ») ou qu'on modifie un transfert existant.      */
 /* ------------------------------------------------------------------ */
 
 import { esc, toNumber } from '../../../core/utils.js'
@@ -7,7 +12,14 @@ import { icon } from '../../../ui/icons.js'
 import { confirmAction, toast } from '../../../core/feedback.js'
 import { closeDialog } from '../../../ui/dialog.js'
 import * as expStore from '../../../data/expenses-store.js'
-import { categoryOptions, field, inputField, investmentOptions, selectField, textareaField } from './fields.js'
+import {
+  categoryChoiceField,
+  categoryPickerField,
+  inputField,
+  investmentOptions,
+  selectField,
+  textareaField,
+} from './fields.js'
 
 /**
  * @param {object|null} expense dépense à modifier, ou `null` pour créer
@@ -18,15 +30,32 @@ export function openExpenseForm(expense = null, prefill = {}) {
   const isEdit = Boolean(expense)
   const title = isEdit ? 'Modifier la dépense' : 'Nouvelle dépense'
 
-  const catOpts = categoryOptions(categories)
   const invOpts = investmentOptions(investments, settings)
 
   const initialCategory = expense?.categoryId || prefill.categoryId || categories[0]?.id || ''
+
+  /* La catégorie peut avoir été choisie sur l'écran, avant la boîte : dans
+     ce cas on ne redemande pas, on rappelle le choix. Si la catégorie a
+     disparu entre-temps, on retombe sur la grille complète. */
+  const presetCategory =
+    !isEdit && prefill.categoryId && categories.some((cat) => cat.id === prefill.categoryId)
+      ? prefill.categoryId
+      : ''
   const initialAmount = expense && expense.amount !== null ? expense.amount : ''
   const initialDate = expense?.date || new Date().toISOString().slice(0, 10)
   const initialNote = expense?.note || ''
-  const initialIsTransfer = expense?.isTransfer || Boolean(prefill.isTransfer)
   const initialLinkedInv = expense?.linkedInvestmentId || prefill.linkedInvestmentId || ''
+
+  /* Le bloc investissement est réservé aux transferts explicites. */
+  const isTransferForm = Boolean(expense?.isTransfer || prefill.isTransfer) && invOpts.length > 0
+
+  const categoryField = presetCategory
+    ? categoryChoiceField(categories, presetCategory, {
+        hint: 'Montant et date suffisent. « Changer » ouvre les autres catégories.',
+      })
+    : categoryPickerField(categories, initialCategory, {
+        hint: 'Touchez une catégorie, puis indiquez le montant et la date.',
+      })
 
   const dialog = document.createElement('dialog')
   dialog.className = 'dialog dialog--form'
@@ -35,7 +64,7 @@ export function openExpenseForm(expense = null, prefill = {}) {
       <div class="dialog-body u-stack">
         <h2>${icon(isEdit ? 'edit' : 'plus', 18)} ${esc(title)}</h2>
 
-        ${selectField('Catégorie', 'categoryId', catOpts, initialCategory, { required: true })}
+        ${categoryField}
 
         ${inputField('Montant', 'amount', 'text', initialAmount, {
           required: true,
@@ -46,30 +75,17 @@ export function openExpenseForm(expense = null, prefill = {}) {
 
         ${inputField('Date', 'date', 'date', initialDate, { required: true })}
 
-        ${field(
-          'Type',
-          `
-          <div class="segmented" role="group" aria-label="Type de dépense">
-            <label class="${!initialIsTransfer ? 'is-active' : ''}">
-              <input type="radio" name="isTransfer" value="false" ${!initialIsTransfer ? 'checked' : ''} ${invOpts.length === 0 ? 'disabled' : ''}>
-              <span>Régulière</span>
-            </label>
-            <label class="${initialIsTransfer ? 'is-active' : ''}" ${invOpts.length === 0 ? 'style="opacity:0.5;pointer-events:none"' : ''}>
-              <input type="radio" name="isTransfer" value="true" ${initialIsTransfer ? 'checked' : ''} ${invOpts.length === 0 ? 'disabled' : ''}>
-              <span>${icon('send', 12)} Transfert vers investissement</span>
-            </label>
-          </div>
-        `,
-          { hint: "Un transfert déduit automatiquement le montant de l'investissement lié." },
-        )}
-
-        <div id="transfer-fields" class="u-stack" ${initialIsTransfer ? '' : 'hidden'}>
-          ${selectField('Investissement lié', 'linkedInvestmentId', invOpts, initialLinkedInv, {
-            required: true,
-            hint: "Choisissez l'investissement qui recevra ce transfert.",
-          })}
-          ${invOpts.length === 0 ? `<p class="field-hint text-warning">${icon('alert', 12)} Aucun investissement existant. Créez-en un d'abord dans l'onglet Investissements.</p>` : ''}
-        </div>
+        ${
+          isTransferForm
+            ? `
+        <input type="hidden" name="isTransfer" value="true">
+        ${selectField('Investissement lié', 'linkedInvestmentId', invOpts, initialLinkedInv, {
+          required: true,
+          hint: "Le montant sera déduit du reste à récupérer de cet investissement.",
+        })}
+        `
+            : `<input type="hidden" name="isTransfer" value="false">`
+        }
 
         ${textareaField('Note (facultatif)', 'note', initialNote, { placeholder: 'Détails, fournisseur, référence…' })}
       </div>
@@ -84,12 +100,23 @@ export function openExpenseForm(expense = null, prefill = {}) {
 
   const form = dialog.querySelector('#expense-form')
 
-  /* Le bloc « investissement lié » n'apparaît que pour un transfert. */
-  const transferFields = form.querySelector('#transfer-fields')
-  form.querySelectorAll('input[name="isTransfer"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      transferFields.hidden = radio.value === 'false'
-    })
+  /* Le choix rappelé peut être rouvert : « Changer » révèle la grille. */
+  const picker = form.querySelector('.cat-picker')
+  const chosen = form.querySelector('[data-role="cat-chosen"]')
+  form.querySelector('[data-role="cat-change"]')?.addEventListener('click', () => {
+    if (!picker) return
+    picker.hidden = false
+    if (chosen) chosen.hidden = true
+    picker.querySelector('input:checked')?.focus()
+  })
+  picker?.addEventListener('change', (event) => {
+    const cat = categories.find((item) => item.id === event.target.value)
+    if (!cat || !chosen) return
+    chosen.style.setProperty('--cat-color', cat.color || '#757575')
+    const label = chosen.querySelector('[data-role="cat-chosen-label"]')
+    if (label) label.textContent = cat.label
+    const badge = chosen.querySelector('.cat-box-icon')
+    if (badge) badge.innerHTML = icon(cat.icon || 'tag', 15)
   })
 
   form.addEventListener('submit', async (event) => {
@@ -99,7 +126,7 @@ export function openExpenseForm(expense = null, prefill = {}) {
     const amount = toNumber(data.get('amount'))
     const date = data.get('date')
     const note = data.get('note') || ''
-    const isTransfer = data.get('isTransfer') === 'true'
+    const isTransfer = isTransferForm && data.get('isTransfer') === 'true'
     const linkedInvestmentId = isTransfer ? data.get('linkedInvestmentId') : null
 
     if (!categoryId) return toast('Choisissez une catégorie.', { type: 'error' })

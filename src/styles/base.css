@@ -1,9 +1,5 @@
 /* ------------------------------------------------------------------ */
-/* Base — réinitialisation, éléments natifs, utilitaires               */
-/*                                                                      */
-/* Priorité à la lisibilité : un corps à 16 px, une interligne à 1,6,  */
-/* et des cibles tactiles qui ne descendent jamais sous 44 px sur      */
-/* téléphone. C'est le reste du fichier qui s'adapte à ces trois règles.*/
+/* ATELIER — base : réinitialisation, typographie, utilitaires         */
 /* ------------------------------------------------------------------ */
 
 *,
@@ -16,10 +12,8 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
-  /* L'ancre ne doit pas finir sous la barre de statut, ni sous la barre
-     d'onglets : sans cela, un lien vers une rubrique la cache. */
-  scroll-padding-top: calc(var(--statusbar-h) + env(safe-area-inset-top) + 16px);
-  scroll-padding-bottom: calc(var(--tabbar-h) + 24px);
+  scroll-padding-top: calc(var(--topbar-h) + env(safe-area-inset-top) + 20px);
+  scroll-padding-bottom: calc(var(--dock-h) + 40px + env(safe-area-inset-bottom));
 }
 
 body {
@@ -28,12 +22,11 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   font-size: var(--text-base);
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
 }
@@ -43,35 +36,34 @@ h2,
 h3,
 h4 {
   margin: 0;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-family: var(--font-head);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
-/* La titraille garde le serif : c'est le seul moment où l'application
-   se permet une vraie identité. Elle est grande, et c'est volontaire. */
 h1 {
-  font-family: var(--font-head);
-  font-weight: 600;
   font-size: var(--text-2xl);
-  line-height: 1.04;
-  letter-spacing: -0.032em;
-  font-variation-settings: 'SOFT' 0, 'WONK' 1, 'opsz' 100;
+  font-weight: 800;
+  letter-spacing: -0.045em;
 }
 
 h2 {
-  font-family: var(--font-head);
   font-size: var(--text-xl);
-  line-height: 1.1;
-  letter-spacing: -0.026em;
-  font-variation-settings: 'opsz' 40;
+  letter-spacing: -0.035em;
 }
 
 h3 {
   font-size: var(--text-md);
-  font-weight: 600;
-  letter-spacing: -0.014em;
+  letter-spacing: -0.02em;
+}
+
+h4 {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -79,7 +71,7 @@ p {
 }
 
 a {
-  color: var(--teal);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -89,13 +81,17 @@ img {
 }
 
 small {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
+}
+
+strong {
+  font-weight: 800;
 }
 
 code {
   font-family: var(--font-mono);
-  font-size: 0.9em;
-  background: var(--surface-2);
+  font-size: 0.88em;
+  background: var(--surface-3);
   border-radius: var(--radius-xs);
   padding: 2px 6px;
 }
@@ -113,57 +109,50 @@ button {
   background: none;
   border: 0;
   padding: 0;
-  /* Le tap sur iOS déclenche un surlignage gris de 300 ms qui décale
-     visuellement toute la rangée. On le neutralise ici, une fois. */
   -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-/* Lien d'évitement — hors écran tant qu'il n'a pas le focus. Il
-   n'apparaît qu'au clavier, ce qui est le seul moment où il sert. */
+/* Lien d'évitement ------------------------------------------------- */
 .skip-link {
   position: fixed;
-  top: 8px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   z-index: 90;
   padding: 12px 18px;
-  border-radius: var(--radius-pill);
-  background: var(--teal);
-  color: #ffffff;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--ink-on-accent);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 800;
   text-decoration: none;
-  transform: translateY(-160%);
+  transform: translateY(-180%);
   transition: transform var(--dur) var(--ease-out);
 }
 
 .skip-link:focus-visible {
   transform: none;
-  outline-offset: 3px;
 }
 
 .noscript {
   padding: 24px;
-  font-family: var(--font-body);
   color: var(--ink);
 }
 
-/* Le focus doit être impossible à rater : anneau épais, teinté, avec un
-   halo qui le sépare de ce qu'il encadre. */
+/* Focus : un anneau net, carré, qui ne dépend pas de la couleur seule. */
 :focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
   border-radius: var(--radius-xs);
-  box-shadow: 0 0 0 6px var(--teal-soft);
 }
 
 ::selection {
-  background: var(--teal);
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--ink-on-accent);
 }
 
 ::placeholder {
@@ -171,15 +160,15 @@ button:disabled {
   opacity: 1;
 }
 
-/* Barres de défilement discrètes */
+/* Barres de défilement -------------------------------------------- */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
 }
 
 *::-webkit-scrollbar-thumb {
@@ -191,8 +180,7 @@ button:disabled {
   background: transparent;
 }
 
-/* Utilitaires ----------------------------------------------------- */
-
+/* Utilitaires ------------------------------------------------------ */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -255,21 +243,32 @@ button:disabled {
   gap: var(--space-4);
 }
 
-/* Sur-titre : petites capitales très espacées, le repère typographique
-   d'un intertitre. */
 .u-eyebrow {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
-/* Apparition douce des blocs */
+.text-success {
+  color: var(--success);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+/* Apparitions ------------------------------------------------------ */
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -279,7 +278,7 @@ button:disabled {
 
 @keyframes pop {
   0% {
-    transform: scale(0.96);
+    transform: scale(0.95);
     opacity: 0;
   }
   100% {
@@ -290,7 +289,7 @@ button:disabled {
 
 @keyframes spring-in {
   0% {
-    transform: scale(0.94) translateY(12px);
+    transform: scale(0.96) translateY(14px);
     opacity: 0;
   }
   100% {
@@ -302,7 +301,7 @@ button:disabled {
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -319,7 +318,6 @@ button:disabled {
   }
 }
 
-/* Balayage pour les états de chargement */
 @keyframes shimmer {
   from {
     transform: translateX(-100%);
@@ -341,22 +339,33 @@ button:disabled {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.35;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
 @media print {
-  .statusbar,
-  .tabbar,
+  .rail,
+  .topbar,
+  .dock,
+  .fab,
   .toasts,
   .banners,
-  .filterbar {
+  .filterbar,
+  .toolbar {
     display: none !important;
   }
 
-  /* On imprime la liste, pas l'application : le fond et les cartes
-     passent en blanc et le texte en noir, sinon l'imprimante dépense
-     son toner sur un aplat gris. */
   body {
     background: #ffffff;
     color: #000000;
@@ -366,5 +375,16 @@ button:disabled {
     break-inside: avoid;
     border-color: #999999;
     box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

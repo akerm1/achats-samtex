@@ -149,8 +149,10 @@
         const TOKENS = [
           '--bg', '--surface', '--surface-2', '--surface-3',
           '--ink', '--ink-2', '--ink-3', '--muted', '--line', '--line-strong',
-          '--teal', '--teal-dark', '--teal-soft', '--orange', '--orange-soft',
-          '--red', '--red-soft', '--blue', '--blue-soft', '--gold',
+          '--accent', '--accent-dark', '--accent-soft', '--accent-line',
+          '--coral', '--coral-soft', '--success', '--success-soft',
+          '--warning', '--warning-soft', '--danger', '--danger-soft',
+          '--info', '--info-soft', '--gold', '--gold-soft',
         ]
         const themeToken = (name) =>
           getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -167,7 +169,7 @@
             surface: themeToken('--surface'),
             ink: themeToken('--ink'),
             ink3: themeToken('--ink-3'),
-            teal: themeToken('--teal'),
+            accent: themeToken('--accent'),
           }
         }
         document.documentElement.dataset.theme = startTheme
@@ -194,8 +196,8 @@
         check('contraste encre sur fond (4.5)', ratio(seen.light.ink, seen.light.bg) >= 4.5, ratio(seen.light.ink, seen.light.bg).toFixed(2))
         check('contraste encre sur fond, thème sombre (4.5)', ratio(seen.dark.ink, seen.dark.bg) >= 4.5, ratio(seen.dark.ink, seen.dark.bg).toFixed(2))
         /* L'accent porte du texte (prix, lien, total) : même exigence. */
-        check('contraste accent sur fond (4.5)', ratio(seen.light.teal, seen.light.bg) >= 4.5, ratio(seen.light.teal, seen.light.bg).toFixed(2))
-        check('contraste accent sur fond, thème sombre (4.5)', ratio(seen.dark.teal, seen.dark.bg) >= 4.5, ratio(seen.dark.teal, seen.dark.bg).toFixed(2))
+        check('contraste accent sur fond (4.5)', ratio(seen.light.accent, seen.light.bg) >= 4.5, ratio(seen.light.accent, seen.light.bg).toFixed(2))
+        check('contraste accent sur fond, thème sombre (4.5)', ratio(seen.dark.accent, seen.dark.bg) >= 4.5, ratio(seen.dark.accent, seen.dark.bg).toFixed(2))
         /* Le texte secondaire est le plus à risque : `--ink-3` porte les
            notes et les métadonnées, c'est-à-dire tout ce qu'on survole. */
         check('contraste texte secondaire sur carte (4.5)', ratio(seen.light.ink3, seen.light.surface) >= 4.5, ratio(seen.light.ink3, seen.light.surface).toFixed(2))
@@ -374,15 +376,17 @@
         const firstTileStyle = getComputedStyle(mosaic.querySelector('.tile'))
         check('mosaïque : aucune marge injectée par un réglage', parseFloat(firstTileStyle.paddingTop) === 0, firstTileStyle.padding)
         const mosaicCols = getComputedStyle(mosaic).gridTemplateColumns.split(' ').filter(Boolean).length
-        check('mosaïque : quatre colonnes sur grand écran', innerWidth > 720 ? mosaicCols === 4 : mosaicCols === 3, `${mosaicCols} colonnes à ${innerWidth}px`)
+        const expectedCols = innerWidth >= 1024 ? 4 : innerWidth >= 560 ? 3 : 2
+        check('mosaïque : colonnes adaptées à la largeur', mosaicCols === expectedCols, `${mosaicCols} colonnes à ${innerWidth}px (attendu ${expectedCols})`)
 
-        /* La barre est posée sous le visuel, et elle est fine : c'est elle
-           qui volait à la photo un tiers de la case. */
+        /* La barre est un bandeau en dégradé posé sur le bas de la photo :
+           le nom et le prix restent lisibles sans rendre la case à la photo. */
         const tile = mosaic.querySelector('article[data-id="rgb"] .tile')
+        const tileBox = tile.getBoundingClientRect()
         const visual = tile.querySelector('.tile-visual').getBoundingClientRect()
         const bar = tile.querySelector('.tile-bar').getBoundingClientRect()
-        check('mosaïque : la barre est sous le visuel', bar.top >= visual.bottom - 1, `${Math.round(bar.top)} / ${Math.round(visual.bottom)}`)
-        check('mosaïque : la barre tient sur une ligne', bar.height <= 40, `${Math.round(bar.height)}px`)
+        check('mosaïque : la barre est ancrée en bas', near(bar.bottom, tileBox.bottom, 2) && near(bar.width, tileBox.width, 2), `${Math.round(bar.bottom)} / ${Math.round(tileBox.bottom)}`)
+        check('mosaïque : la barre reste un bandeau', bar.height <= tileBox.height * 0.4, `${Math.round(bar.height)}px sur ${Math.round(tileBox.height)}px`)
         check('mosaïque : le visuel remplit la largeur', near(visual.width, bar.width, 2), `${Math.round(visual.width)} / ${Math.round(bar.width)}`)
 
         /* Le reproche le plus facile à recevoir sans s'en apercevoir : une
@@ -447,63 +451,95 @@
         }
 
 
-        /* --- Coque : barre de statut + barre d'onglets ------------------ */
+        /* --- Coque : rail, barre haute, dock flottant, FAB --------------- */
         /* On reconstruit la coque réelle (index.html + shell.js) plutôt que
            de la mesurer dans l'application : elle est ainsi vérifiée même
            quand la liste de produits est vide. */
         const shell = document.getElementById('shell')
         shell.innerHTML = `
           <div class="app">
-            <header class="statusbar">
-              <a class="brand" href="#/liste">
-                <span class="brand-mark">S<span>&amp;</span>T</span>
-                <span class="brand-screens">
-                  <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
-                  <span class="brand-screen">Liste</span>
-                </span>
+            <aside class="rail" aria-label="Barre latérale">
+              <a class="rail-brand" href="#/liste">
+                <span class="rail-logo">S<span>&amp;</span>T</span>
+                <span class="rail-name"><strong>Mes achats</strong><small>Sashes &amp; tissus</small></span>
               </a>
-              <nav class="statusbar-nav">
-                <a class="navlink is-active" href="#/liste">Liste</a>
-                <a class="navlink" href="#/factures">Factures</a>
-                <a class="navlink" href="#/analyse">Analyse</a>
-                <a class="navlink" href="#/reglages">Réglages</a>
+              <button type="button" class="rail-add"><span>Ajouter un produit</span><kbd>N</kbd></button>
+              <nav class="rail-nav" id="rail-nav">
+                <a class="rail-link is-active" href="#/liste">Liste</a>
+                <a class="rail-link" href="#/factures">Factures</a>
+                <a class="rail-link" href="#/depenses">Dépenses</a>
+                <a class="rail-link" href="#/analyse">Analyse</a>
               </nav>
-              <div class="statusbar-actions">
-                <button type="button" class="sync-pill is-ready">À jour</button>
+              <div class="rail-foot">
+                <a class="rail-link" href="#/reglages" data-route="reglages"><span>Réglages</span></a>
+                <button type="button" class="sync-card is-ready">
+                  <span class="sync-card-head">À jour</span><small>à l’instant</small>
+                </button>
               </div>
-            </header>
-            <main class="page">
-              <section class="view">
-                <div class="list-head"><div class="list-head-copy">
-                  <h1>Ma liste</h1><p class="list-head-sub">Ce que je dois acheter chez le grossiste.</p>
-                </div></div>
-                <div class="filterbar">
-                  <div class="filterbar-search"><input class="input" placeholder="Rechercher" /></div>
-                  <div class="filterbar-tabs" role="tablist">
-                    <button type="button" class="is-active">Toutes</button>
-                    <button type="button">À acheter</button>
-                  </div>
-                  <div class="filterbar-chips scroller">
-                    <button type="button" class="chip is-active">Couture</button>
-                    <button type="button" class="chip">Tissus</button>
-                  </div>
+            </aside>
+            <div class="workspace">
+              <header class="topbar">
+                <a class="topbar-brand" href="#/liste">
+                  <span class="topbar-logo">S<span>&amp;</span>T</span>
+                  <span class="topbar-title" id="screen-title">Liste</span>
+                </a>
+                <div class="topbar-actions">
+                  <button type="button" class="sync-mini is-ready"></button>
+                  <a class="topbar-btn" href="#/reglages" aria-label="Réglages"></a>
                 </div>
-                <div class="empty">
-                  <span class="empty-mark"></span>
-                  <div class="empty-copy">
-                    <strong>Votre liste est vide</strong>
-                    <p>Ajoutez un article pour commencer.</p>
+              </header>
+              <main class="page">
+                <section class="view">
+                  <header class="screen-head">
+                    <div class="screen-head-main">
+                      <span class="screen-eyebrow">Carnet d’achats</span>
+                      <h1 class="screen-title">Ma liste</h1>
+                      <p class="screen-sub">Ce que je dois acheter chez le grossiste.</p>
+                    </div>
+                    <div class="screen-stats">
+                      <div class="stat"><span class="stat-label">À acheter</span><span class="stat-value">12</span></div>
+                      <div class="stat stat--accent"><span class="stat-label">Total estimé</span><span class="stat-value">48 000 DA</span></div>
+                    </div>
+                  </header>
+                  <div class="filterbar">
+                    <div class="filterbar-search">
+                      <label class="input-wrap"><input type="search" placeholder="Rechercher" /></label>
+                    </div>
+                    <div class="filterbar-tabs" role="tablist">
+                      <button type="button" class="tabchip is-active">Toutes</button>
+                      <button type="button" class="tabchip">À acheter</button>
+                    </div>
+                    <div class="filterbar-chips scroller">
+                      <button type="button" class="chip is-active">Couture</button>
+                      <button type="button" class="chip">Tissus</button>
+                    </div>
                   </div>
-                </div>
-              </section>
-            </main>
-            <nav class="tabbar"><div class="tabbar-inner">
+                  <div class="list-toolbar">
+                    <span class="list-toolbar-label">Tri &amp; présentation</span>
+                    <select class="select list-sort"><option>Plus récents</option></select>
+                    <div class="layout-switch" role="group">
+                      <button type="button" class="is-active" aria-pressed="true"></button>
+                      <button type="button" aria-pressed="false"></button>
+                      <button type="button" aria-pressed="false"></button>
+                    </div>
+                  </div>
+                  <div class="empty">
+                    <span class="empty-mark"></span>
+                    <div class="empty-copy">
+                      <strong>Votre liste est vide</strong>
+                      <p>Ajoutez un article pour commencer.</p>
+                    </div>
+                  </div>
+                </section>
+              </main>
+            </div>
+            <nav class="dock"><div class="dock-inner">
               <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
-              <button type="button" class="tab tab--add"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
               <a class="tab" href="#/factures"><span class="tab-icon">F</span><span class="tab-label">Factures</span></a>
-              <a class="tab" href="#/reglages"><span class="tab-icon">R</span><span class="tab-label">Réglages</span></a>
+              <a class="tab" href="#/depenses"><span class="tab-icon">D</span><span class="tab-label">Dépenses</span></a>
               <a class="tab" href="#/analyse"><span class="tab-icon">A</span><span class="tab-label">Analyse</span></a>
             </div></nav>
+            <button type="button" class="fab" aria-label="Ajouter un produit">+</button>
           </div>`
 
         const shellBox = shell.getBoundingClientRect()
@@ -512,34 +548,71 @@
         const shellWide = [...shell.querySelectorAll('*')].filter((n) => n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX === 'visible')
         check('coque : aucun bloc trop large', shellWide.length === 0, shellWide.map((n) => n.className || n.tagName).join(','))
 
-        /* Barre de statut : elle dit où l'on est, elle ne navigue pas sur
-           téléphone — sinon la même liste d'onglets apparaît deux fois. */
-        const statusbar = shell.querySelector('.statusbar')
-        const statusNav = shell.querySelector('.statusbar-nav')
-        check('barre de statut : collante', statusbar && getComputedStyle(statusbar).position === 'sticky', statusbar && getComputedStyle(statusbar).position)
-        const navShown = statusNav && getComputedStyle(statusNav).display !== 'none'
-        check('barre de statut : navigation réservée au grand écran', navShown === (innerWidth > 820), `${innerWidth}px → ${navShown ? 'visible' : 'masquée'}`)
+        /* Une seule navigation par taille d'écran : le rail au bureau, le
+           dock sur téléphone. Les deux ensemble doubleraient les entrées. */
+        const desktop = innerWidth >= 1024
+        const rail = shell.querySelector('.rail')
+        const topbar = shell.querySelector('.topbar')
+        const dock = shell.querySelector('.dock')
+        const fab = shell.querySelector('.fab')
+        const shown = (node) => Boolean(node) && getComputedStyle(node).display !== 'none'
+        const railShown = shown(rail)
+        const dockShown = shown(dock)
+        check('coque : le rail prend le relais au bureau', railShown === desktop, `${innerWidth}px → ${railShown ? 'rail' : 'pas de rail'}`)
+        check('coque : une seule navigation visible', railShown !== dockShown, `rail ${railShown} / dock ${dockShown}`)
 
-        /* Barre d'onglets : la navigation permanente, et le bouton d'ajout
-           après la Liste, à portée du pouce. */
-        const tabbar = shell.querySelector('.tabbar')
+        /* Rail : la marque, l'ajout, les quatre écrans, les réglages et la
+           synchronisation — tout au même endroit, sans barre d'onglets. */
+        if (railShown) {
+          check('rail : collé en haut', getComputedStyle(rail).position === 'sticky', getComputedStyle(rail).position)
+          check('rail : quatre écrans + réglages', rail.querySelectorAll('.rail-link').length === 5, rail.querySelectorAll('.rail-link').length)
+          const addBox = rail.querySelector('.rail-add')?.getBoundingClientRect()
+          check('rail : l’ajout est une action pleine largeur', addBox && addBox.width >= 180, `${Math.round(addBox?.width || 0)}px`)
+          check('rail : la synchronisation est dans le pied', Boolean(rail.querySelector('.rail-foot .sync-card')))
+        }
+
+        /* Barre haute : le titre de l'écran et la sync, sur téléphone. */
+        check('barre haute : visible sur téléphone', shown(topbar) === !desktop, getComputedStyle(topbar).display)
+        check('barre haute : collante', getComputedStyle(topbar).position === 'sticky', getComputedStyle(topbar).position)
+        check('barre haute : titre de l’écran', topbar?.querySelector('#screen-title')?.textContent.trim() === 'Liste', topbar?.querySelector('#screen-title')?.textContent)
+        check('barre haute : la sync est à portée', Boolean(topbar?.querySelector('.sync-mini')))
+
+        /* Dock : la navigation permanente, quatre entrées, à portée du pouce. */
         const tabs = [...shell.querySelectorAll('.tab')]
-        check('onglets : la barre est posée en bas', tabbar && getComputedStyle(tabbar).position === 'fixed', tabbar && getComputedStyle(tabbar).position)
-        check('onglets : cinq entrées', tabs.length === 5, tabs.length)
-        check('onglets : l’ajout est deuxième, après la Liste', tabs[1]?.classList.contains('tab--add'), tabs.map((t) => t.className).join(' | '))
-        check('onglets : cibles d’au moins 44 px', tabs.every((t) => t.getBoundingClientRect().height >= 44), tabs.map((t) => Math.round(t.getBoundingClientRect().height)).join('/'))
+        check('dock : posé en bas', getComputedStyle(dock).position === 'fixed', getComputedStyle(dock).position)
+        check('dock : quatre entrées', tabs.length === 4, tabs.length)
+        check('dock : masqué au bureau', shown(dock) === !desktop, getComputedStyle(dock).display)
+        if (dockShown) {
+          check('dock : cibles d’au moins 44 px', tabs.every((t) => t.getBoundingClientRect().height >= 44), tabs.map((t) => Math.round(t.getBoundingClientRect().height)).join('/'))
+          check('dock : aucun onglet d’ajout', tabs.every((t) => !t.classList.contains('tab--add')), tabs.map((t) => t.className).join(' | '))
+        }
 
-        /* Barre de filtres : collante, et empilée recherche / statut /
-           catégories — trois questions distinctes, trois lignes. */
+        /* FAB : détaché du dock, rond, et jamais posé dessus. */
+        if (!desktop) {
+          const fabBox = fab.getBoundingClientRect()
+          const dockBox = dock.getBoundingClientRect()
+          check('bouton flottant : rond et assez grand', near(fabBox.width, fabBox.height, 2) && fabBox.width >= 48, `${Math.round(fabBox.width)}x${Math.round(fabBox.height)}`)
+          check('bouton flottant : ne recouvre pas le dock', fabBox.bottom <= dockBox.top + 1, `${Math.round(fabBox.bottom)} / ${Math.round(dockBox.top)}`)
+        } else {
+          check('bouton flottant : masqué au bureau', !shown(fab))
+        }
+
+        /* Filtres : trois questions distinctes, trois lignes. La barre n'est
+           plus collante — c'est l'en-tête qui porte le contexte. */
         const filterBar = shell.querySelector('.filterbar')
         const barSearch = filterBar?.querySelector('.filterbar-search')?.getBoundingClientRect()
         const barTabs = filterBar?.querySelector('.filterbar-tabs')?.getBoundingClientRect()
         const barChips = filterBar?.querySelector('.filterbar-chips')?.getBoundingClientRect()
-        check('filtres : la barre est collante', filterBar && getComputedStyle(filterBar).position === 'sticky', filterBar && getComputedStyle(filterBar).position)
         check('filtres : les trois couches existent', Boolean(barSearch && barTabs && barChips))
         check('filtres : recherche au-dessus du statut', barSearch && barTabs && barSearch.bottom <= barTabs.top + 1, `${Math.round(barSearch?.bottom)} / ${Math.round(barTabs?.top)}`)
         check('filtres : statut au-dessus des catégories', barTabs && barChips && barTabs.bottom <= barChips.top + 1, `${Math.round(barTabs?.bottom)} / ${Math.round(barChips?.top)}`)
         check('filtres : le statut partage la largeur', barTabs && barSearch && near(barTabs.width, barSearch.width, 2), `${Math.round(barTabs?.width)} / ${Math.round(barSearch?.width)}`)
+
+        /* Tri & présentation : sous les filtres, au-dessus des résultats. */
+        const toolbar = shell.querySelector('.list-toolbar')
+        check('tri : un sélecteur de tri', Boolean(toolbar?.querySelector('.list-sort')))
+        check('présentation : trois boutons', toolbar?.querySelectorAll('.layout-switch button').length === 3, toolbar?.querySelectorAll('.layout-switch button').length)
+        check('tri : la barre suit les filtres', Boolean(toolbar && filterBar && toolbar.getBoundingClientRect().top >= filterBar.getBoundingClientRect().bottom - 1))
 
         /* État vide : le titre reste dans la colonne, et le repère est bien
            posé — c'est lui qui remplace la boîte vide. */
@@ -547,17 +620,17 @@
         const emptyBox = shell.querySelector('.empty-copy strong')?.getBoundingClientRect()
         const pageBox = shell.querySelector('.page').getBoundingClientRect()
         check('état vide : titre dans la colonne', emptyBox && emptyBox.width <= pageBox.width + 1, `${Math.round(emptyBox?.width)} / ${Math.round(pageBox.width)}`)
-        const brandMark = shell.querySelector('.brand-mark')
-        const brandText = shell.querySelector('.brand-text strong')
-        check('barre de statut : marque et titre visibles', brandMark.getBoundingClientRect().width > 0 && brandText.getBoundingClientRect().width > 0, `${Math.round(brandMark.getBoundingClientRect().width)} / ${Math.round(brandText.getBoundingClientRect().width)}`)
+        const brandMark = desktop ? shell.querySelector('.rail-logo') : shell.querySelector('.topbar-logo')
+        const brandText = desktop ? shell.querySelector('.rail-name strong') : shell.querySelector('.topbar-title')
+        check('coque : marque et titre visibles', brandMark.getBoundingClientRect().width > 0 && brandText.getBoundingClientRect().width > 0, `${Math.round(brandMark.getBoundingClientRect().width)} / ${Math.round(brandText.getBoundingClientRect().width)}`)
 
         check('aucune erreur JavaScript', errors.length === 0, errors.join(' | '))
 
         /* --- Direction artistique : ce qui ne se mesure pas à l'œil -------- */
-        /* Le titre de la carte doit être en serif : c'est l'intention de la
-           refonte, et un retour à la sans-serif passerait inaperçu. */
+        /* Le titre de la carte doit rester dans la famille d'affichage de
+           l'Atelier : un retour à la sans-serif du corps passerait inaperçu. */
         const nameStyle = getComputedStyle(card('rgb').querySelector('.product-name'))
-        check('titre de carte en serif', /Fraunces|Georgia|serif/.test(nameStyle.fontFamily), nameStyle.fontFamily)
+        check('titre de carte dans la police d’affichage', /Bricolage|sans-serif/.test(nameStyle.fontFamily), nameStyle.fontFamily)
         check('titre de carte : corps lisible', parseFloat(nameStyle.fontSize) >= 15, `${nameStyle.fontSize}`)
 
         /* Aucune carte ne doit déborder de la grille, et rien ne doit

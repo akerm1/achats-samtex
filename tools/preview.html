@@ -50,7 +50,6 @@
 
       const params = new URLSearchParams(location.search)
       const layout = params.get('layout') || 'mosaic'
-      const label = { card: 'Fiche', mosaic: 'Mosaïque', row: 'Liste' }[layout] || layout
 
       /* Un contour de couleur, pour juger une vraie teinte. Les aplats unis
          ne disent rien de la lisibilité d'un nom posé dessus. */
@@ -97,50 +96,96 @@
         )
         .join('')
 
+      const todo = items.filter((item) => item.status !== 'bought').length
+      const bought = items.length - todo
+      const layoutButtons = [
+        ['card', 'Fiche'],
+        ['mosaic', 'Mosaïque'],
+        ['row', 'Liste'],
+      ]
+        .map(
+          ([value, name]) => `
+            <button type="button" class="${layout === value ? 'is-active' : ''}"
+                    aria-pressed="${layout === value ? 'true' : 'false'}"
+                    aria-label="${name}" title="${name}">${name.slice(0, 1)}</button>`,
+        )
+        .join('')
+
       document.getElementById('root').innerHTML = `
         <div class="app">
-          <header class="statusbar">
-            <a class="brand" href="#/liste">
-              <span class="brand-mark">S<span>&amp;</span>T</span>
-              <span class="brand-screens">
-                <span class="brand-text"><strong>Mes achats</strong><small>Sashes &amp; tissus · grossiste</small></span>
-                <span class="brand-screen">Liste</span>
-              </span>
+          <aside class="rail" aria-label="Barre latérale">
+            <a class="rail-brand" href="#/liste">
+              <span class="rail-logo">S<span>&amp;</span>T</span>
+              <span class="rail-name"><strong>Mes achats</strong><small>Sashes &amp; tissus</small></span>
             </a>
-            <nav class="statusbar-nav">
-              <a class="navlink is-active" href="#/liste">Liste</a>
-              <a class="navlink" href="#/reglages">Réglages</a>
+            <button type="button" class="rail-add"><span>Ajouter un produit</span><kbd>N</kbd></button>
+            <nav class="rail-nav" aria-label="Navigation principale">
+              <a class="rail-link is-active" href="#/liste">Liste</a>
+              <a class="rail-link" href="#/factures">Factures</a>
+              <a class="rail-link" href="#/depenses">Dépenses</a>
+              <a class="rail-link" href="#/analyse">Analyse</a>
             </nav>
-            <div class="statusbar-actions">
-              <button type="button" class="sync-pill is-ready">À jour</button>
+            <div class="rail-foot">
+              <a class="rail-link" href="#/reglages"><span>Réglages</span></a>
+              <button type="button" class="sync-card is-ready">
+                <span class="sync-card-head">À jour</span><small>à l’instant</small>
+              </button>
             </div>
-          </header>
-          <main class="page">
-            <section class="view">
-              <div class="list-head"><div class="list-head-copy">
-                <h1>Ma liste d'achat</h1>
-                <p class="list-head-sub">${items.length} produit(s) · ${label} · ≈ ${formatMoney(total.total)} dans la vue en cours.</p>
-              </div></div>
-              <div class="filterbar">
-                <div class="filterbar-search"><input id="q" type="search" class="input" placeholder="Rechercher un produit…" /></div>
-                <div class="filterbar-tabs" role="tablist">
-                  <button type="button" class="is-active">À acheter</button>
-                  <button type="button">Achetés</button>
-                  <button type="button">Toutes</button>
-                </div>
-                <div class="filterbar-chips scroller">
-                  <button type="button" class="chip is-active">Couture<span class="chip-count">7</span></button>
-                  <button type="button" class="chip">Tissus<span class="chip-count">1</span></button>
-                </div>
+          </aside>
+          <div class="workspace">
+            <header class="topbar">
+              <a class="topbar-brand" href="#/liste">
+                <span class="topbar-logo">S<span>&amp;</span>T</span>
+                <span class="topbar-title">Liste</span>
+              </a>
+              <div class="topbar-actions">
+                <button type="button" class="sync-mini is-ready" aria-label="Synchroniser"></button>
+                <a class="topbar-btn" href="#/reglages" aria-label="Réglages"></a>
               </div>
-              ${body}
-            </section>
-          </main>
-          <nav class="tabbar"><div class="tabbar-inner">
+            </header>
+            <main class="page">
+              <section class="view">
+                <header class="screen-head">
+                  <div class="screen-head-main">
+                    <span class="screen-eyebrow">Carnet d’achats</span>
+                    <h1 class="screen-title">Ma liste</h1>
+                    <p class="screen-sub"><strong>${items.length}</strong> produit(s) · <span class="screen-total">≈ ${formatMoney(total.total)}</span> dans la vue en cours.</p>
+                  </div>
+                  <div class="screen-stats">
+                    <div class="stat"><span class="stat-label">À acheter</span><span class="stat-value">${todo}</span></div>
+                    <div class="stat stat--accent"><span class="stat-label">Total estimé</span><span class="stat-value">${formatMoney(total.total)}</span></div>
+                  </div>
+                </header>
+                <div class="filterbar">
+                  <div class="filterbar-search">
+                    <label class="input-wrap"><input id="q" type="search" placeholder="Rechercher un produit…" /></label>
+                  </div>
+                  <div class="filterbar-tabs" role="tablist">
+                    <button type="button" class="tabchip is-active">À acheter<span class="tabchip-count">${todo}</span></button>
+                    <button type="button" class="tabchip">Achetés<span class="tabchip-count">${bought}</span></button>
+                    <button type="button" class="tabchip">Tous<span class="tabchip-count">${items.length}</span></button>
+                  </div>
+                  <div class="filterbar-chips scroller">
+                    <button type="button" class="chip is-active">Couture<span class="chip-count">7</span></button>
+                    <button type="button" class="chip">Tissus<span class="chip-count">1</span></button>
+                  </div>
+                </div>
+                <div class="list-toolbar">
+                  <span class="list-toolbar-label">Tri &amp; présentation</span>
+                  <select class="select list-sort"><option>Plus récents</option></select>
+                  <div class="layout-switch" role="group" aria-label="Présentation de la liste">${layoutButtons}</div>
+                </div>
+                ${body}
+              </section>
+            </main>
+          </div>
+          <nav class="dock" aria-label="Navigation principale"><div class="dock-inner">
             <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
-            <button type="button" class="tab tab--add"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
-            <a class="tab" href="#/reglages"><span class="tab-icon">R</span><span class="tab-label">Réglages</span></a>
+            <a class="tab" href="#/factures"><span class="tab-icon">F</span><span class="tab-label">Factures</span></a>
+            <a class="tab" href="#/depenses"><span class="tab-icon">D</span><span class="tab-label">Dépenses</span></a>
+            <a class="tab" href="#/analyse"><span class="tab-icon">A</span><span class="tab-label">Analyse</span></a>
           </div></nav>
+          <button type="button" class="fab" aria-label="Ajouter un produit">+</button>
         </div>`
 
       /* --- Mesures, renvoyées en JSON ------------------------------------ */

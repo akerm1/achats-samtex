@@ -24,7 +24,7 @@ vérifiable en une commande : `node tools/check.mjs`.
 ## 2. Fonctionnement général (de bout en bout)
 
 ### Séquence de démarrage
-1. `index.html` charge 5 feuilles de style, les polices (DM Sans + Fraunces), puis
+1. `index.html` charge 5 feuilles de style, les polices (Bricolage Grotesque + Manrope + JetBrains Mono), puis
    `src/main.js` (module ES).
 2. Un **watchdog en ligne (script non-module)** dans `index.html` protège le démarrage : si
    `#view` affiche encore « Chargement de la liste… » après 8 s, ou si une erreur JS survient,
@@ -68,7 +68,7 @@ ne servant qu'en repli hors-ligne → impossible d'avoir un mélange de versions
 
 ```
 index.html               coquille de l'app + script watchdog en ligne
-manifest.webmanifest     manifeste PWA (raccourcis : Ajouter, Liste)
+manifest.webmanifest     manifeste PWA (ouverture sur #/depenses, raccourcis : Ajouter, Liste)
 version.json             8.4.8 / 2026-11-10 — repère de mise à jour
 sync-defaults.json       dépôt GitHub par défaut (akerm1/achats-test/main)
 products.json            liste publiée (v3) dans le dépôt public
@@ -90,7 +90,8 @@ src/
   ui/     shell dialog icons preview
   styles/ tokens base layout components views
 worker/  share-list-worker.mjs · wrangler.toml · setup.ps1 · LIEN-PRIVE.txt(git-ignoré)
-tools/   check.mjs · check-page.html · e2e.html · bills.html · analysis.html · preview.html
+tools/   check.mjs · check-page.html · e2e.html · bills.html · analysis.html ·
+         expenses.html · preview.html
 icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 ```
 
@@ -101,7 +102,7 @@ icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 ### `src/main.js` + `src/app/*` (démarrage, 5 modules)
 | Fonction | Rôle |
 |---|---|
-| `showRoute(route)` | résout redirection/inconnu → `liste`, scroll haut, monte la vue dans `#view` |
+| `showRoute(route)` | résout redirection/inconnu → `depenses` (écran d'ouverture), scroll haut, monte la vue dans `#view` |
 | `initRouting()` | démarre le routeur par hash ; intercepte le raccourci PWA `#/ajouter` → ouvre le formulaire produit |
 | `productById(id)` | recherche linéaire |
 | `shareList()` | `navigator.share` ou presse-papiers + toast |
@@ -113,23 +114,32 @@ icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 | `initServiceWorker()` / `checkUpdateInBackground()` / `initInstallFlow()` | enregistrement SW, vérification silencieuse (bandeau seulement), `beforeinstallprompt`/`appinstalled` |
 | `init()` | ordre de démarrage complet ; `handleDisconnect()` confirmation → `clearConfig()` |
 
-Registre `ACTIONS` (34) : `open-form, open-bill-form, edit, edit-bill, preview-color,
-preview-photo, preview-receipt, preview-bill-photo, add-receipt, toggle, toggle-paid, delete,
-delete-bill, clear-bought, clear-all, reset-filters, reset-bill-filters, set-bill-status,
-clear-bills-search, set-filter, set-category, clear-search, share-list, go-settings, sync-now,
-disconnect-github, export-json, export-csv, install-update, install-app, hide-install,
-hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'erreur.
+Registre `ACTIONS` (68) : `open-form, fab-add, set-sort, set-layout, edit, preview-color,
+preview-photo, preview-receipt, add-receipt, toggle, delete, clear-bought, clear-all,
+share-list, set-filter, set-category, clear-search, reset-filters, open-bill-form,
+edit-bill, preview-bill-photo, delete-bill, toggle-paid, set-bill-status,
+clear-bills-search, reset-bill-filters, analysis-home, analysis-fy-prev,
+analysis-fy-next, analysis-month-prev, analysis-month-next, analysis-today,
+analysis-goto, analysis-day-kind, analysis-day-clear, analysis-investment-add,
+analysis-investment-del, analysis-purchase-add, analysis-purchase-del,
+analysis-holding-add, analysis-holding-del, analysis-place-add, analysis-place-del,
+open-expense-form, quick-expense, edit-expense, delete-expense, open-category-form,
+edit-category, delete-category, open-investment-form, edit-investment,
+delete-investment, open-revenue-form, open-revenue-quick, open-revenue-day,
+edit-revenue, delete-revenue, go-settings, sync-now, disconnect-github, export-json,
+export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-error`
+— chacun enveloppé dans try/catch → toast d'erreur.
 
 ### `src/core/*`
 | Fichier | Exports (une ligne chacun) |
 |---|---|
-| **utils.js** | `$`, `$$` raccourcis DOM · `esc`/`escAttr` échappement HTML · `debounce` · `clamp` · `round2` · `toNumber` (`"1,50"`→1.5) · `uid(prefix)` générateur d'id · `NO_VALUE` (`—`) · `formatMoney` (EUR fr-FR) · `formatNumber` · `formatDate`/`formatDateLong`/`formatTime`/`formatRelative` (français) · `toDate` · `plural` · `percent` · `downloadText` (Blob+`<a>` temporaire) · `copyText` (clipboard + repli textarea) · `slug` · `readableBytes` (o/Ko/Mo) |
+| **utils.js** | `$`, `$$` raccourcis DOM · `esc`/`escAttr` échappement HTML · `debounce` · `clamp` · `round2` · `toNumber` (`"1,50"`→1.5) · `uid(prefix)` générateur d'id · `NO_VALUE` (`—`) · `formatMoney` (DZD fr-FR par défaut, écrit « 1 234 DA » ; tout code devise reste accepté) · `formatNumber` · `formatDate`/`formatDateLong`/`formatTime`/`formatRelative` (français) · `toDate` · `plural` · `percent` · `downloadText` (Blob+`<a>` temporaire) · `copyText` (clipboard + repli textarea) · `slug` · `readableBytes` (o/Ko/Mo) |
 | **storage.js** | enveloppe sûre de `localStorage` : `get/set/setRaw/remove/isPersistent/failureReason/isFull` ; repli sur une Map mémoire en navigation privée ; ne lève jamais d'erreur ; détecte le quota sur tous les moteurs |
 | **router.js** | `currentRoute()` (hash moins `#/` et `?query`), `currentParams()`, `navigate(route,{replace})`, `onRouteChange`, `startRouter` ; erreurs d'écouteur isolées |
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='8.4.6'`, `APP_RELEASE='2026-10-06'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.3.0'`, `APP_RELEASE='2026-11-11'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`
@@ -148,15 +158,16 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 ### `src/ui/*` et `src/screens/*`
 | Fichier | Contenu |
 |---|---|
-| **shell.js** (339) | `NAV_ITEMS` (Liste/Factures/Réglages), `setActiveRoute`, `renderSyncPill` (6 états), `setInstallEvent`, `setUpdateAvailable`, `setOfflineReady`, `dismissInstall`, `promptInstall`, `isInstalled`, `canPromptInstall`, `isMobile`, `showInstallHelp` (dialogue par plateforme), `renderBanners` (priorité : non publié → erreur sync → mise à jour → hors-ligne → installation), `hideOfflineNotice`, `dismissSyncError`, `renderChrome` ; internes `tabItems` (bouton `+` central), `renderNav` (titre, nav haute, onglets bas + badge d'attente). |
+| **shell.js** (~386) | `NAV_ITEMS` (Liste/Factures/Dépenses/Analyse ; Réglages à part), `setActiveRoute`, `renderSyncPill` (6 états, carte de rail + pastille de barre haute), `setInstallEvent`, `setUpdateAvailable`, `setOfflineReady`, `dismissInstall`, `promptInstall`, `isInstalled`, `canPromptInstall`, `isMobile`, `showInstallHelp` (dialogue par plateforme), `renderBanners` (priorité : non publié → erreur sync → mise à jour → hors-ligne → installation), `hideOfflineNotice`, `dismissSyncError`, `renderChrome` ; internes `railLink`/`dockTab`, `renderNav` (titre, rail, dock + badge d'attente), `renderFab` (action contextuelle par écran, bouton flottant **et** bouton du rail), `renderInstallButton`. |
 | **dialog.js** | `deferWhileEditing(host,paint)` (ne vole jamais le curseur en cours de saisie), `loadingBlock()`. |
 | **icons.js** | `icons` (~70 SVG inline 24px), `icon(name,size=14)`. |
 | **preview.js** | `openColorPreview` (aplat + nom + Hex + RVB), `openPhotoPreview`, `openReceiptPreview` ; `<dialog>` unique, fermeture ✕/Esc/fond. |
 | **screens/list/card.js** (273) | `renderProductCard(item,layout)` → `renderCard` (visuel photo/couleur + corps + actions), `renderMosaic` (case carrée + barre + coche ronde), `renderRow` (vignette 56px) ; aides `heroBlock, compactVisual, priceBlock, metaBlock, toggleButton, editButton, priorityTag, boughtTag, shortPrice, articleClass`. |
 | **screens/list/form.js** (624) | `openProductForm(product?,{onSaved})`, `isProductFormOpen`. Photo (caméra/galerie, compression, garde quota), nom, catégorie→unité auto, **combobox couleur** (suggestions `searchColors`, flèches/Entrée/Échap, fermeture différée au blur), **roue de couleur HSL** (glisser pointeur, clavier flèches/Shift×10/Home/End, nom de couleur le plus proche), fournisseur (datalist), priorité segmentée, quantité (stepper), unité, prix, détails. |
 | **screens/bills/form.js** (204) | `openBillForm(bill?,{onSaved})`, `isBillFormOpen` ; fournisseur obligatoire, montant, note, statut segmenté (En attente/Payée), photo caméra/galerie + retirer. |
-| **screens/list/index.js** (322) | `listView` : `mount/update/resetFilters/clearSearch/focusSearch` ; internes `counts, header (compteur + total €), filterbar (recherche + onglets statut + puces catégorie), results (groupées par catégorie, à plat si tri priorité), emptyState (CTA contextuel + carte d'installation/erreur GitHub), sectionHtml, paint/refresh* (différés si saisie en cours)`. |
+| **screens/list/index.js** (~363) | `listView` : `mount/update/resetFilters/clearSearch/focusSearch` ; internes `counts, header (sur-titre + compteur + total + stats), filterbar (recherche + filtres de statut + puces catégorie), toolbar (tri + présentation), results (groupées par catégorie, à plat si tri priorité), emptyState (CTA contextuel + carte d'installation/erreur GitHub), sectionHtml, paint/refresh* (différés si saisie en cours)`. |
 | **screens/bills/index.js** (276) | `billsView` : `mount/update/resetFilters/clearSearch/focusSearch/setStatus` ; `syncNote` prévient que les factures ne synchronisent qu'avec le lien privé ; cartes de facture avec photo, montant, statut, bascule payée, modifier/supprimer. |
+| **screens/expenses/index.js** | `expensesView` : quatre onglets (Dépenses, Catégories, Investissements, Recettes), en-tête chiffré, filtres, un seul `paint` différé pendant une saisie. `expenses-tab.js` expose `quickAdd(categories, expenses, settings)` — les cases de catégorie **posées sur l'écran**, avant toute boîte, avec le total par catégorie — et `results()` qui les masque pendant une recherche. `forms/fields.js` fournit `categoryPickerBody`, `categoryPickerField` et `categoryChoiceField` (rappel compact + « Changer ») ; `forms/expense.js` ouvre la dépense avec la catégorie déjà retenue et n'active le mode transfert que depuis un investissement. |
 | **screens/settings/index.js** (~640) | `settingsView` : `mount/update/repaint`. Tuiles : **Affichage** (thème, présentation) · **Partage** (lien privé : endpoint ; Tester, Enregistrer, Synchroniser, Importer depuis GitHub, Déconnecter ; bloc d'état : état, dernière synchro, produits/factures partagés, accès — **l'onglet GitHub lecture seule a été retiré**) · **Données** (export JSON/CSV, import fusion/remplacement, Vider la liste) · **Application** (installation, vérification→installation, à propos : version, stockage y compris photos de factures, raccourcis). |
 
 ### `worker/*` (backend optionnel)
@@ -171,31 +182,35 @@ hide-offline, hide-sync-error` — chacun enveloppé dans try/catch → toast d'
 | Passe | Ce qu'elle fait |
 |---|---|
 | **Sur disque** | `version.json` ≡ `APP_VERSION`/`APP_RELEASE` ; `.gitignore` protège le lien privé ; `node --check` sur chaque module `js/**` + scripts en ligne des bancs. |
-| **Rendu (navigateur)** | Edge/Chrome sans interface charge `check-page.html`, importe les **vrais** modules, renvoie ~140 mesures : 20 jetons × 2 thèmes, contraste WCAG (encre 16,8:1…), comportement cartes/aperçus/clavier, les 3 présentations, carré de la mosaïque + part photo %, densité de la ligne, débordements de la coquille, titres serif, zéro erreur JS. |
+| **Rendu (navigateur)** | Edge/Chrome sans interface charge `check-page.html`, importe les **vrais** modules, renvoie ~140 mesures : 27 jetons × 2 thèmes, contraste WCAG (encre 15,3:1…), comportement cartes/aperçus/clavier, les 3 présentations, carré de la mosaïque + part photo %, densité de la ligne, débordements de la coque, rail/barre haute/dock/FAB selon la largeur, police d'affichage des titres, zéro erreur JS. |
 | **`--e2e`** | lance la vraie application dans une iframe : seed 3 produits, rend chaque présentation, clique sur Réglages → change la présentation → vérifie que la liste **se repeint** (prouve que le réglage arrive à l'écran). |
 | **`--only bills`** | profil séparé : pilote le module Worker sur un KV en mémoire (contrat de fusion 409), aller-retour backup, écran factures, et les deux régressions photo (prune ne doit pas supprimer les tickets ; vider une photo ne doit pas la faire réapparaître). |
+| **`--only expenses`** | profil séparé : les catégories sont des cases **sur l'écran** (6 cases, total par catégorie), toucher une case ouvre la dépense déjà catégorisée (rappel + grille repliée), « Changer » rouvre la grille, les cases s'effacent pendant une recherche, une dépense ordinaire ne touche pas l'investissement (restant = 1000), le transfert ne s'ouvre que depuis un investissement, à 430 px la grille tient deux colonnes avec des cibles ≥ 44 px, un hash vide ouvre les Dépenses, et tous les montants s'écrivent en « DA » (stockage `DZD`, aucun « € » ni « MAD »). |
 | Options | `--width 430`, `--theme dark`, `--shot x.png`, `--keep`, `BROWSER=…`. **Code de sortie 0 = tout passe, 1 = au moins un échec.** |
 
 `tools/preview.html?layout=card|mosaic|row&theme=dark&diag=1` rend une présentation à la main
 (`diag` renvoie les mesures au lieu d'une image).
 
-### Système de design CSS
-- **tokens.css** — base claire + surcharge `[data-theme='dark']` : surfaces, encre, filets,
-  marque (`--teal` émeraude), rayons (8–26), échelle typo (plancher 16 px), espaces 4/8/12/16/24,
-  ombres, `--font-head` Fraunces / `--font-body` DM Sans, `--statusbar-h 64` `--tabbar-h 68`
-  `--page-max 960`, jetons de mouvement.
-- **base.css** — reset, titres serif, anneau de focus (3 px teal), utilitaires (`.sr-only`,
-  `.u-*`), keyframes, bloc d'impression.
-- **layout.css** — statusbar collante en verre, marque, états de la pastille de sync, page/vue,
-  barre d'onglets avec disque `+` surélevé, toasts ; points de rupture **480 / 720 / 821 px**,
-  `prefers-reduced-motion`.
+### Système de design CSS — « Atelier »
+- **tokens.css** — papier chaud / encre / outremer : fond `#f2eee4`, surfaces ivoire, encre brune,
+  accent `#2f27ce`, corail, filets ; thème sombre à encre chaude et accent lavande. Rayons
+  contenus (6–24 px), `--font-head` Bricolage Grotesque / `--font-body` Manrope / `--font-mono`
+  JetBrains Mono, échelle typo fluide, ombres quasi absentes, `--rail-w 252`, `--topbar-h 58`,
+  `--dock-h 64`, `--page-max 1080`, jetons de mouvement.
+- **base.css** — reset, titres d'affichage, anneau de focus (2 px outremer), utilitaires
+  (`.sr-only`, `.u-*`), keyframes, bloc d'impression.
+- **layout.css** — rail vertical ≥ 1024 px (marque, ajout, quatre écrans, réglages + carte de
+  synchronisation), barre haute collante (titre + pastille de sync) sur téléphone, dock flottant
+  à quatre onglets, bouton d'action détaché, page/vue, en-tête d'écran (sur-titre, titre, stats),
+  bandeaux, toasts ; points de rupture **620 / 721 / 1024 / 1320 px**, `prefers-reduced-motion`.
 - **components.css** — boutons (`btn--primary/soft/secondary/ghost/danger/icon`), champs/stepper/
   range, puces/labels, pastilles de couleur, dialogue d'aperçu, cartes/panneaux/progression,
-  bandeaux, toasts, dialogues, états vides ; mobile force des champs à 16 px (pas de zoom iOS)
-  et ≥48 px de hauteur tactile.
-- **views.css** — en-tête de liste, barre de filtres, groupes, trois grilles (`grid--card`
-  auto-fill 320px, `grid--mosaic` 3→4 colonnes, `grid--row` liste réglée), intérieurs
-  carte/mosaïque/ligne, tuiles de réglages, formulaire produit, roue de couleur, responsive ;
+  bandeaux, toasts, dialogues (feuilles en bas sur téléphone), états vides ; mobile force des
+  champs à 16 px (pas de zoom iOS) et des cibles ≥ 44 px.
+- **views.css** — en-tête d'écran, barre de filtres en trois couches, barre d'outils tri +
+  présentation, groupes, trois grilles (`grid--card` auto-fill 320 px, `grid--mosaic`
+  2 → 3 → 4 colonnes, `grid--row` liste réglée), intérieurs carte/mosaïque/ligne, tuiles de
+  réglages, formulaire produit, roue de couleur, responsive ;
   vue **Analyse** (mobile d'abord) : barre collante (feuille courante +
   bouton **Générale** qui ramène au sommaire et remonte en haut), sélecteur
   d'exercice et de mois, fiche mensuelle (jour courant accentué, week-end

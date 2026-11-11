@@ -22,11 +22,27 @@ const money = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2,
 })
 
-const moneyByCurrency = new Map([['EUR', money]])
+/* Le dinar algérien s'écrit « DA » dans l'application — `Intl` ne connaît
+   que le code « DZD », moins lisible pour un montant courant. On garde donc
+   le nombre au format français et on ajoute le sigle à la main, comme
+   `formatDA` le fait pour l'écran Analyse. */
+const dzdNumber = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+const dzd = {
+  format: (value) => `${dzdNumber.format(value)} DA`,
+}
+
+const moneyByCurrency = new Map([
+  ['EUR', money],
+  ['DZD', dzd],
+])
 
 /** Formateur monétaire partagé, mémorisé par code devise. */
 function moneyFormatter(currency) {
-  const code = String(currency || 'EUR').toUpperCase()
+  const code = String(currency || 'DZD').toUpperCase()
   if (!moneyByCurrency.has(code)) {
     try {
       moneyByCurrency.set(
@@ -49,10 +65,10 @@ function moneyFormatter(currency) {
 const number = new Intl.NumberFormat('fr-FR')
 
 /**
- * Montant dans la devise demandée (euro par défaut) ; `null`/vide
- * devient « — ».
+ * Montant dans la devise demandée (dinar algérien par défaut, écrit « DA ») ;
+ * `null`/vide devient « — ».
  */
-export function formatMoney(value, currency = 'EUR') {
+export function formatMoney(value, currency = 'DZD') {
   const n = toNumber(value)
   if (n === null) return NO_VALUE
   return moneyFormatter(currency).format(n)

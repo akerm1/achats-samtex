@@ -541,11 +541,111 @@ deux thèmes, plus la passe `--e2e` qui lance l'application réelle : tout passe
 Le lien d'évitement, le `100dvh` (fini le saut de la barre d'URL sur iOS) et
 les marges de défilement sous les barres collantes sont également ajoutés.
 
+### Version 9.0 - l'Atelier
+
+La 8.3 avait rendu l'application lisible sur téléphone ; elle ressemblait encore à un
+tableau de bord. La 9.0 change la structure autant que la matière : plus de barre
+d'onglets à cinq entrées, plus de crème ni de serif, plus une seule ombre pour porter
+la mise en page.
+
+- **Un nouveau vocabulaire** : papier chaud, encre brune, un seul accent outremer
+  (`#2f27ce`), corail pour les alertes. Le thème sombre garde la même matière —
+  encre chaude et accent lavande.
+- **Trois polices, trois rôles** : Bricolage Grotesque pour les titres et les chiffres,
+  Manrope pour le texte, JetBrains Mono pour les métadonnées. Fraunces et DM Sans
+  disparaissent.
+- **Une coque qui change de forme** : un rail vertical à partir de 1024 px (marque,
+  ajout, quatre écrans, réglages et carte de synchronisation) ; en dessous, une barre
+  haute collante (titre + pastille de sync), un dock flottant à quatre onglets et un
+  bouton d'action rond, détaché du dock.
+- **Les réglages ne sont plus un onglet** : ils vivent dans le pied du rail et dans la
+  barre haute. Le dock garde quatre cibles larges, lisibles sans tasser les libellés.
+- **Un bouton qui sait ce qu'il ajoute** : le FAB ouvre un produit sur la Liste, une
+  facture sur les Factures, une dépense sur les Dépenses, une recette sur l'Analyse.
+  Il disparaît sur les Réglages.
+- **Des en-têtes qui informent** : chaque écran ouvre sur un sur-titre, un titre, une
+  phrase de contexte et deux statistiques (à acheter / total estimé, en attente / total…).
+- **Tri et présentation à portée de pouce** : la Liste gagne une barre d'outils avec un
+  sélecteur de tri et une bascule fiche / mosaïque / liste.
+- **Des formes plus carrées** : boutons et champs à 10 px, panneaux à 18 px, une seule
+  forme ronde (la pastille de statut). Le filet dessine, l'ombre ne fait que poser.
+- **Les dialogues deviennent des feuilles** sur téléphone, et les cibles tactiles
+  montent à 44 px partout, coche de mosaïque comprise.
+
+Vérifié par `node tools/check.mjs` (rendu à 1200 px et 430 px), `--e2e`, `--only bills`
+et `--only analysis` : tout passe.
+
+### Version 9.1 - la dépense en cases
+
+Le formulaire de dépense demandait sa catégorie dans une liste déroulante : un menu à
+ouvrir pour un choix qui tient à l'écran. La 9.1 le remplace par des cases.
+
+- **Les catégories existantes deviennent des cases** : icône, couleur et libellé, une
+  par catégorie, deux à trois par ligne sur téléphone. On touche une case, on complète
+  le montant et la date — le reste du formulaire ne change pas.
+- **La case choisie se voit** : bordure et fond à l'accent, icône pleine. Une seule case
+  reste cochée ; le clavier continue de parcourir le groupe.
+- **Une dépense ne touche plus un investissement** : le formulaire normal ne propose ni
+  « type », ni investissement lié. Il n'y a plus de chemin par lequel une dépense
+  ordinaire pouvait modifier un reste à récupérer.
+- **Le transfert reste, mais là où il a un sens** : le bouton « Transférer » d'une fiche
+  d'investissement ouvre le même formulaire en mode transfert, avec l'investissement
+  demandé. Les transferts déjà enregistrés restent modifiables.
+- **Le rail ajoute ce que l'écran regarde** : sur grand écran, le bouton du rail suivait
+  « Ajouter un produit » partout. Il suit désormais l'écran comme le bouton flottant —
+  sans lui, une dépense n'était pas ajoutable au bureau.
+
+Vérifié par `node tools/check.mjs --only expenses` : 32 contrôles, dont « l'investissement
+n'est pas touché » et la grille de cases à 430 px.
+
+### Version 9.2 - les catégories avant la boîte
+
+La 9.1 avait mis les catégories en cases, mais encore fallait-il ouvrir « Ajouter une
+dépense » pour les voir. La 9.2 les pose sur l'écran.
+
+- **Les cases sont sur l'onglet Dépenses**, au-dessus de la liste : une par catégorie,
+  avec son icône, son libellé et le total déjà dépensé. Toucher une case ouvre la
+  dépense **déjà catégorisée** — il ne reste que le montant et la date à saisir.
+- **Plus de clic inutile** : quand des catégories existent, l'état vide ne réclame plus
+  « Ajouter une dépense ». Le bouton d'ajout générique reste une porte de secours et
+  ouvre la grille complète, sans catégorie pré-remplie.
+- **Le choix reste modifiable** : dans la boîte, la catégorie retenue s'affiche en
+  rappel ; « Changer » rouvre la grille sans perdre la valeur déjà cochée.
+- **La recherche efface les cases** le temps de montrer les résultats, puis les fait
+  revenir une fois le champ vidé.
+
+Vérifié par `node tools/check.mjs --only expenses` : 58 contrôles, dont « les catégories
+sont posées sur l'écran », « la catégorie touchée est rappelée », la grille à deux
+colonnes, les cases à 94 px sur téléphone, l'ouverture par défaut et les montants en DA.
+
+### Version 9.3 - le dinar, et l'ouverture sur les dépenses
+
+L'application s'ouvre désormais là où le travail commence, et compte dans la monnaie du
+carnet. Deux changements d'usage, aucune fonction perdue.
+
+- **Ouverture sur les Dépenses** : un hash vide (ou inconnu) monte l'écran Dépenses au
+  lieu de la Liste. L'icône installée sur le téléphone ouvre aussi `#/depenses`
+  (`start_url` du manifeste). Les autres écrans restent à un appui, et le raccourci
+  `#/liste` continue de fonctionner.
+- **Le dinar algérien partout** : Liste, Factures, Dépenses, Recettes et Analyse
+  affichent « 1 234 DA ». `formatMoney` prend `DZD` par défaut et écrit le sigle à la
+  main (l'API `Intl` ne connaît que « DZD »), comme le faisait déjà l'écran Analyse.
+- **Les anciennes données suivent** : une devise `MAD` enregistrée est relue en `DZD` à
+  l'ouverture (`normalizeExpenseSettings`) ; tout code invalide retombe sur le dinar.
+  Aucun montant n'est réécrit — seule l'étiquette change.
+
+Vérifié par `node tools/check.mjs` (rendu, `--e2e`), `--only bills`, `--only analysis`
+et `--only expenses` : tout passe, y compris « un hash vide ouvre les Dépenses »,
+« le stockage garde le dinar » et « ni euro ni dirham à l'écran ».
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
 |---|---|
-| **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter (bouton + en bas), cocher, modifier, supprimer, choisir la présentation (fiche / mosaïque / liste) |
+| **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter, cocher, modifier, supprimer, trier et choisir la présentation (fiche / mosaïque / liste) |
+| **Factures** | Tickets et factures fournisseurs : photo, fournisseur, montant, note, bascule payée, recherche et filtres de statut |
+| **Dépenses** | Écran d'ouverture : recettes, dépenses, investissements et catégories, avec en-tête chiffré et filtres ; les catégories sont des cases posées sur l'écran, avant toute boîte |
+| **Analyse** | Sommaire, fiche mensuelle, comparaison et feuille Générale (recettes, investissements, achats, possession) |
 | **Réglages** | Thème (sombre/clair/système), présentation de la liste, configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
 Formulaire produit (ajout **et** modification) : photo (caméra ou galerie, compressée en
@@ -558,10 +658,18 @@ la boîte de couleur et l'aperçu se remplissent automatiquement. Un toucher sur
 palette remplit le libellé et la couleur d'un coup. Un nom reconnu affiche aussi une pastille dans
 les cartes, même sans valeur RGB enregistrée (voir `src/data/colors.js`).
 
+Ajout de dépense : **les catégories sont des cases posées sur l'onglet Dépenses**, avant
+toute boîte — icône, couleur, libellé et total déjà dépensé. Toucher une case ouvre la
+dépense déjà catégorisée ; il ne reste que le montant et la date. Dans la boîte, la
+catégorie retenue s'affiche en rappel et « Changer » rouvre la grille (deux à trois
+colonnes sur téléphone). Une dépense ordinaire ne propose aucun investissement et ne
+modifie aucun reste à récupérer ; le mode transfert n'existe que depuis le bouton
+« Transférer » d'une fiche d'investissement.
+
 ## Structure du projet
 
 ```
-index.html                  coquille de l'application (barre, navigation, conteneurs)
+index.html                  coquille de l'application (rail, barre haute, dock, conteneurs)
 manifest.webmanifest        manifeste PWA (Ajouter, Liste)
 version.json                version publiée de l'application (repère des mises à jour)
 sync-defaults.json          dépôt public lu en lecture seule au premier lancement (sans configuration)

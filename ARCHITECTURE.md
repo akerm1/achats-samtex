@@ -7,7 +7,7 @@ dépendance : des modules ES natifs chargés directement par le navigateur.
 ## Carte des dossiers
 
 ```
-index.html            la coque HTML (barre du haut, #view, barre du bas)
+index.html            la coque HTML (rail, barre haute, #view, dock, FAB)
 sw.js                 service worker : réseau d'abord, aucun cache de code
 manifest.webmanifest  installation PWA
 version.json          version publiée (comparée à src/core/app.js)
@@ -61,7 +61,7 @@ src/screens/          un dossier par écran, un fichier par morceau
   settings/index.js     Réglages    (volontairement d'un bloc)
 
 src/ui/               ce qui n'appartient à aucun écran
-  shell.js              barre du haut, navigation du bas, bandeaux
+  shell.js              rail, barre haute, dock, bandeaux, pastilles de sync
   dialog.js             deferWhileEditing, openDialog/closeDialog, skeleton
   preview.js            aperçu agrandi couleur / photo
   icons.js              toutes les icônes SVG
@@ -78,10 +78,13 @@ worker/               worker Cloudflare (synchro privée)
 | --- | --- |
 | Renommer un écran, changer son icône, son ordre dans la barre | `src/ui/shell.js` (`NAV_ITEMS`) puis `src/app/routes.js` (`VIEWS`) |
 | Ajouter un écran | créer `src/screens/<nom>/index.js` exportant un objet `{ id, route, label, icon, mount, update }`, puis l'ajouter à `VIEWS` |
-| Changer l'écran affiché par défaut | `src/app/routes.js` (`DEFAULT_ROUTE`) |
+| Changer l'écran affiché par défaut | `src/app/routes.js` (`DEFAULT_ROUTE`, aujourd'hui `depenses`) et `manifest.webmanifest` (`start_url`) |
+| Changer la devise affichée | `src/core/format.js` (`formatMoney`, `formatDA`) et `src/data/expenses-model.js` (`DEFAULT_EXPENSE_SETTINGS.currency`) |
 | Brancher un nouveau bouton | `data-action="mon-action"` dans le HTML + une entrée dans `src/app/actions.js` |
 | Changer un texte, une carte, un filtre d'écran | le fichier de l'écran concerné, sous `src/screens/` |
 | Ajouter un champ à un formulaire | `src/screens/list/form.js`, `src/screens/bills/form.js` ou `src/screens/expenses/forms/*.js` |
+| Changer les cases de catégorie posées sur l'écran Dépenses | `src/screens/expenses/expenses-tab.js` (`quickAdd`) et `src/styles/views.css` (`.quick-add*`) |
+| Changer le rappel de catégorie dans la boîte de dépense | `src/screens/expenses/forms/fields.js` (`categoryPickerBody`, `categoryChoiceField`) |
 | Changer une règle de calcul (TVA, totaux, tri) | le `*-model.js` correspondant dans `src/data/` |
 | Changer la façon dont les données sont enregistrées / synchronisées | `src/data/store.js` |
 | Changer un format (montant, date, nombre) | `src/core/format.js` |
@@ -120,6 +123,7 @@ node tools/check.mjs                  rendu des composants (rapide)
 node tools/check.mjs --e2e            + l'application réelle dans un iframe
 node tools/check.mjs --only bills     parcours factures
 node tools/check.mjs --only analysis  calculs + parcours analyse
+node tools/check.mjs --only expenses  formulaire de dépense + investissement intact
 ```
 
 Pour ouvrir l'application en local, n'importe quel serveur statique fait

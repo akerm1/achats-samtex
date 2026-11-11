@@ -37,23 +37,35 @@ function counts() {
 function syncNote() {
   const { provider } = getState()
   if (provider === PROVIDER_WORKER) return ''
-  return `<p class="list-head-note">${icon('cloud', 12)} Les factures ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
+  return `<p class="screen-note">${icon('cloud', 12)} Les factures ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
 }
 
 function header() {
   const sorted = sortBills(filterBills(getBills(), { status: statusFilter, query }), 'recent')
   const totals = sumBills(sorted)
   const count = sorted.length
+  const total = counts()
 
   return `
-    <header class="list-head">
-      <div class="list-head-copy">
-        <h1>Factures</h1>
-        <p class="list-head-sub">
+    <header class="screen-head">
+      <div class="screen-head-main">
+        <span class="screen-eyebrow">Tickets &amp; fournisseurs</span>
+        <h1 class="screen-title">Factures</h1>
+        <p class="screen-sub">
           <strong>${count}</strong> facture${count > 1 ? 's' : ''}
-          ${totals.total ? ` · <span class="list-head-total">${formatMoney(totals.total)}</span>` : ''}
+          ${totals.total ? ` · <span class="screen-total">${formatMoney(totals.total)}</span>` : ''}
         </p>
         ${syncNote()}
+      </div>
+      <div class="screen-stats">
+        <div class="stat">
+          <span class="stat-label">En attente</span>
+          <span class="stat-value">${total.pending}</span>
+        </div>
+        <div class="stat stat--accent">
+          <span class="stat-label">Total</span>
+          <span class="stat-value">${totals.total ? formatMoney(totals.total) : '—'}</span>
+        </div>
       </div>
     </header>`
 }
@@ -217,7 +229,7 @@ function refreshResults() {
 }
 
 function refreshHeader() {
-  const head = host?.querySelector('.list-head')
+  const head = host?.querySelector('.screen-head')
   if (head) head.outerHTML = header()
 }
 
@@ -229,7 +241,7 @@ function refresh() {
   }
   /* Une saisie en cours n'est jamais cassée par un redessin. */
   if (deferWhileEditing(host, refresh)) return
-  host.querySelector('.list-head')?.remove()
+  host.querySelector('.screen-head')?.remove()
   host.querySelector('.filterbar')?.remove()
   host.querySelector('section.view')?.insertAdjacentHTML('afterbegin', `${header()}${filterbar()}`)
   bindSearch()

@@ -110,6 +110,24 @@ export const normalizeRevenueList = (list) => {
   return list.filter((item) => item && typeof item === 'object').map(normalizeRevenue)
 }
 
+/** Réglages par défaut des dépenses. La devise est le dinar algérien,
+    affiché « DA » (voir `formatMoney`). */
+export const DEFAULT_EXPENSE_SETTINGS = {
+  currency: 'DZD',
+  autoDeductTransfer: true,
+}
+
+/** Normalise les réglages et migre l'ancienne devise « MAD » vers « DZD ». */
+export function normalizeExpenseSettings(raw = {}) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  const settings = { ...DEFAULT_EXPENSE_SETTINGS, ...source }
+  const code = String(settings.currency || 'DZD').toUpperCase()
+  /* L'application n'a qu'une devise : on remplace l'ancien dirham et tout
+     code invalide, sans jamais laisser un montant sans sigle. */
+  settings.currency = code === 'MAD' || !/^[A-Z]{3}$/.test(code) ? 'DZD' : code
+  return settings
+}
+
 /** État par défaut des dépenses. */
 export function emptyExpenses() {
   return {
@@ -117,10 +135,7 @@ export function emptyExpenses() {
     expenses: [],
     investments: [],
     revenues: [],
-    settings: {
-      currency: 'MAD',
-      autoDeductTransfer: true,
-    },
+    settings: { ...DEFAULT_EXPENSE_SETTINGS },
   }
 }
 
@@ -171,7 +186,7 @@ export function mergeExpenses(current, incoming) {
   updated += revMerge.updated
 
   if (other.settings && typeof other.settings === 'object') {
-    result.settings = { ...base.settings, ...other.settings }
+    result.settings = normalizeExpenseSettings({ ...base.settings, ...other.settings })
   }
 
   return { expenses: result, added, updated }
@@ -184,7 +199,7 @@ export function normalizeExpenses(raw) {
     expenses: normalizeExpenseList(source.expenses),
     investments: normalizeInvestmentList(source.investments),
     revenues: normalizeRevenueList(source.revenues),
-    settings: { ...emptyExpenses().settings, ...(source.settings || {}) },
+    settings: normalizeExpenseSettings(source.settings),
   }
 }
 

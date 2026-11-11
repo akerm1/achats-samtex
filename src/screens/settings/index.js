@@ -365,9 +365,12 @@ function paintStatus() {
 function template() {
   return `
     <section class="view view--settings">
-      <header class="view-head">
-        <h1>Réglages</h1>
-        <p class="view-head-sub">Apparence, partage entre appareils, sauvegardes et informations.</p>
+      <header class="screen-head">
+        <div class="screen-head-main">
+          <span class="screen-eyebrow">Préférences</span>
+          <h1 class="screen-title">Réglages</h1>
+          <p class="screen-sub">Apparence, partage entre appareils, sauvegardes et informations.</p>
+        </div>
       </header>
 
       ${group('Affichage', themeTile() + layoutTile())}

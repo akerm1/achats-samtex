@@ -18,7 +18,7 @@
 /* `src/core/update.js`).                                              */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v8.4.8'
+const VERSION = 'mes-achats-v9.3.0'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
 const FALLBACK_URLS = [

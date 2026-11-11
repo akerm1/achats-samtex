@@ -17,7 +17,7 @@ import { state } from './state.js'
 function syncNote() {
   const { provider } = getState()
   if (provider === PROVIDER_WORKER) return ''
-  return `<p class="list-head-note">${icon('cloud', 12)} Les dépenses ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
+  return `<p class="screen-note">${icon('cloud', 12)} Les dépenses ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
 }
 
 export function header() {
@@ -40,27 +40,28 @@ export function header() {
   const totalRevenue = expModel.totalRevenues(revenues)
 
   return `
-    <header class="list-head">
-      <div class="list-head-copy">
-        <h1>Dépenses</h1>
-        <p class="list-head-sub">
+    <header class="screen-head">
+      <div class="screen-head-main">
+        <span class="screen-eyebrow">Budget &amp; suivi</span>
+        <h1 class="screen-title">Dépenses</h1>
+        <p class="screen-sub">
           <strong>${filtered.length}</strong> dépense${filtered.length > 1 ? 's' : ''}
-          ${totalAmount ? ` · <span class="list-head-total">${formatMoney(totalAmount, settings.currency)}</span>` : ''}
+          ${totalAmount ? ` · <span class="screen-total">${formatMoney(totalAmount, settings.currency)}</span>` : ''}
         </p>
         ${syncNote()}
       </div>
-      <div class="list-head-kpis">
-        <div class="kpi">
-          <span class="kpi-label">Investi</span>
-          <strong class="kpi-value">${formatMoney(totalInvested, settings.currency)}</strong>
+      <div class="screen-stats">
+        <div class="stat">
+          <span class="stat-label">Investi</span>
+          <span class="stat-value">${formatMoney(totalInvested, settings.currency)}</span>
         </div>
-        <div class="kpi">
-          <span class="kpi-label">Restant</span>
-          <strong class="kpi-value ${remainingInvested < 0 ? 'text-danger' : ''}">${formatMoney(remainingInvested, settings.currency)}</strong>
+        <div class="stat">
+          <span class="stat-label">Restant</span>
+          <span class="stat-value">${formatMoney(remainingInvested, settings.currency)}</span>
         </div>
-        <div class="kpi">
-          <span class="kpi-label">Recettes</span>
-          <strong class="kpi-value text-success">${formatMoney(totalRevenue, settings.currency)}</strong>
+        <div class="stat stat--accent">
+          <span class="stat-label">Recettes</span>
+          <span class="stat-value">${formatMoney(totalRevenue, settings.currency)}</span>
         </div>
       </div>
     </header>`

@@ -1,14 +1,62 @@
 /* ------------------------------------------------------------------ */
-/* Dépenses — onglet « Dépenses » (liste filtrable)                    */
+/* Dépenses — onglet « Dépenses » (ajout direct + liste filtrable)     */
+/*                                                                     */
+/* Les catégories existantes sont posées sur l'écran, avant toute      */
+/* boîte : toucher une case ouvre la dépense déjà catégorisée, il ne    */
+/* reste que le montant et la date.                                    */
 /* ------------------------------------------------------------------ */
 
-import { esc } from '../../core/utils.js'
+import { esc, formatMoney } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
 import { getState } from '../../data/store.js'
 import * as expModel from '../../data/expenses-model.js'
 import * as expStore from '../../data/expenses-store.js'
 import { renderExpenseCard } from './cards.js'
 import { state } from './state.js'
+
+/** Somme par catégorie, pour donner du sens à chaque case. */
+function totalsByCategory(expenses) {
+  const totals = new Map()
+  for (const exp of expenses || []) {
+    if (exp.amount === null) continue
+    totals.set(exp.categoryId, (totals.get(exp.categoryId) || 0) + exp.amount)
+  }
+  return totals
+}
+
+/**
+ * Le choix de catégorie, sur l'écran. Chaque case ouvre le formulaire avec
+ * sa catégorie déjà retenue : aucune liste à dérouler, aucune boîte à
+ * ouvrir pour commencer.
+ */
+export function quickAdd(categories, expenses, settings) {
+  if (!categories.length) return ''
+  const totals = totalsByCategory(expenses)
+  return `
+    <section class="quick-add" data-role="quick-add" aria-labelledby="quick-add-title">
+      <div class="quick-add-head">
+        <h2 class="quick-add-title" id="quick-add-title">Ajouter une dépense</h2>
+        <p class="quick-add-note">Touchez une catégorie, puis complétez le montant et la date.</p>
+      </div>
+      <div class="quick-add-grid">
+        ${categories
+          .map((cat) => {
+            const total = totals.get(cat.id) || 0
+            return `
+          <button type="button" class="quick-cat" data-action="quick-expense" data-category="${esc(cat.id)}"
+                  style="--cat-color: ${esc(cat.color || '#757575')}">
+            <span class="cat-box-icon">${icon(cat.icon || 'tag', 15)}</span>
+            <span class="quick-cat-copy">
+              <span class="quick-cat-label">${esc(cat.label)}</span>
+              <span class="quick-cat-total">${total ? formatMoney(total, settings.currency) : 'Aucune'}</span>
+            </span>
+            <span class="quick-cat-plus" aria-hidden="true">${icon('plus', 14)}</span>
+          </button>`
+          })
+          .join('')}
+      </div>
+    </section>`
+}
 
 export function results() {
   const { expenses, categories, investments, settings } = expStore.getExpenses()
@@ -26,11 +74,16 @@ export function results() {
     )
   }
 
-  if (!filtered.length) return emptyState()
+  /* Pendant une recherche, les cases d'ajout passeraient devant les
+     résultats : elles s'effacent. */
+  const quick = state.query.trim() ? '' : quickAdd(categories, expenses, settings)
+
+  if (!filtered.length) return `${quick}${emptyState()}`
 
   const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return `
+    ${quick}
     <section class="group">
       <div class="grid grid--card">${sorted.map((exp) => renderExpenseCard(exp, categories, investments, settings)).join('')}</div>
     </section>`
@@ -39,7 +92,7 @@ export function results() {
 function emptyState() {
   const needle = state.query.trim()
   let title = 'Aucune dépense'
-  let message = 'Ajoutez votre première dépense : choisissez une catégorie, le montant et la date.'
+  let message = 'Touchez une catégorie ci-dessus : il ne restera que le montant et la date.'
   if (needle) {
     title = 'Aucun résultat'
     message = `Aucune dépense ne correspond à « ${esc(needle)} ».`
@@ -47,7 +100,7 @@ function emptyState() {
     const { categories } = expStore.getExpenses()
     const cat = categories.find((c) => c.id === state.categoryFilter)
     title = `Aucune dépense — ${cat?.label || state.categoryFilter}`
-    message = 'Ajoutez une dépense dans cette catégorie.'
+    message = 'Touchez la case de cette catégorie ci-dessus pour en ajouter une.'
   } else if (state.typeFilter === 'transfer') {
     title = 'Aucun transfert'
     message = "Les transferts d'argent vers les investissements apparaîtront ici."
@@ -80,7 +133,7 @@ function emptyState() {
       ${
         needle
           ? '<button type="button" class="btn btn--secondary" data-action="reset-expense-filters">Réinitialiser les filtres</button>'
-          : `<button type="button" class="btn btn--primary btn--lg" data-action="open-expense-form">${icon('plus', 16)} Ajouter une dépense</button>`
+          : ''
       }
     </div>`
 }

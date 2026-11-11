@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { esc, escAttr, formatMoney } from '../../../core/utils.js'
+import { icon } from '../../../ui/icons.js'
 
 export function field(label, input, { hint = '', error = '' } = {}) {
   return `
@@ -42,8 +43,49 @@ export function textareaField(label, name, value, { placeholder = '', hint = '' 
   return field(label, body, { hint })
 }
 
-export function categoryOptions(categories) {
-  return categories.map((c) => ({ value: c.id, label: `${c.label}` }))
+/** Le groupe de cases, sans étiquette ni aide : il sert aussi sur l'écran. */
+export function categoryPickerBody(categories, value, { hidden = false } = {}) {
+  return `
+    <div class="cat-picker" role="radiogroup" aria-label="Catégorie" ${hidden ? 'hidden' : ''}>
+      ${categories
+        .map(
+          (cat) => `
+        <label class="cat-box" style="--cat-color: ${escAttr(cat.color || '#757575')}">
+          <input type="radio" name="categoryId" value="${escAttr(cat.id)}" ${cat.id === value ? 'checked' : ''}>
+          <span class="cat-box-face">
+            <span class="cat-box-icon">${icon(cat.icon || 'tag', 15)}</span>
+            <span class="cat-box-label">${esc(cat.label)}</span>
+          </span>
+        </label>`,
+        )
+        .join('')}
+    </div>`
+}
+
+/**
+ * Sélecteur de catégorie en tuiles : chaque catégorie existante devient une
+ * case cliquable. Le champ reste un vrai groupe de radios, donc `FormData`
+ * le relit comme avant et le clavier continue de fonctionner.
+ */
+export function categoryPickerField(categories, value, { hint = '' } = {}) {
+  return field('Catégorie', categoryPickerBody(categories, value), { hint })
+}
+
+/**
+ * Catégorie déjà choisie avant d'ouvrir la boîte : on n'affiche que le
+ * choix retenu, et « Changer » révèle la grille. Le groupe de radios reste
+ * dans le document — c'est lui qui porte la valeur du formulaire.
+ */
+export function categoryChoiceField(categories, value, { hint = '' } = {}) {
+  const chosen = categories.find((cat) => cat.id === value) || categories[0]
+  const body = `
+    <div class="cat-chosen" data-role="cat-chosen" style="--cat-color: ${escAttr(chosen.color || '#757575')}">
+      <span class="cat-box-icon">${icon(chosen.icon || 'tag', 15)}</span>
+      <span class="cat-chosen-label" data-role="cat-chosen-label">${esc(chosen.label)}</span>
+      <button type="button" class="cat-chosen-change" data-role="cat-change">Changer</button>
+    </div>
+    ${categoryPickerBody(categories, chosen.id, { hidden: true })}`
+  return field('Catégorie', body, { hint })
 }
 
 export function investmentOptions(investments, settings = {}) {

@@ -3,12 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Liste des produits à acheter en gros — sashes et tissus, avec photos, couleurs et prix. Synchronisée automatiquement entre tous les appareils via GitHub." />
-    <!-- La couleur de la barre suit le fond réel du thème ; `theme.js` la
-         met à jour au changement, ces deux déclarations couvrent le premier
-         rendu, avant que le script ne s'exécute. -->
-    <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a101c" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Carnet d'achats en gros — sashes et tissus. Photos, couleurs, quantités et prix, synchronisés entre vos appareils." />
+
+    <meta name="theme-color" content="#f2eee4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#100e0b" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -25,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400..800&display=swap"
     />
 
     <link rel="stylesheet" href="src/styles/tokens.css" />
@@ -35,71 +33,95 @@
     <link rel="stylesheet" href="src/styles/views.css" />
 
     <title>Mes achats — Sashes &amp; Tissus</title>
-    <!--
-  Note: Service worker registration is handled by src/main.js (initServiceWorker).
-  We avoid unregistering here to prevent race conditions and allow the
-  recovery script below to properly detect the SW state.
--->
   </head>
   <body>
-    <a class="skip-link" href="#page">Aller à la liste</a>
+    <a class="skip-link" href="#page">Aller au contenu</a>
 
     <div class="app">
-      <!--
-        Barre de statut : elle ne porte plus la navigation, seulement
-        l'identité, l'écran courant et la synchronisation. Sur téléphone,
-        la navigation est entièrement dans la barre du bas — c'est la
-        seule qui reste sous le pouce.
-      -->
-      <header class="statusbar">
-        <a class="brand" href="#/liste" aria-label="Mes achats — ma liste">
-          <span class="brand-mark" aria-hidden="true">S<span>&amp;</span>T</span>
-          <span class="brand-screens">
-            <span class="brand-text">
-              <strong>Mes achats</strong>
-              <small>Sashes &amp; tissus · grossiste</small>
-            </span>
-            <!-- Nom de l'écran courant, injecté par `shell.js`. Le titre
-                 de page est ici plutôt que dans la vue : il reste visible
-                 pendant que la liste défile. -->
-            <span class="brand-screen" id="screen-title" aria-live="polite">Liste</span>
+      <!-- Rail : navigation permanente des grands écrans. Le dock et le
+           bouton d'action flottant prennent le relais sur téléphone. -->
+      <aside class="rail" aria-label="Barre latérale">
+        <a class="rail-brand" href="#/liste" aria-label="Mes achats — ma liste">
+          <span class="rail-logo" aria-hidden="true">S<span>&amp;</span>T</span>
+          <span class="rail-name">
+            <strong>Mes achats</strong>
+            <small>Sashes &amp; tissus</small>
           </span>
         </a>
 
-        <nav class="statusbar-nav" id="appbar-nav" aria-label="Navigation principale"></nav>
+        <button type="button" class="rail-add" id="rail-add" data-action="fab-add">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14" /><path d="M12 5v14" />
+          </svg>
+          <span id="rail-add-label">Ajouter un produit</span>
+          <kbd>N</kbd>
+        </button>
 
-        <div class="statusbar-actions">
-          <button type="button" class="sync-pill" id="sync-pill" data-action="sync-now"
-                  aria-live="polite" title="Synchroniser maintenant">Connexion…</button>
-          <button type="button" class="icon-btn" id="install-btn" data-action="install-app"
-                  aria-label="Installer l'application" title="Installer l'application" hidden>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <nav class="rail-nav" id="rail-nav" aria-label="Navigation principale"></nav>
+
+        <div class="rail-foot">
+          <a class="rail-link" href="#/reglages" data-route="reglages">
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 21v-7" /><path d="M4 10V3" /><path d="M12 21v-9" /><path d="M12 8V3" />
+              <path d="M20 21v-5" /><path d="M20 12V3" /><path d="M1 14h6" /><path d="M9 8h6" /><path d="M17 16h6" />
+            </svg>
+            <span>Réglages</span>
+          </a>
+          <button type="button" class="rail-link" id="install-btn" data-action="install-app" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 3v13" /><path d="m6 11 6 6 6-6" /><path d="M5 21h14" />
             </svg>
+            <span>Installer l’application</span>
           </button>
-          <button type="button" class="icon-btn icon-btn--accent" id="add-btn" data-action="open-form"
-                  aria-label="Ajouter un produit" title="Ajouter un produit (N)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14" /><path d="M12 5v14" />
-            </svg>
+          <button type="button" class="sync-card" id="sync-card" data-action="sync-now"
+                  aria-live="polite" title="Synchroniser maintenant">
+            <span class="sync-card-head">Connexion…</span>
+            <small>Liste locale</small>
           </button>
         </div>
-      </header>
+      </aside>
 
-      <main class="page" id="page" tabindex="-1">
-        <div class="banners" id="banners"></div>
-        <div id="view">
-          <p class="skeleton">Chargement de la liste…</p>
-        </div>
-      </main>
+      <div class="workspace">
+        <header class="topbar">
+          <a class="topbar-brand" href="#/liste" aria-label="Mes achats — ma liste">
+            <span class="topbar-logo" aria-hidden="true">S<span>&amp;</span>T</span>
+            <span class="topbar-title" id="screen-title" aria-live="polite">Liste</span>
+          </a>
+          <div class="topbar-actions">
+            <button type="button" class="sync-mini" id="sync-mini" data-action="sync-now"
+                    aria-label="Synchroniser maintenant" title="Synchroniser maintenant"></button>
+            <a class="topbar-btn" href="#/reglages" aria-label="Réglages" title="Réglages">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 21v-7" /><path d="M4 10V3" /><path d="M12 21v-9" /><path d="M12 8V3" />
+                <path d="M20 21v-5" /><path d="M20 12V3" /><path d="M1 14h6" /><path d="M9 8h6" /><path d="M17 16h6" />
+              </svg>
+            </a>
+          </div>
+        </header>
 
-      <!-- Navigation principale. Toujours présente : sur téléphone c'est
-           la seule barre visible en permanence. -->
-      <nav class="tabbar" id="bottomnav" aria-label="Navigation principale">
-        <div class="tabbar-inner" id="bottomnav-inner"></div>
+        <main class="page" id="page" tabindex="-1">
+          <div class="banners" id="banners"></div>
+          <div id="view">
+            <p class="skeleton">Chargement de la liste…</p>
+          </div>
+        </main>
+      </div>
+
+      <nav class="dock" id="dock" aria-label="Navigation principale">
+        <div class="dock-inner" id="dock-inner"></div>
       </nav>
+
+      <button type="button" class="fab" id="fab" data-action="fab-add"
+              aria-label="Ajouter un produit" title="Ajouter un produit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14" /><path d="M12 5v14" />
+        </svg>
+      </button>
 
       <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
     </div>
@@ -109,11 +131,8 @@
     </noscript>
 
     <script>
-      /* Filet de sécurité, hors module. Le service worker sert désormais le
-         code « réseau d'abord » sans le mettre en cache : ce bloc ne sert donc
-         plus qu'à rattraper un démarrage cassé (cache HTTP du navigateur,
-         version.json absent) et à ne pas rester bloqué sur
-         « Chargement de la liste… ». */
+      /* Filet de sécurité hors module : rattrape un démarrage cassé sans
+         boucler (2 essais maximum, 60 s entre deux). */
       (function () {
         var KEY = 'mes-achats-recovery'
         var KEY_AT = 'mes-achats-recovery-at'
@@ -121,9 +140,7 @@
         var tried = 0
         try {
           tried = Number(sessionStorage.getItem(KEY)) || 0
-        } catch (error) {
-          /* navigation privée : la tentative unique reste protégée par la durée */
-        }
+        } catch (error) {}
         if (tried >= LIMIT) return
         if (Date.now() - Number(sessionStorage.getItem(KEY_AT) || 0) < 60000) return
 
@@ -132,50 +149,27 @@
           try {
             sessionStorage.setItem(KEY, String(tried))
             sessionStorage.setItem(KEY_AT, String(Date.now()))
-          } catch (error) {
-            /* sans stockage, une seule tentative par chargement */
-          }
+          } catch (error) {}
           var url = new URL(window.location.href)
           url.searchParams.set('v', 'reload-' + tried)
           window.location.replace(url.toString())
         }
 
         function recover() {
-          if (!navigator.serviceWorker) {
-            // No Service Worker support – just reload once
-            reloadOnce()
-            return
-          }
-          // On localhost (non-secure context), we still try the SW update flow
-          // because the SW may have been registered earlier. Skip the isSecureContext
-          // guard that would otherwise force a reload on HTTP and cause a loop.
+          if (!navigator.serviceWorker) return reloadOnce()
           navigator.serviceWorker.getRegistration().then(function (registration) {
-            if (!registration) {
-              // No SW registered – reload once to try the main.js registration
-              reloadOnce()
-              return
-            }
+            if (!registration) return reloadOnce()
             registration.update()
             if (registration.waiting) {
-              // A newer worker is waiting: skip it and reload on takeover.
               registration.waiting.postMessage({ type: 'SKIP_WAITING' })
               navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
               return
             }
-            // Nothing waiting: a single reload is enough.
             reloadOnce()
           }).catch(reloadOnce)
         }
 
-        window.addEventListener(
-          'error',
-          function () {
-            recover()
-          },
-          true,
-        )
-
-        /* Repli : si rien n'a été peint après 8 s, l'application n'a pas démarré. */
+        window.addEventListener('error', function () { recover() }, true)
         document.addEventListener('DOMContentLoaded', function () {
           setTimeout(function () {
             var view = document.getElementById('view')
@@ -184,6 +178,6 @@
         })
       })()
     </script>
-    <script type="module" src="src/main.js?v=4"></script>
+    <script type="module" src="src/main.js?v=12"></script>
   </body>
 </html>

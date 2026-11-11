@@ -8,10 +8,10 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "start_url": "./#/liste",
+  "start_url": "./#/depenses",
   "scope": "./",
-  "theme_color": "#faf7f1",
-  "background_color": "#faf7f1",
+  "theme_color": "#f2eee4",
+  "background_color": "#f2eee4",
   "categories": ["shopping", "business", "productivity", "utilities"],
   "icons": [
     { "src": "icons/pwa-64x64.png", "sizes": "64x64", "type": "image/png" },

@@ -526,11 +526,12 @@ async function renderCombo(width, theme) {
   const anaCards = d.querySelectorAll('.ana-section-card').length
   check(`${tag} : titre Analyse + sommaire de neuf cartes`, /Analyse/.test(d.querySelector('h1')?.textContent || '') && anaCards === 9 && Boolean(d.querySelector('[data-action="analysis-home"]')), `${anaCards} cartes`)
 
-  /* La barre du bas loge les cinq écrans, plus le bouton d'ajout au centre. */
-  const bar = d.querySelector('#bottomnav-inner')
+  /* Le dock loge les quatre écrans ; l'ajout est un bouton flottant à part. */
+  const bar = d.querySelector('#dock-inner')
   const tabs = [...(bar?.querySelectorAll('.tab') || [])]
-  check(`${tag} : six entrées dans la barre du bas`, tabs.length === 6, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
-  check(`${tag} : la barre du bas ne déborde pas`, bar ? bar.scrollWidth <= bar.clientWidth + 1 : false, bar ? `${bar.scrollWidth} / ${bar.clientWidth}` : 'barre absente')
+  check(`${tag} : quatre entrées dans le dock`, tabs.length === 4, tabs.map((t) => t.textContent.trim().slice(0, 9)).join(' · '))
+  check(`${tag} : le dock ne déborde pas`, bar ? bar.scrollWidth <= bar.clientWidth + 1 : false, bar ? `${bar.scrollWidth} / ${bar.clientWidth}` : 'dock absent')
+  check(`${tag} : le bouton d’ajout est flottant`, Boolean(d.querySelector('.fab')), 'fab')
 
   /* Fiche du mois : ouverte par sa carte. */
   d.querySelector('[data-action="analysis-goto"][data-tab="recettes"]')?.click()

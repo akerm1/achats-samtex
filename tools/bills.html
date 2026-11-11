@@ -252,9 +252,9 @@ async function screenBench() {
   check('écran : le ticket est affiché au premier chargement', seen.shown, seen.why)
 
   const cards = doc().querySelectorAll('.card').length
-  check('écran : la facture est comptée dans l’en-tête', /1\s*facture/.test(doc().querySelector('.list-head')?.textContent || ''), `${cards} carte(s)`)
+  check('écran : la facture est comptée dans l’en-tête', /1\s*facture/.test(doc().querySelector('.screen-sub')?.textContent || ''), `${cards} carte(s)`)
 
-  const note = doc().querySelector('.list-head-note')
+  const note = doc().querySelector('.screen-note')
   check('écran : sans lien privé, l’écran dit où restent les factures', Boolean(note), note ? note.textContent.trim().slice(0, 60) : 'aucun avertissement')
 }
 

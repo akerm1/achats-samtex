@@ -89,21 +89,32 @@ function shortDate(key) {
 function syncNote() {
   const { provider } = getState()
   if (provider === PROVIDER_WORKER) return ''
-  return `<p class="list-head-note">${icon('cloud', 12)} Les factures et l'analyse ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
+  return `<p class="screen-note">${icon('cloud', 12)} Les factures et l'analyse ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
 }
 
 function header() {
   const fy = currentFy()
   const recorded = store.getAnalysis().sales.length
   return `
-    <header class="list-head">
-      <div class="list-head-copy">
-        <h1>Analyse</h1>
-        <p class="list-head-sub">
+    <header class="screen-head">
+      <div class="screen-head-main">
+        <span class="screen-eyebrow">Classeur de gestion</span>
+        <h1 class="screen-title">Analyse</h1>
+        <p class="screen-sub">
           Exercice <strong>${esc(fy.label)}</strong>
-          ${recorded ? ` · <span class="list-head-total">${recorded} journée(s) saisie(s)</span>` : ''}
+          ${recorded ? ` · <span class="screen-total">${recorded} journée(s) saisie(s)</span>` : ''}
         </p>
         ${syncNote()}
+      </div>
+      <div class="screen-stats">
+        <div class="stat">
+          <span class="stat-label">Exercice</span>
+          <span class="stat-value">${esc(fy.label)}</span>
+        </div>
+        <div class="stat stat--accent">
+          <span class="stat-label">Journées</span>
+          <span class="stat-value">${recorded}</span>
+        </div>
       </div>
     </header>`
 }

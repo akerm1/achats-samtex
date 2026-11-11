@@ -1,5 +1,11 @@
 /* ------------------------------------------------------------------ */
-/* Coquille — barre du haut, navigation, bandeaux, pastille sync       */
+/* Coquille — rail, barre haute, dock, bandeaux, pastilles de sync     */
+/*                                                                      */
+/* Une seule navigation par taille d'écran :                           */
+/*   ≥ 1024 px  le rail vertical porte les quatre écrans, les          */
+/*              réglages et la synchronisation ;                        */
+/*   < 1024 px  la barre haute porte le titre et la sync, le dock       */
+/*              flottant porte les quatre écrans, le FAB ajoute.        */
 /* ------------------------------------------------------------------ */
 
 import { $, esc, formatRelative } from '../core/utils.js'
@@ -7,13 +13,25 @@ import { isUpdateAvailable } from '../core/update.js'
 import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 
+/* Les quatre écrans du dock et du rail. Les réglages vivent à part,
+   dans le pied du rail et dans la barre haute : cinq onglets égaux
+   tassaient les libellés sur téléphone. */
 export const NAV_ITEMS = [
   { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
   { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
-  { route: 'analyse', label: 'Analyse', short: 'Analyse', icon: 'analysis' },
   { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
-  { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' },
+  { route: 'analyse', label: 'Analyse', short: 'Analyse', icon: 'analysis' },
 ]
+
+const SETTINGS_ITEM = { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' }
+
+/* Le bouton flottant suit l'écran : il ajoute ce que l'on regarde. */
+const FAB_CONFIG = {
+  liste: { label: 'Ajouter un produit', icon: 'plus' },
+  factures: { label: 'Ajouter une facture', icon: 'plus' },
+  depenses: { label: 'Ajouter une dépense', icon: 'plus' },
+  analyse: { label: 'Saisir une recette', icon: 'plus' },
+}
 
 const shell = {
   activeRoute: 'liste',
@@ -33,70 +51,93 @@ export function setActiveRoute(route) {
   renderNav()
 }
 
-/**
- * Les onglets de la barre du bas. L'ajout est intercalé au centre de la
- * barre (après Liste et Factures), là où le pouce tombe naturellement.
- */
-function tabItems() {
-  const items = []
-  NAV_ITEMS.forEach((item, index) => {
-    if (index === 2) {
-      items.push({
-        route: '__add',
-        label: 'Ajouter',
-        icon: 'plus',
-        action: 'open-form',
-      })
-    }
-    items.push(item)
-  })
-  return items
+function activeItem() {
+  return (
+    NAV_ITEMS.find((item) => item.route === shell.activeRoute) ||
+    (shell.activeRoute === SETTINGS_ITEM.route ? SETTINGS_ITEM : null)
+  )
+}
+
+function railLink(item) {
+  const active = item.route === shell.activeRoute
+  return `
+    <a class="rail-link ${active ? 'is-active' : ''}" href="#/${item.route}"
+       aria-current="${active ? 'page' : 'false'}">
+      ${icon(item.icon, 17)}<span>${esc(item.label)}</span>
+    </a>`
+}
+
+function dockTab(item) {
+  const active = item.route === shell.activeRoute
+  const { pendingCount } = getState()
+  const badge =
+    item.route === 'liste' && pendingCount ? `<span class="tab-badge">${pendingCount}</span>` : ''
+  return `
+    <a class="tab ${active ? 'is-active' : ''}" href="#/${item.route}"
+       aria-current="${active ? 'page' : 'false'}" aria-label="${esc(item.label)}">
+      <span class="tab-icon">${icon(item.icon, 21)}</span>
+      <span class="tab-label">${esc(item.short || item.label)}</span>${badge}
+    </a>`
 }
 
 function renderNav() {
+  const current = activeItem()
+
   const title = document.getElementById('screen-title')
-  if (title) {
-    const current = NAV_ITEMS.find((item) => item.route === shell.activeRoute)
-    title.textContent = current ? current.label : ''
-    document.title = current ? `${current.label} — Mes achats` : 'Mes achats'
-  }
+  if (title) title.textContent = current ? current.label : ''
+  document.title = current ? `${current.label} — Mes achats` : 'Mes achats'
 
-  /* Navigation du haut : absente sur téléphone, où la barre du bas suffit.
-     Le CSS s'en charge ; on ne la remplit que si elle est visible. */
-  const top = $('#appbar-nav')
-  if (top) {
-    top.innerHTML = NAV_ITEMS.map(
-      (item) => `
-        <a class="navlink ${item.route === shell.activeRoute ? 'is-active' : ''}" href="#/${item.route}"
-           aria-current="${item.route === shell.activeRoute ? 'page' : 'false'}">
-           ${icon(item.icon, 15)}<span>${esc(item.label)}</span>
-        </a>`,
-    ).join('')
-  }
+  const rail = $('#rail-nav')
+  if (rail) rail.innerHTML = NAV_ITEMS.map(railLink).join('')
 
-  const bottom = $('#bottomnav-inner')
-  if (!bottom) return
-  const { pendingCount } = getState()
-  bottom.innerHTML = tabItems()
-    .map((item) => {
-      const isAdd = item.route === '__add'
-      const active = !isAdd && item.route === shell.activeRoute
-      const badge =
-        item.route === 'liste' && pendingCount ? `<span class="tab-badge">${pendingCount}</span>` : ''
-      const attrs = isAdd
-        ? `type="button" class="tab tab--add" data-action="open-form"`
-        : `class="tab ${active ? 'is-active' : ''}" href="#/${item.route}"
-           aria-current="${active ? 'page' : 'false'}"`
-      return `
-        <${isAdd ? 'button' : 'a'} ${attrs} aria-label="${isAdd ? 'Ajouter un produit' : esc(item.label)}">
-          <span class="tab-icon">${icon(item.icon, 21)}</span>
-          <span class="tab-label">${esc(item.short || item.label)}</span>${badge}
-        </${isAdd ? 'button' : 'a'}>`
-    })
-    .join('')
+  /* Les réglages sont un lien fixe du pied de rail : on ne repeint que
+     son état actif. */
+  document.querySelectorAll('.rail-foot [data-route="reglages"]').forEach((link) => {
+    const active = shell.activeRoute === 'reglages'
+    link.classList.toggle('is-active', active)
+    link.setAttribute('aria-current', active ? 'page' : 'false')
+  })
+
+  const dock = $('#dock-inner')
+  if (dock) dock.innerHTML = NAV_ITEMS.map(dockTab).join('')
+
+  renderFab()
 }
 
-/* Pastille de synchronisation ------------------------------------- */
+/** Le bouton flottant et le bouton du rail changent de libellé — et
+    disparaissent sur les Réglages. Sans cela, un grand écran n'avait
+    aucun moyen d'ajouter une dépense, une facture ou une recette. */
+function renderFab() {
+  const config = FAB_CONFIG[shell.activeRoute]
+  const label = config ? config.label : ''
+
+  const fab = $('#fab')
+  if (fab) {
+    fab.hidden = !config
+    if (config) {
+      fab.dataset.action = 'fab-add'
+      fab.setAttribute('aria-label', label)
+      fab.title = label
+    }
+  }
+
+  const railAdd = $('#rail-add')
+  if (railAdd) {
+    railAdd.hidden = !config
+    if (config) {
+      railAdd.dataset.action = 'fab-add'
+      railAdd.setAttribute('aria-label', label)
+      railAdd.title = label
+      const text = $('#rail-add-label')
+      if (text) text.textContent = label
+      /* « N » n'ouvre un produit que sur la Liste. */
+      const kbd = railAdd.querySelector('kbd')
+      if (kbd) kbd.hidden = shell.activeRoute !== 'liste'
+    }
+  }
+}
+
+/* Pastilles de synchronisation ------------------------------------- */
 
 /* Six états, un style chacun : le statut porte déjà la couleur de l'erreur,
    la pastille n'a plus besoin de deviner. */
@@ -109,15 +150,9 @@ const PILL_CLASSES = {
   local: 'is-config',
 }
 
-export function renderSyncPill() {
-  const pill = $('#sync-pill')
-  if (!pill) return
-  const { status, isConfigured, lastSyncAt, message } = getState()
-  pill.className = `sync-pill ${PILL_CLASSES[status] || 'is-config'}`
-  pill.innerHTML = `<span>${esc(statusLabel(status))}</span>${
-    lastSyncAt ? `<small>${formatRelative(lastSyncAt)}</small>` : ''
-  }`
-  pill.title = [
+function syncTitle() {
+  const { isConfigured, lastSyncAt, message } = getState()
+  return [
     isConfigured ? 'Liste partagée via GitHub' : 'Liste locale — configurez GitHub dans Réglages',
     message ? `⚠ ${message}` : '',
     lastSyncAt ? `Dernier rafraîchissement : ${formatRelative(lastSyncAt)}` : '',
@@ -127,11 +162,33 @@ export function renderSyncPill() {
     .join(' · ')
 }
 
+export function renderSyncPill() {
+  const { status, lastSyncAt } = getState()
+  const stateClass = PILL_CLASSES[status] || 'is-config'
+  const title = syncTitle()
+
+  const card = $('#sync-card')
+  if (card) {
+    card.className = `sync-card ${stateClass}`
+    card.innerHTML = `<span class="sync-card-head">${esc(statusLabel(status))}</span>
+      <small>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : 'Liste locale'}</small>`
+    card.title = title
+  }
+
+  const mini = $('#sync-mini')
+  if (mini) {
+    mini.className = `sync-mini ${stateClass}`
+    mini.title = title
+    mini.setAttribute('aria-label', `Synchronisation : ${statusLabel(status)}`)
+  }
+}
+
 /* Bandeaux -------------------------------------------------------- */
 
 export function setInstallEvent(event) {
   shell.installEvent = event
   renderBanners()
+  renderInstallButton()
 }
 
 export function setUpdateAvailable(value) {
@@ -163,6 +220,7 @@ export async function promptInstall() {
   shell.installEvent = null
   setPrefs({ installHidden: true })
   renderBanners()
+  renderInstallButton()
   return choice?.outcome === 'accepted'
 }
 
@@ -331,10 +389,16 @@ export function dismissSyncError() {
 
 /* Rendu global ---------------------------------------------------- */
 
+/** Le bouton d'installation du rail n'apparaît que s'il peut servir. */
+function renderInstallButton() {
+  const installBtn = $('#install-btn')
+  if (!installBtn) return
+  installBtn.hidden = isInstalled() || !(canPromptInstall() || isMobile())
+}
+
 export function renderChrome() {
   renderNav()
   renderSyncPill()
   renderBanners()
-  const installBtn = $('#install-btn')
-  if (installBtn) installBtn.hidden = isInstalled()
+  renderInstallButton()
 }

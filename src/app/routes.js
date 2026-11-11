@@ -16,15 +16,16 @@ import { openProductForm } from '../screens/list/form.js'
 export const VIEWS = {
   liste: listView,
   factures: billsView,
-  analyse: analysisView,
   depenses: expensesView,
+  analyse: analysisView,
   reglages: settingsView,
 }
 
 export const ROUTE_ORDER = Object.keys(VIEWS)
 
-/** Route affichée quand le hash est vide ou inconnu. */
-export const DEFAULT_ROUTE = 'liste'
+/** Route affichée quand le hash est vide ou inconnu. L'application ouvre
+    le suivi des dépenses : c'est l'écran de travail quotidien. */
+export const DEFAULT_ROUTE = 'depenses'
 
 /** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
 const REDIRECT = { accueil: 'liste', marche: 'liste' }

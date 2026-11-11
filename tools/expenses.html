@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc de bout en bout — dépenses</title>
+<!--
+  Banc du formulaire de dépense, dans une PASSE À PART (voir check.mjs :
+  `--only expenses`).
+
+  Ce qu'il défend :
+
+    1. Les catégories existantes sont des CASES cliquables, pas une liste
+       déroulante. Une catégorie se choisit au doigt, puis on complète le
+       montant et la date — rien d'autre.
+
+    2. Une dépense ordinaire ne touche JAMAIS un investissement. Le reste
+       à récupérer doit être identique avant et après l'ajout. C'est la
+       régression la plus coûteuse : elle fausse un solde en silence.
+
+    3. Le mode transfert reste réservé au bouton « Transférer » d'une
+       fiche d'investissement. Un formulaire de dépense ouvert normalement
+       ne doit proposer aucun investissement.
+
+  Un profil neuf et une seule vue en mémoire : les autres bancs laissent
+  des cadres vivants qui réécrivent le même stockage.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+  #stage { position: fixed; left: -20000px; top: 0; width: 1200px; height: 1400px; border: 0; }
+  #log { padding: 1rem; }
+  .ok { color: #17803d; }
+  .non { color: #b91c1c; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="log">Lancement du banc…</div>
+<iframe id="stage" title="application"></iframe>
+
+<!--
+  Filet de sécurité : sans lui, une page qui ne part pas ne peut rien
+  signaler elle-même, et l'attente expire sans rien dire.
+-->
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.__expensesDone) return
+      const log = document.getElementById('log')
+      fetch('/__check/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: 'light',
+          fatal: {
+            message: 'le banc des dépenses n’a rien renvoyé',
+            stack: `écran = « ${(log?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200)} »`,
+          },
+          results: [],
+        }),
+      }).catch(() => undefined)
+    }, 60_000)
+  })
+  window.addEventListener('error', (e) => {
+    fetch('/__check/log', { method: 'POST', body: `ERREUR PAGE : ${e.message} @ ${e.filename}:${e.lineno}` }).catch(() => undefined)
+  })
+</script>
+
+<script type="module">
+const KEY_PREFS = 'purchase-gros-prefs-v1'
+const KEY_LIST = 'purchase-gros-list-v2'
+const KEY_EXPENSES = 'purchase-gros-expenses-v1'
+const KEY_CONFIG = 'purchase-gros-github-v1'
+const KEY_OPTOUT = 'purchase-gros-github-optout-v1'
+const REPORT_URL = '/__check/report'
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const log = (message) => fetch('/__check/log', { method: 'POST', body: String(message) }).catch(() => undefined)
+const results = []
+const errors = []
+
+/* Un investissement de 1 000 dont 1 000 restant : si la dépense y touchait,
+   le reste changerait et le banc le verrait. */
+const INVESTMENT = { id: 'inv-bench', name: 'Stock de départ', amount: 1000, remaining: 1000, note: '' }
+
+function seed() {
+  localStorage.removeItem(KEY_CONFIG)
+  localStorage.setItem(KEY_OPTOUT, 'true')
+  localStorage.setItem(KEY_LIST, JSON.stringify([]))
+  localStorage.setItem(KEY_EXPENSES, JSON.stringify({ expenses: [], investments: [INVESTMENT] }))
+}
+
+const check = (name, pass, detail = '') => {
+  results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
+  document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
+}
+
+const doc = () => document.getElementById('stage').contentDocument
+
+/* La capture se fait sur `console`, pas sur la fenêtre : le proxy de fenêtre
+   reste le même d'une navigation à l'autre, mais l'objet `console` est
+   reconstruit — s'y fier une seule fois laisserait les cadres suivants
+   sans aucune trace d'erreur. */
+const muted = new WeakSet()
+const listened = new WeakSet()
+function capture(win) {
+  if (!win) return
+  if (win.console && !muted.has(win.console)) {
+    muted.add(win.console)
+    win.console.error = (...a) => errors.push(a.map(String).join(' '))
+  }
+  if (!listened.has(win)) {
+    listened.add(win)
+    win.addEventListener('error', (e) => errors.push(String(e.message)))
+    win.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)))
+  }
+}
+
+function freshFrame() {
+  document.getElementById('stage')?.remove()
+  const frame = document.createElement('iframe')
+  frame.id = 'stage'
+  frame.title = 'application'
+  frame.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
+  document.body.appendChild(frame)
+  return frame
+}
+
+async function mount(hash, readySelector) {
+  localStorage.setItem(KEY_PREFS, JSON.stringify({ filter: 'todo', category: 'all', sort: 'recent', layout: 'card' }))
+  const frame = freshFrame()
+  frame.src = `/index.html?expenses=${Date.now()}#${hash}`
+  let last = null
+  for (let i = 0; i < 100; i += 1) {
+    await sleep(50)
+    try {
+      last = frame.contentDocument
+      capture(frame.contentWindow)
+      if (last?.querySelector(readySelector)) return { ok: true }
+    } catch { /* iframe pas encore prêt */ }
+  }
+  return { ok: false, screen: last?.body?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 160) || 'document illisible' }
+}
+
+/** Attend qu'un sélecteur apparaisse dans le cadre affiché. */
+async function waitFor(selector, tries = 60) {
+  for (let i = 0; i < tries; i += 1) {
+    await sleep(50)
+    const found = doc()?.querySelector(selector)
+    if (found) return found
+  }
+  return null
+}
+
+/** Le document Dépenses tel qu'il est écrit sur le disque du navigateur. */
+function storedExpenses() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}')
+    return { expenses: raw.expenses || [], investments: raw.investments || [] }
+  } catch {
+    return { expenses: [], investments: [] }
+  }
+}
+
+/** Laisse la chaîne d'écriture du store atteindre le stockage. */
+async function waitForExpense(predicate, tries = 40) {
+  for (let i = 0; i < tries; i += 1) {
+    const found = storedExpenses().expenses.find(predicate)
+    if (found) return found
+    await sleep(50)
+  }
+  return null
+}
+
+const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim()
+
+async function formBench() {
+  const opened = await mount('/depenses', '.screen-head')
+  check('écran : l’onglet Dépenses s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
+  if (!opened.ok) return
+
+  /* La demande : les catégories sont déjà sur l'écran, avant toute boîte. */
+  const quick = await waitFor('.quick-add')
+  const quickBoxes = doc().querySelectorAll('.quick-add .quick-cat')
+  check('écran : les catégories sont posées sur l’écran', Boolean(quick), quick ? 'bloc présent' : 'bloc absent')
+  check('écran : une case par catégorie existante', quickBoxes.length === 6, `${quickBoxes.length} case(s)`)
+  check('écran : chaque case nomme sa catégorie', quickBoxes.length > 0 && [...quickBoxes].every((box) => text(box).length > 0), quickBoxes.length ? text(quickBoxes[0]).slice(0, 40) : '—')
+  check('écran : aucune boîte à ouvrir pour choisir', !doc().querySelector('#expense-form'), 'aucune boîte ouverte')
+
+  /* Aucun bouton « Ajouter une dépense » à chercher : les cases suffisent. */
+  const emptyButton = [...doc().querySelectorAll('.empty button')].find((btn) => /ajouter une dépense/i.test(text(btn)))
+  check('écran : l’état vide ne réclame plus un clic sur « Ajouter »', !emptyButton, emptyButton ? text(emptyButton) : 'aucun bouton inutile')
+
+  /* Toucher une case ouvre la dépense déjà catégorisée. */
+  doc().querySelector('.quick-cat[data-category="tools"]')?.click()
+
+  const form = await waitFor('#expense-form')
+  check('formulaire : toucher une case ouvre la dépense', Boolean(form), form ? '' : 'aucune boîte')
+  if (!form) return
+
+  const chosen = form.querySelector('[data-role="cat-chosen"]')
+  check('formulaire : la catégorie touchée est rappelée', /Outils/.test(text(chosen)), chosen ? text(chosen) : 'aucun rappel')
+  check('formulaire : la grille reste fermée tant qu’on ne demande rien', form.querySelector('.cat-picker')?.hidden === true, form.querySelector('.cat-picker')?.hidden === false ? 'grille ouverte' : 'grille repliée')
+  const checked = form.querySelector('.cat-picker input[name="categoryId"]:checked')
+  check('formulaire : la case cochée correspond à la catégorie touchée', checked?.value === 'tools', `choix = ${checked?.value || 'aucun'}`)
+  check('formulaire : une seule case reste choisie', form.querySelectorAll('.cat-picker input[name="categoryId"]:checked').length === 1, `${form.querySelectorAll('.cat-picker input[name="categoryId"]:checked').length} cochée(s)`)
+
+  /* « Changer » rouvre la grille sans perdre le choix courant. */
+  form.querySelector('[data-role="cat-change"]')?.click()
+  await sleep(50)
+  const picker = form.querySelector('.cat-picker')
+  check('formulaire : « Changer » rouvre les catégories', picker && picker.hidden === false, picker ? (picker.hidden ? 'encore repliée' : 'grille visible') : 'aucune grille')
+  check('formulaire : la grille montre toutes les catégories', picker?.querySelectorAll('.cat-box').length === 6, `${picker?.querySelectorAll('.cat-box').length ?? 0} case(s)`)
+
+  const boxes = picker.querySelectorAll('.cat-box')
+  const options = picker.querySelectorAll('.cat-box input[type="radio"]')
+  check('formulaire : chaque case porte un vrai choix', options.length === boxes.length, `${options.length} choix`)
+  check('formulaire : plus de liste déroulante de catégorie', !form.querySelector('select[name="categoryId"]'), 'aucun select')
+
+  /* La case choisie se voit : bordure et fond différents de ses voisines. */
+  const win = doc().defaultView
+  const activeFace = picker.querySelector('input:checked + .cat-box-face')
+  const idleFace = [...picker.querySelectorAll('.cat-box-face')].find((face) => face !== activeFace)
+  const activeStyle = activeFace ? win.getComputedStyle(activeFace) : null
+  const idleStyle = idleFace ? win.getComputedStyle(idleFace) : null
+  const highlighted =
+    Boolean(activeStyle && idleStyle) &&
+    activeStyle.borderTopColor !== idleStyle.borderTopColor &&
+    activeStyle.backgroundColor !== idleStyle.backgroundColor
+  check('formulaire : la case choisie est mise en avant', highlighted, activeStyle && idleStyle ? `${activeStyle.borderTopColor} / ${idleStyle.borderTopColor}` : 'style illisible')
+
+  /* La demande : une dépense ne propose pas d'investissement. */
+  check('formulaire : aucun investissement proposé', !form.querySelector('select[name="linkedInvestmentId"]'), 'aucun select investissement')
+  check('formulaire : la dépense reste ordinaire', form.querySelector('input[name="isTransfer"]')?.value === 'false', `isTransfer = ${form.querySelector('input[name="isTransfer"]')?.value}`)
+
+  /* Le montant et la date, eux, restent des champs à compléter. */
+  check('formulaire : le montant est demandé', Boolean(form.querySelector('input[name="amount"]')), 'champ montant')
+  check('formulaire : la date est demandée', Boolean(form.querySelector('input[name="date"]')), 'champ date')
+
+  /* Montant + date, comme avant. */
+  form.querySelector('input[name="amount"]').value = '250'
+  form.querySelector('input[name="date"]').value = '2026-11-05'
+  form.querySelector('button[type="submit"]').click()
+
+  const saved = await waitForExpense((item) => item.amount === 250)
+  check('dépense : la dépense est enregistrée', Boolean(saved), saved ? `${saved.categoryId} · ${saved.amount}` : 'rien dans le stockage')
+  check('dépense : elle garde la catégorie touchée', saved?.categoryId === 'tools', saved?.categoryId || '—')
+  check('dépense : elle garde la date saisie', saved?.date === '2026-11-05', saved?.date || '—')
+  check('dépense : elle reste une dépense ordinaire', saved ? saved.isTransfer === false && saved.linkedInvestmentId === null : false, saved ? `isTransfer=${saved.isTransfer} · lien=${saved.linkedInvestmentId}` : '—')
+
+  /* Le cœur de la demande : l'investissement ne bouge pas d'un centime. */
+  const investment = storedExpenses().investments.find((item) => item.id === INVESTMENT.id)
+  check('dépense : l’investissement n’est pas touché', investment?.remaining === 1000, `restant = ${investment?.remaining}`)
+
+  const closed = !doc().querySelector('#expense-form')
+  check('dépense : la boîte se referme après l’ajout', closed, closed ? '' : 'boîte encore ouverte')
+
+  const card = await waitFor('.list-results .card')
+  check('dépense : la fiche apparaît dans la liste', Boolean(card) && /Outils/.test(text(card)), card ? text(card).slice(0, 70) : 'aucune fiche')
+
+  const headText = text(doc().querySelector('.screen-head'))
+  check('dépense : le total de l’en-tête suit', /250/.test(headText), headText.slice(0, 70) || '—')
+
+  /* Les cases restent sur l'écran après l'ajout, avec le total à jour. */
+  const quickAgain = await waitFor('.quick-add .quick-cat[data-category="tools"]')
+  check('écran : les cases restent après l’ajout', Boolean(quickAgain), quickAgain ? text(quickAgain) : 'bloc disparu')
+  check('écran : la case montre le total de la catégorie', /250/.test(text(quickAgain)), quickAgain ? text(quickAgain) : '—')
+}
+
+/* Une recherche masque les cases pour laisser voir les résultats. */
+async function searchBench() {
+  const search = await waitFor('#expenses-search')
+  check('recherche : le champ de recherche est là', Boolean(search), search ? 'champ présent' : 'champ absent')
+  if (!search) return
+
+  search.value = 'outils'
+  const win = doc().defaultView
+  search.dispatchEvent(new win.Event('input', { bubbles: true }))
+  await sleep(200)
+  check('recherche : les cases s’effacent pendant la recherche', !doc().querySelector('.quick-add'), doc().querySelector('.quick-add') ? 'bloc encore visible' : 'bloc masqué')
+  check('recherche : la fiche trouvée reste visible', /Outils/.test(text(doc().querySelector('.list-results .card'))), text(doc().querySelector('.list-results .card')).slice(0, 60) || 'aucune fiche')
+
+  doc().querySelector('[data-action="clear-expenses-search"]')?.click()
+  await sleep(200)
+  check('recherche : les cases reviennent une fois la recherche vidée', Boolean(doc().querySelector('.quick-add')), doc().querySelector('.quick-add') ? 'bloc présent' : 'bloc absent')
+}
+
+/* Le bouton d'ajout générique reste une porte de secours : il ouvre la
+   grille complète, sans catégorie pré-remplie. */
+async function fallbackBench() {
+  const add = await waitFor('#rail-add')
+  check('écran : l’ajout générique reste à portée sur grand écran', Boolean(add), add ? text(add) : 'bouton absent')
+  if (!add) return
+  add.click()
+
+  const form = await waitFor('#expense-form')
+  check('repli : le bouton générique ouvre la grille complète', Boolean(form) && !form.querySelector('[data-role="cat-chosen"]'), form ? 'grille directe' : 'aucune boîte')
+  if (!form) return
+  check('repli : les catégories sont toutes proposées', form.querySelectorAll('.cat-picker .cat-box').length === 6, `${form.querySelectorAll('.cat-picker .cat-box').length} case(s)`)
+  form.querySelector('[data-close]')?.click()
+  await sleep(100)
+  check('repli : rien n’est enregistré sans montant', storedExpenses().expenses.length === 1, `${storedExpenses().expenses.length} dépense(s)`)
+}
+
+/* Le transfert reste possible — mais seulement depuis un investissement. */
+async function transferBench() {
+  const tab = await waitFor('[data-action="set-expense-tab"][data-value="investments"]')
+  tab?.click()
+  const transfer = await waitFor('[data-action="open-expense-form"]')
+  check('transfert : la fiche d’investissement propose encore le transfert', Boolean(transfer), transfer ? text(transfer) : 'bouton absent')
+  if (!transfer) return
+  transfer.click()
+
+  const form = await waitFor('#expense-form')
+  const linked = form?.querySelector('select[name="linkedInvestmentId"]')
+  check('transfert : le formulaire demande alors l’investissement', Boolean(linked), linked ? 'select présent' : 'select absent')
+  check('transfert : le mode transfert est explicite', form?.querySelector('input[name="isTransfer"]')?.value === 'true', `isTransfer = ${form?.querySelector('input[name="isTransfer"]')?.value}`)
+  form?.querySelector('[data-close]')?.click()
+  await sleep(100)
+  check('transfert : la boîte se referme sans enregistrer', !doc().querySelector('#expense-form') && storedExpenses().expenses.length === 1, `${storedExpenses().expenses.length} dépense(s)`)
+}
+
+/* Sur téléphone, les cases doivent tenir deux par ligne au minimum, rester
+   dans la largeur de la feuille, et se viser au doigt. */
+async function narrowBench() {
+  const stage = document.getElementById('stage')
+  stage.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:430px;height:900px;border:0')
+  await sleep(400)
+
+  /* Le banc précédent a laissé l'onglet Investissements : on revient aux
+     dépenses pour retrouver les cases de l'écran. */
+  doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')?.click()
+  await sleep(300)
+
+  /* Les cases de l'écran tiennent aussi sur téléphone, sans déborder. */
+  const quick = await waitFor('.quick-add')
+  check('téléphone : les catégories restent sur l’écran', Boolean(quick), quick ? 'bloc présent' : 'bloc absent')
+  if (!quick) return
+  const quickWin = doc().defaultView
+  const quickCols = quickWin.getComputedStyle(quick.querySelector('.quick-add-grid')).gridTemplateColumns.split(' ').filter(Boolean)
+  check('téléphone : au moins deux cases de catégorie par ligne', quickCols.length >= 2, `${quickCols.length} colonne(s) à ${doc().documentElement.clientWidth}px`)
+  check('téléphone : le bloc ne déborde pas', quick.scrollWidth <= quick.clientWidth + 1, `${quick.scrollWidth} / ${quick.clientWidth}`)
+  const quickHeights = [...quick.querySelectorAll('.quick-cat')].map((box) => Math.round(box.getBoundingClientRect().height))
+  check('téléphone : les cases de catégorie se visent au doigt', quickHeights.length > 0 && quickHeights.every((h) => h >= 44), quickHeights.join('/'))
+
+  /* Le rail disparaît : c'est le bouton flottant qui ajoute. */
+  const fab = await waitFor('#fab')
+  check('téléphone : l’ajout passe par le bouton flottant', Boolean(fab), fab ? text(fab) || 'icône seule' : 'bouton absent')
+  if (!fab) return
+  fab.click()
+
+  const form = await waitFor('#expense-form')
+  const picker = form?.querySelector('.cat-picker')
+  check('téléphone : les cases sont toujours là dans la boîte', Boolean(picker), picker ? `${picker.querySelectorAll('.cat-box').length} case(s)` : 'aucune case')
+  if (!picker) return
+
+  const win = doc().defaultView
+  const columns = win.getComputedStyle(picker).gridTemplateColumns.split(' ').filter(Boolean)
+  check('téléphone : au moins deux cases par ligne', columns.length >= 2, `${columns.length} colonne(s) à ${doc().documentElement.clientWidth}px`)
+
+  const sheet = form.closest('dialog')
+  check('téléphone : la feuille ne déborde pas', sheet ? sheet.scrollWidth <= sheet.clientWidth + 1 : false, sheet ? `${sheet.scrollWidth} / ${sheet.clientWidth}` : 'aucune feuille')
+
+  const heights = [...picker.querySelectorAll('.cat-box-face')].map((face) => Math.round(face.getBoundingClientRect().height))
+  check('téléphone : les cases se visent au doigt', heights.length > 0 && heights.every((h) => h >= 44), heights.join('/'))
+
+  form.querySelector('[data-close]')?.click()
+  await sleep(100)
+  stage.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
+}
+
+/* L'application s'ouvre sur les dépenses et compte en dinars. Deux choix
+   d'usage : un hash vide doit donc atterrir sur l'écran Dépenses, et le
+   moindre montant doit porter « DA » — jamais « € » ni « MAD ». */
+async function landingBench() {
+  const opened = await mount('', '.screen-head')
+  check('défaut : un hash vide ouvre les Dépenses', opened.ok, opened.ok ? '' : opened.screen)
+  if (!opened.ok) return
+
+  const rail = doc().querySelector('.rail-link.is-active[aria-current="page"]')
+  check('défaut : le rail marque Dépenses', /depenses/.test(rail?.getAttribute('href') || ''), rail?.getAttribute('href') || 'aucun lien actif')
+
+  const title = text(doc().querySelector('#screen-title'))
+  check('défaut : la barre haute nomme Dépenses', /dépenses/i.test(title), title || 'titre vide')
+
+  const card = await waitFor('.card[data-id]')
+  const amount = text(card?.querySelector('.card-amount'))
+  check('devise : la fiche compte en dinars', /DA$/.test(amount), amount || 'aucun montant')
+  check('devise : ni euro ni dirham à l’écran', !/€|MAD/.test(text(doc().querySelector('.screen'))), /€|MAD/.test(text(doc().querySelector('.screen'))) ? 'ancienne devise visible' : 'aucune trace')
+
+  let stored = {}
+  try { stored = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}') } catch { stored = {} }
+  check('devise : le stockage garde le dinar', stored.settings?.currency === 'DZD', stored.settings?.currency || 'aucune devise')
+}
+
+async function run() {
+  const report = { theme: 'light', fatal: null, results, errors, detail: {} }
+  try {
+    log('dépôt des dépenses…')
+    seed()
+    await formBench()
+    log('recherche…')
+    await searchBench()
+    log('repli…')
+    await fallbackBench()
+    log('transfert…')
+    await transferBench()
+    log('téléphone…')
+    await narrowBench()
+    log('ouverture par défaut…')
+    await landingBench()
+    check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
+  } catch (error) {
+    report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }
+  }
+  document.getElementById('log').textContent = `${results.filter((r) => !r.pass).length} échec(s) sur ${results.length}`
+  window.__expensesDone = true
+  await fetch(REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) }).catch(() => undefined)
+}
+
+run()
+</script>
+</body>
+</html>
