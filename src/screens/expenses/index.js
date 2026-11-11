@@ -2,6 +2,8 @@
 /* Écran Dépenses                                                      */
 /*                                                                     */
 /* Quatre onglets : Dépenses, Catégories, Investissements, Recettes.   */
+/* L'onglet Dépenses — celui de l'ouverture — porte aussi les recettes  */
+/* sous la liste des dépenses : les deux listes se lisent d'un coup.    */
 /* Ce fichier ne fait que l'assemblage : chaque onglet a son module,    */
 /* l'état partagé vit dans state.js.                                   */
 /* ------------------------------------------------------------------ */
@@ -14,7 +16,7 @@ import { results } from './expenses-tab.js'
 import { categoryTabsHtml, typeTabsHtml, filterbar } from './filters.js'
 import { header } from './header.js'
 import { investmentsHtml } from './investments-tab.js'
-import { revenuesHtml } from './revenues-tab.js'
+import { revenuesHtml, revenuesSection } from './revenues-tab.js'
 import { resetFilters, resetState, state } from './state.js'
 
 const TABS = [
@@ -24,11 +26,20 @@ const TABS = [
   { value: 'revenues', label: 'Recettes', icon: 'trendingUp' },
 ]
 
+/* L'onglet d'ouverture montre les deux listes : les dépenses (cases de
+   catégorie + fiches) puis les recettes. Un filtre ne porte que sur les
+   dépenses ; dès qu'il est actif, les recettes laissent la place aux
+   résultats et reviennent une fois le filtre retiré. */
+function combinedRevenues() {
+  if (state.query.trim() || state.categoryFilter !== 'all' || state.typeFilter !== 'all') return ''
+  return revenuesSection()
+}
+
 function bodyHtml() {
   if (state.tab === 'categories') return categoriesHtml()
   if (state.tab === 'investments') return investmentsHtml()
   if (state.tab === 'revenues') return revenuesHtml()
-  return results()
+  return `${results()}${combinedRevenues()}`
 }
 
 function tabsHtml() {

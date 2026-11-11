@@ -614,9 +614,9 @@ dépense » pour les voir. La 9.2 les pose sur l'écran.
 - **La recherche efface les cases** le temps de montrer les résultats, puis les fait
   revenir une fois le champ vidé.
 
-Vérifié par `node tools/check.mjs --only expenses` : 58 contrôles, dont « les catégories
+Vérifié par `node tools/check.mjs --only expenses` : 52 contrôles, dont « les catégories
 sont posées sur l'écran », « la catégorie touchée est rappelée », la grille à deux
-colonnes, les cases à 94 px sur téléphone, l'ouverture par défaut et les montants en DA.
+colonnes et les cases à 94 px sur téléphone.
 
 ### Version 9.3 - le dinar, et l'ouverture sur les dépenses
 
@@ -638,13 +638,33 @@ Vérifié par `node tools/check.mjs` (rendu, `--e2e`), `--only bills`, `--only a
 et `--only expenses` : tout passe, y compris « un hash vide ouvre les Dépenses »,
 « le stockage garde le dinar » et « ni euro ni dirham à l'écran ».
 
+### Version 9.4 - les deux listes à l'ouverture
+
+Ouvrir l'application sur les Dépenses ne suffisait pas : la recette du jour était encore
+derrière un onglet. La 9.4 met les deux listes sur l'écran d'ouverture.
+
+- **L'onglet Dépenses porte les recettes** : sous les cases de catégorie et la liste des
+  dépenses, un bloc « Recettes » reprend les totaux du jour (total, nombre de jours) et
+  les cartes par date, avec les mêmes boutons d'ajout. Rien à changer d'onglet.
+- **L'ordre suit le travail** : on ajoute une dépense, on lit les dépenses, puis on
+  vérifie la recette du jour. L'en-tête continue d'afficher « Recettes » à côté
+  d'« Investi » et « Restant ».
+- **Les filtres restent aux dépenses** : dès qu'une recherche, une catégorie ou un type
+  est actif, le bloc Recettes s'efface pour laisser les résultats seuls ; il revient
+  quand le filtre est retiré. L'onglet « Recettes » reste la vue dédiée.
+
+Vérifié par `node tools/check.mjs --only expenses` : 67 contrôles, dont « les recettes
+sont sous les dépenses », « dépenses d'abord, recettes ensuite », le bloc qui s'efface
+pendant une recherche et, à 430 px, les recettes qui restent dans la largeur avec des
+boutons ≥ 44 px.
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
 |---|---|
 | **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter, cocher, modifier, supprimer, trier et choisir la présentation (fiche / mosaïque / liste) |
 | **Factures** | Tickets et factures fournisseurs : photo, fournisseur, montant, note, bascule payée, recherche et filtres de statut |
-| **Dépenses** | Écran d'ouverture : recettes, dépenses, investissements et catégories, avec en-tête chiffré et filtres ; les catégories sont des cases posées sur l'écran, avant toute boîte |
+| **Dépenses** | Écran d'ouverture : les dépenses (cases de catégorie + fiches) **et** les recettes du jour, dans la même vue ; en-tête chiffré, filtres, onglets Catégories / Investissements / Recettes |
 | **Analyse** | Sommaire, fiche mensuelle, comparaison et feuille Générale (recettes, investissements, achats, possession) |
 | **Réglages** | Thème (sombre/clair/système), présentation de la liste, configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
@@ -666,11 +686,15 @@ colonnes sur téléphone). Une dépense ordinaire ne propose aucun investissemen
 modifie aucun reste à récupérer ; le mode transfert n'existe que depuis le bouton
 « Transférer » d'une fiche d'investissement.
 
+Sous la liste des dépenses, l'écran d'ouverture montre **les recettes** : total, nombre
+de jours et cartes par date, avec les mêmes boutons d'ajout. Un filtre (recherche,
+catégorie, type) masque ce bloc le temps des résultats.
+
 ## Structure du projet
 
 ```
 index.html                  coquille de l'application (rail, barre haute, dock, conteneurs)
-manifest.webmanifest        manifeste PWA (Ajouter, Liste)
+manifest.webmanifest        manifeste PWA (ouverture sur #/depenses, raccourcis Ajouter, Liste)
 version.json                version publiée de l'application (repère des mises à jour)
 sync-defaults.json          dépôt public lu en lecture seule au premier lancement (sans configuration)
 sw.js                       service worker : repli hors-ligne uniquement (aucun cache de code)
