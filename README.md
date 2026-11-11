@@ -658,13 +658,29 @@ sont sous les dépenses », « dépenses d'abord, recettes ensuite », le bloc q
 pendant une recherche et, à 430 px, les recettes qui restent dans la largeur avec des
 boutons ≥ 44 px.
 
+### Version 9.5 - l'ouverture, c'est la recette
+
+La 9.4 avait empilé les recettes sous la liste des dépenses. La demande était plus
+simple : ouvrir sur la **section Recettes**, pas sur les dépenses.
+
+- **L'écran Dépenses s'ouvre sur l'onglet Recettes** : total, nombre de jours, cartes par
+  date et boutons d'ajout. Les dépenses restent à un appui, avec leurs cases de catégorie.
+- **Le bloc ajouté sous la liste en 9.4 est retiré** : plus de doublon, plus de section à
+  faire défiler pour retrouver la recette du jour.
+- Le reste ne bouge pas : devise DA, recherche et filtres, ajout de dépense par cases,
+  transfert réservé aux investissements.
+
+Vérifié par `node tools/check.mjs --only expenses` : 63 contrôles, dont « l'ouverture est
+la section Recettes », « les dépenses ne sont pas à l'ouverture » et « les dépenses sont
+à un appui ».
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
 |---|---|
 | **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter, cocher, modifier, supprimer, trier et choisir la présentation (fiche / mosaïque / liste) |
 | **Factures** | Tickets et factures fournisseurs : photo, fournisseur, montant, note, bascule payée, recherche et filtres de statut |
-| **Dépenses** | Écran d'ouverture : les dépenses (cases de catégorie + fiches) **et** les recettes du jour, dans la même vue ; en-tête chiffré, filtres, onglets Catégories / Investissements / Recettes |
+| **Dépenses** | Écran d'ouverture, section **Recettes** : total, jours et cartes par date ; un appui sur « Dépenses » montre les cases de catégorie et la liste, avec filtres ; onglets Catégories / Investissements / Recettes |
 | **Analyse** | Sommaire, fiche mensuelle, comparaison et feuille Générale (recettes, investissements, achats, possession) |
 | **Réglages** | Thème (sombre/clair/système), présentation de la liste, configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
@@ -686,9 +702,8 @@ colonnes sur téléphone). Une dépense ordinaire ne propose aucun investissemen
 modifie aucun reste à récupérer ; le mode transfert n'existe que depuis le bouton
 « Transférer » d'une fiche d'investissement.
 
-Sous la liste des dépenses, l'écran d'ouverture montre **les recettes** : total, nombre
-de jours et cartes par date, avec les mêmes boutons d'ajout. Un filtre (recherche,
-catégorie, type) masque ce bloc le temps des résultats.
+À l'ouverture, l'écran Dépenses montre la **section Recettes** ; l'onglet « Dépenses » —
+cases de catégorie puis fiches — est à un appui.
 
 ## Structure du projet
 

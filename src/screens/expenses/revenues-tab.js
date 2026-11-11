@@ -62,25 +62,3 @@ export function revenuesHtml() {
       }
     </div>`
 }
-
-/**
- * Le même contenu, coiffé d'un titre de section : c'est ainsi que les
- * recettes apparaissent **sous les dépenses**, à l'ouverture de l'écran,
- * sans avoir à changer d'onglet. L'onglet « Recettes » reste la vue
- * dédiée (mêmes boutons, mêmes cartes).
- */
-export function revenuesSection() {
-  const { revenues, settings } = expStore.getExpenses()
-  const total = expModel.totalRevenues(revenues)
-  const days = expModel.revenueByDate(revenues).length
-
-  return `
-    <section class="group combined-revenues" aria-labelledby="combined-revenues-title">
-      <div class="group-head">
-        <h3 id="combined-revenues-title">Recettes</h3>
-        <span class="group-count">${days}</span>
-        <span class="group-total">${formatMoney(total, settings.currency)}</span>
-      </div>
-      ${revenuesHtml()}
-    </section>`
-}

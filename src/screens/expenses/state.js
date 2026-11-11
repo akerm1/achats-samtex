@@ -7,7 +7,7 @@
 
 export const state = {
   host: null,
-  tab: 'expenses', // expenses | categories | investments | revenues
+  tab: 'revenues', // revenues | expenses | categories | investments
   categoryFilter: 'all',
   typeFilter: 'all',
   query: '',
@@ -16,7 +16,8 @@ export const state = {
 
 export function resetState(host) {
   state.host = host
-  state.tab = 'expenses'
+  /* L'écran ouvre sur les recettes : c'est la section du jour. */
+  state.tab = 'revenues'
   state.categoryFilter = 'all'
   state.typeFilter = 'all'
   state.query = ''

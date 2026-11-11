@@ -84,7 +84,7 @@ worker/               worker Cloudflare (synchro privée)
 | Changer un texte, une carte, un filtre d'écran | le fichier de l'écran concerné, sous `src/screens/` |
 | Ajouter un champ à un formulaire | `src/screens/list/form.js`, `src/screens/bills/form.js` ou `src/screens/expenses/forms/*.js` |
 | Changer les cases de catégorie posées sur l'écran Dépenses | `src/screens/expenses/expenses-tab.js` (`quickAdd`) et `src/styles/views.css` (`.quick-add*`) |
-| Changer ce que montre l'ouverture (dépenses + recettes) | `src/screens/expenses/index.js` (`bodyHtml`, `combinedRevenues`) et `revenues-tab.js` (`revenuesSection`) |
+| Changer la section montrée à l'ouverture de l'écran Dépenses | `src/screens/expenses/state.js` (`state.tab`, aujourd'hui `revenues`) |
 | Changer le rappel de catégorie dans la boîte de dépense | `src/screens/expenses/forms/fields.js` (`categoryPickerBody`, `categoryChoiceField`) |
 | Changer une règle de calcul (TVA, totaux, tri) | le `*-model.js` correspondant dans `src/data/` |
 | Changer la façon dont les données sont enregistrées / synchronisées | `src/data/store.js` |

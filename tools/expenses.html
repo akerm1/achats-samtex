@@ -175,10 +175,20 @@ const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim()
 
 async function formBench() {
   const opened = await mount('/depenses', '.screen-head')
-  check('écran : l’onglet Dépenses s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
+  check('écran : l’écran Dépenses s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
   if (!opened.ok) return
 
-  /* La demande : les catégories sont déjà sur l'écran, avant toute boîte. */
+  /* La demande : l'écran ouvre sur la section Recettes, pas sur les dépenses. */
+  const active = doc().querySelector('.expense-tab.is-active')
+  check('écran : l’ouverture est la section Recettes', active?.dataset.value === 'revenues', active ? text(active) : 'aucun onglet actif')
+  check('écran : les recettes sont visibles d’emblée', Boolean(doc().querySelector('.revenue-day-card')), doc().querySelector('.revenue-day-card') ? text(doc().querySelector('.revenue-day-card')).slice(0, 40) : 'aucune recette')
+  check('écran : les dépenses ne sont pas à l’ouverture', !doc().querySelector('.quick-add'), doc().querySelector('.quick-add') ? 'bloc dépenses visible' : 'section recettes seule')
+
+  /* On passe aux dépenses : la suite du banc les concerne. */
+  doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')?.click()
+  await sleep(200)
+
+  /* Les catégories sont déjà sur l'écran, avant toute boîte. */
   const quick = await waitFor('.quick-add')
   const quickBoxes = doc().querySelectorAll('.quick-add .quick-cat')
   check('écran : les catégories sont posées sur l’écran', Boolean(quick), quick ? 'bloc présent' : 'bloc absent')
@@ -189,17 +199,6 @@ async function formBench() {
   /* Aucun bouton « Ajouter une dépense » à chercher : les cases suffisent. */
   const emptyButton = [...doc().querySelectorAll('.empty button')].find((btn) => /ajouter une dépense/i.test(text(btn)))
   check('écran : l’état vide ne réclame plus un clic sur « Ajouter »', !emptyButton, emptyButton ? text(emptyButton) : 'aucun bouton inutile')
-
-  /* L'ouverture montre les DEUX listes : les dépenses, puis les recettes. */
-  const revenue = doc().querySelector('.combined-revenues .revenue-day-card')
-  check('écran : les recettes sont sous les dépenses', Boolean(revenue), revenue ? text(revenue).slice(0, 40) : 'bloc recettes absent')
-  check('écran : la recette porte son montant en dinars', /1 200 DA/.test(text(revenue)), text(revenue).slice(0, 50) || '—')
-  const order = doc().querySelector('.list-results')
-  const firstExpense = order?.querySelector('.quick-add')
-  const revenueBlock = order?.querySelector('.combined-revenues')
-  /* 4 = Node.DOCUMENT_POSITION_FOLLOWING : les recettes viennent après. */
-  const revenueAfter = Boolean(firstExpense && revenueBlock && (firstExpense.compareDocumentPosition(revenueBlock) & 4))
-  check('écran : dépenses d’abord, recettes ensuite', revenueAfter, revenueAfter ? 'ordre respecté' : 'ordre inattendu')
 
   /* Toucher une case ouvre la dépense déjà catégorisée. */
   doc().querySelector('.quick-cat[data-category="tools"]')?.click()
@@ -288,13 +287,11 @@ async function searchBench() {
   search.dispatchEvent(new win.Event('input', { bubbles: true }))
   await sleep(200)
   check('recherche : les cases s’effacent pendant la recherche', !doc().querySelector('.quick-add'), doc().querySelector('.quick-add') ? 'bloc encore visible' : 'bloc masqué')
-  check('recherche : les recettes s’effacent aussi', !doc().querySelector('.combined-revenues'), doc().querySelector('.combined-revenues') ? 'bloc encore visible' : 'bloc masqué')
   check('recherche : la fiche trouvée reste visible', /Outils/.test(text(doc().querySelector('.list-results .card'))), text(doc().querySelector('.list-results .card')).slice(0, 60) || 'aucune fiche')
 
   doc().querySelector('[data-action="clear-expenses-search"]')?.click()
   await sleep(200)
   check('recherche : les cases reviennent une fois la recherche vidée', Boolean(doc().querySelector('.quick-add')), doc().querySelector('.quick-add') ? 'bloc présent' : 'bloc absent')
-  check('recherche : les recettes reviennent aussi', Boolean(doc().querySelector('.combined-revenues')), doc().querySelector('.combined-revenues') ? 'bloc présent' : 'bloc absent')
 }
 
 /* Le bouton d'ajout générique reste une porte de secours : il ouvre la
@@ -355,13 +352,6 @@ async function narrowBench() {
   const quickHeights = [...quick.querySelectorAll('.quick-cat')].map((box) => Math.round(box.getBoundingClientRect().height))
   check('téléphone : les cases de catégorie se visent au doigt', quickHeights.length > 0 && quickHeights.every((h) => h >= 44), quickHeights.join('/'))
 
-  /* Les recettes restent lisibles sous les dépenses, sans déborder. */
-  const combined = doc().querySelector('.combined-revenues')
-  check('téléphone : les recettes restent sous les dépenses', Boolean(combined), combined ? 'bloc présent' : 'bloc absent')
-  check('téléphone : le bloc recettes ne déborde pas', combined ? combined.scrollWidth <= combined.clientWidth + 1 : false, combined ? `${combined.scrollWidth} / ${combined.clientWidth}` : 'aucun bloc')
-  const revenueButtons = [...(combined?.querySelectorAll('.btn') || [])].map((btn) => Math.round(btn.getBoundingClientRect().height))
-  check('téléphone : les boutons recettes se visent au doigt', revenueButtons.length > 0 && revenueButtons.every((h) => h >= 44), revenueButtons.join('/'))
-
   /* Le rail disparaît : c'est le bouton flottant qui ajoute. */
   const fab = await waitFor('#fab')
   check('téléphone : l’ajout passe par le bouton flottant', Boolean(fab), fab ? text(fab) || 'icône seule' : 'bouton absent')
@@ -388,9 +378,10 @@ async function narrowBench() {
   stage.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
 }
 
-/* L'application s'ouvre sur les dépenses et compte en dinars. Deux choix
-   d'usage : un hash vide doit donc atterrir sur l'écran Dépenses, et le
-   moindre montant doit porter « DA » — jamais « € » ni « MAD ». */
+/* L'application s'ouvre sur l'écran Dépenses, section Recettes, et compte
+   en dinars. Trois choix d'usage : un hash vide atterrit sur l'écran, la
+   section affichée est Recettes, et le moindre montant porte « DA » —
+   jamais « € » ni « MAD ». */
 async function landingBench() {
   const opened = await mount('', '.screen-head')
   check('défaut : un hash vide ouvre les Dépenses', opened.ok, opened.ok ? '' : opened.screen)
@@ -402,12 +393,15 @@ async function landingBench() {
   const title = text(doc().querySelector('#screen-title'))
   check('défaut : la barre haute nomme Dépenses', /dépenses/i.test(title), title || 'titre vide')
 
-  const card = await waitFor('.card[data-id]')
-  const amount = text(card?.querySelector('.card-amount'))
-  check('devise : la fiche compte en dinars', /DA$/.test(amount), amount || 'aucun montant')
+  const active = doc().querySelector('.expense-tab.is-active')
+  check('défaut : la section affichée est Recettes', active?.dataset.value === 'revenues', active ? text(active) : 'aucun onglet actif')
+  const expensesTab = doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')
+  check('défaut : les dépenses sont à un appui', Boolean(expensesTab), expensesTab ? text(expensesTab) : 'onglet absent')
+
+  const revenue = await waitFor('.revenue-day-card')
+  const amount = text(revenue?.querySelector('.card-amount'))
+  check('devise : la recette compte en dinars', /DA$/.test(amount), amount || 'aucun montant')
   check('devise : ni euro ni dirham à l’écran', !/€|MAD/.test(text(doc().querySelector('.screen'))), /€|MAD/.test(text(doc().querySelector('.screen'))) ? 'ancienne devise visible' : 'aucune trace')
-  const revenue = doc().querySelector('.combined-revenues .revenue-day-card')
-  check('défaut : les deux listes sont sur l’écran', Boolean(card) && Boolean(revenue), card && revenue ? 'dépenses + recettes' : 'liste manquante')
 
   let stored = {}
   try { stored = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}') } catch { stored = {} }
