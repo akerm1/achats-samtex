@@ -22,8 +22,21 @@ export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
  * @param {Array<{value:string,label:string}>} options.sortOptions
  * @param {string} options.layout présentation courante
  * @param {Array<{value:string,label:string,icon:string}>} options.layouts
+ * @param {boolean} options.dateFilter afficher le filtre de date
+ * @param {string} options.startDate date de début
+ * @param {string} options.endDate date de fin
  */
-export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts }) {
+export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, dateFilter = false, startDate = '', endDate = '' }) {
+  const dateHtml = dateFilter
+    ? `
+      <div class="date-filter" role="region" aria-label="Filtre par date">
+        <label class="sr-only" for="${esc(id)}-start">Date de début</label>
+        <input type="date" id="${esc(id)}-start" class="select list-date" data-action="${esc(prefix)}-start-date" value="${startDate || ''}">
+        <label class="sr-only" for="${esc(id)}-end">Date de fin</label>
+        <input type="date" id="${esc(id)}-end" class="select list-date" data-action="${esc(prefix)}-end-date" value="${endDate || ''}">
+      </div>`
+    : ''
+
   return `
     <div class="list-toolbar" data-role="toolbar">
       <span class="list-toolbar-label">Tri &amp; présentation</span>
@@ -46,9 +59,10 @@ export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts }) 
                   aria-label="${esc(choice.label)}" title="${esc(choice.label)}">
             ${icon(choice.icon, 15)}
           </button>`,
-          )
+        )
           .join('')}
       </div>
+      ${dateHtml}
     </div>`
 }
 
@@ -60,9 +74,9 @@ export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts }) 
  *
  * @param {HTMLElement|null} root conteneur de la barre
  * @param {string} prefix préfixe d'action de la barre
- * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void}} handlers
+ * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDate?: (value:string)=>void, onEndDate?: (value:string)=>void}} handlers
  */
-export function bindToolbar(root, prefix, { onSort, onLayout } = {}) {
+export function bindToolbar(root, prefix, { onSort, onLayout, onStartDate, onEndDate } = {}) {
   const select = root?.querySelector(`[data-action="${prefix}-sort"]`)
   select?.addEventListener('change', () => {
     const value = select.value
@@ -74,5 +88,12 @@ export function bindToolbar(root, prefix, { onSort, onLayout } = {}) {
       button.blur()
       onLayout?.(button.dataset.value)
     })
+  })
+  // Handle date filtering
+  root?.querySelector(`[data-action="${prefix}-start-date"]`)?.addEventListener('change', (event) => {
+    onStartDate?.(event.target.value)
+  })
+  root?.querySelector(`[data-action="${prefix}-end-date"]`)?.addEventListener('change', (event) => {
+    onEndDate?.(event.target.value)
   })
 }

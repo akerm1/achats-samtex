@@ -217,6 +217,14 @@ function paint() {
       layout = value === 'list' ? 'list' : 'days'
       paint()
     },
+    onStartDate: (value) => {
+      startDate = value
+      paint()
+    },
+    onEndDate: (value) => {
+      endDate = value
+      paint()
+    },
   })
 }
 
