@@ -172,9 +172,36 @@ async function diskChecks() {
   const router = sync.match(/export function putRemoteList\(([^)]*)\)/)
   const params = router ? router[1].split(',').map((p) => p.trim()) : []
   results.push({
-    name: 'aiguillage : les dépenses sont transmises au lien privé',
-    pass: params.length === 7 && /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\)/.test(sync),
-    detail: params.length === 7 ? 'sept arguments transmis' : `${params.length} argument(s) — « expenses » perdu`,
+    name: 'aiguillage : les dépenses sont transmises aux deux fournisseurs',
+    pass:
+      params.length === 7 &&
+      /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\)/.test(sync) &&
+      /github\.putRemoteList\([^)]*\bexpenses\b[^)]*\)/.test(sync),
+    detail:
+      params.length === 7
+        ? 'sept arguments transmis au lien privé et à GitHub'
+        : `${params.length} argument(s) — « expenses » perdu`,
+  })
+
+  /* GitHub porte maintenant le document complet. Une signature à quatre
+     paramètres écrivait un fichier valide mais sans factures, analyse ni
+     dépenses — la même perte silencieuse que la sauvegarde. */
+  const githubSource = fs.readFileSync(path.join(ROOT, 'src/data/github.js'), 'utf8')
+  const writer = githubSource.match(/export async function putRemoteList\(([^)]*)\)/)
+  const writerParams = writer ? writer[1].split(',').map((p) => p.trim()) : []
+  results.push({
+    name: 'github : le fichier porte les quatre collections',
+    pass:
+      writerParams.length === 7 &&
+      /version:\s*DOC_VERSION/.test(githubSource) &&
+      /\bproducts:\s*outList/.test(githubSource) &&
+      /\bbills:\s*outBills/.test(githubSource) &&
+      /\banalysis:\s*outAnalysis/.test(githubSource) &&
+      /\bexpenses:\s*outExpenses/.test(githubSource),
+    detail:
+      writerParams.length === 7
+        ? 'liste, factures, analyse, dépenses'
+        : `${writerParams.length} argument(s) — collections perdues`,
   })
 
   /* Même piège à la sauvegarde : un `exportJSON` à trois paramètres écrit un

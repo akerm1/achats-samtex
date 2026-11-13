@@ -6,12 +6,11 @@
 /*     possible sans jeton sur un dépôt public) ;                      */
 /*   - `worker` : un lien privé Cloudflare, sans jeton ni expiration.  */
 /*                                                                      */
-/* Les produits voyagent par les deux. Les factures, par le lien privé   */
-/* seul : `products.json` ne les porte pas, et une facture reste donc    */
-/* locale tant que le lien privé n'est pas configuré. La vue Factures   */
-/* le dit à l'écran plutôt que de le laisser découvrir.                  */
-/*                                                                     */
-/* Mécanisme de synchronisation, volontairement simple :                */
+/* Les deux fournisseurs portent le même document complet : produits,        */
+/* factures, analyse et dépenses. `products.json` n'est qu'un nom de        */
+/* fichier historique ; il contient tout ce qui est partagé.                 */
+/*                                                                          */
+/* Mécanisme de synchronisation, volontairement simple :                     */
 /*   - aucune scrutation en arrière-plan, aucun état « en direct » ;   */
 /*   - une seule lecture distante, déclenchée par un rafraîchissement   */
 /*     de la page, un clic sur la pastille ou le bouton « Actualiser »; */
@@ -220,11 +219,12 @@ export function getState() {
     storageFull: storageProblem === 'quota',
     photosSeparated,
     usage,
-    /* Le lien privé transporte-t-il les dépenses ? Un Worker v5 les
-       reçoit puis les ignore : l'écran doit le dire, sinon la saisie
-       reste sur un seul appareil sans que rien ne l'explique. */
-    expensesSync: providerOf(config) === PROVIDER_WORKER ? remoteDocVersion >= 6 : false,
-    expensesSyncKnown: providerOf(config) === PROVIDER_WORKER && remoteDocVersion > 0,
+    /* Le partage transporte-t-il les dépenses ? GitHub oui, toujours (le
+       document est écrit en v6). Un Worker v5 les reçoit puis les ignore :
+       l'écran doit le dire, sinon la saisie reste sur un seul appareil sans
+       que rien ne l'explique. */
+    expensesSync: Boolean(config) && carriesExpenses(),
+    expensesSyncKnown: Boolean(config) && remoteDocVersion > 0,
     /* Combien de dépenses le serveur en a : l'écran les affiche à côté des
        locales, pour que « rien n'est arrivé » se voie au lieu de se deviner. */
     expensesRemote: remoteExpensesCount,
@@ -310,15 +310,38 @@ export function setPrefs(patch = {}) {
 /* ------------------------------------------------------------------ */
 
 export function saveConfig(input) {
-  config = normalizeConfig(input)
+  const previous = config
+  const next = normalizeConfig(input)
+  /* Nouveau partage : l'appareil a peut-être des données que le distant ne
+     connaît pas. On marque l'état « à publier » pour que la première lecture
+     FUSIONNE au lieu de remplacer. Sur GitHub, un PUT sans SHA déclenche un
+     conflit, donc la fusion par `id` — aucune donnée locale n'est perdue. */
+  const switched =
+    !previous ||
+    providerOf(previous) !== providerOf(next) ||
+    previous.owner !== next?.owner ||
+    previous.repo !== next?.repo ||
+    previous.branch !== next?.branch ||
+    previous.endpoint !== next?.endpoint
+  const publishLocal =
+    switched &&
+    providerOf(next) === PROVIDER_GITHUB &&
+    canWrite(next) &&
+    Boolean(products.length || bills.length || analysisStore.hasData() || expensesStore.hasData())
+
+  config = next
   if (config) storage.set(CONFIG_KEY, config)
   else storage.remove(CONFIG_KEY)
   /* Configuration choisie à la main : elle prime sur le dépôt par défaut. */
   storage.remove(OPTOUT_KEY)
   sha = null
   remoteRev = 0
-  state.dirty = false
-  storage.remove(DIRTY_KEY)
+  remoteDocVersion = 0
+  remoteExpensesCount = null
+  if (switched) storage.remove(EXPENSES_SEEN_KEY)
+  state.dirty = publishLocal
+  if (publishLocal) storage.set(DIRTY_KEY, true)
+  else storage.remove(DIRTY_KEY)
   state.message = ''
   state.messageKind = ''
   lastNotified = { message: '', at: 0 }
@@ -341,6 +364,8 @@ export function clearConfig() {
   storage.set(OPTOUT_KEY, true)
   sha = null
   remoteRev = 0
+  remoteDocVersion = 0
+  remoteExpensesCount = null
   state.status = 'local'
   state.message = ''
   state.messageKind = ''
@@ -640,6 +665,19 @@ function isStaleRead(remote) {
 }
 
 /**
+ * Le fournisseur configuré peut-il transporter les dépenses ?
+ *
+ * GitHub écrit toujours le document en v6. Le lien privé dépend du Worker
+ * déployé : un v5 reçoit les dépenses puis les jette, donc `false` — et
+ * surtout, on ne lui pousse rien de force.
+ */
+function carriesExpenses() {
+  const provider = providerOf(config)
+  if (provider === PROVIDER_WORKER) return remoteDocVersion >= 6
+  return provider === PROVIDER_GITHUB
+}
+
+/**
  * Point d'entrée unique de la lecture distante : appelé au démarrage
  * (donc à chaque rafraîchissement de la page) et par `refresh()`.
  * Les modifications locales non poussées gagnent, sinon la version
@@ -723,11 +761,12 @@ async function syncWithRemote() {
   /* Ce que le serveur porte vraiment, pour l'afficher à côté du local. */
   remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
   if (applyRemoteSettings(remote.settings)) changed = true
-  /* Document écrit avant les dépenses (Worker < v6) : le serveur sait
-     maintenant les recevoir mais n'en a encore aucune. Un appareil qui ne
-     fait que lire ne publierait jamais les siennes — on pousse donc une fois,
-     explicitement, pour que le document porte enfin les dépenses. */
-  if (remote.expenses == null && remoteDocVersion >= 6 && expensesStore.hasData()) {
+  /* Document écrit avant les dépenses (Worker < v6, ou products.json
+     historique) : le partage sait maintenant les recevoir mais n'en a
+     encore aucune. Un appareil qui ne fait que lire ne publierait jamais
+     les siennes — on pousse donc une fois, explicitement, pour que le
+     document porte enfin les dépenses. */
+  if (remote.expenses == null && carriesExpenses() && expensesStore.hasData()) {
     return push({ force: true })
   }
   return markReady(changed)
@@ -790,8 +829,20 @@ async function connectDefault() {
 
   config = defaults
   sha = remote.sha
+  if (typeof remote.docVersion === 'number') remoteDocVersion = remote.docVersion
   products = normalizeList(remote.list || [])
   await queuePersist()
+  /* Le document par défaut porte tout le partage : factures, analyse et
+     dépenses aussi. Les ignorer ici donnerait un appareil neuf qui voit la
+     liste mais pas le reste — exactement le symptôme d'un partage à moitié
+     chargé. */
+  if (Array.isArray(remote.bills)) {
+    bills = normalizeBillList(remote.bills)
+    await queuePersistBills()
+  }
+  analysisStore.applyRemoteAnalysis(remote.analysis)
+  expensesStore.applyRemoteExpenses(remote.expenses)
+  remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
   if (applyRemoteSettings(remote.settings)) storage.set(PREFS_KEY, prefs)
   state.status = 'ready'
   state.lastSyncAt = Date.now()
@@ -889,7 +940,7 @@ export async function push({ force = false } = {}) {
     /* Ce que le serveur vient d'accepter, c'est ce que l'appareil a envoyé
        (ou la fusion retenue) : la preuve affichée sur l'écran Dépenses est
        donc à jour sans attendre une relecture. */
-    if (providerOf(config) === PROVIDER_WORKER && remoteDocVersion >= 6) {
+    if (carriesExpenses()) {
       remoteExpensesCount = expensesStore.getSnapshot().expenses.length
     }
     state.dirty = false

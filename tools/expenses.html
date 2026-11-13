@@ -541,7 +541,15 @@ async function noteBench() {
   check('note : un Worker v5 est nommé', /Worker n’est pas à jour|Worker n'est pas à jour/.test(oldWorker), oldWorker.slice(0, 70))
 
   const local = syncNote({ provider: null, localCount: 2 })
-  check('note : sans lien privé, l’écran dit que tout reste ici', /restent sur cet appareil/.test(local), local.slice(0, 70))
+  check('note : sans partage, l’écran dit que tout reste ici', /restent sur cet appareil/.test(local), local.slice(0, 70))
+
+  /* GitHub porte désormais les dépenses : la phrase doit le dire, et surtout
+     signaler un dépôt public sans jeton, où la saisie reste locale. */
+  const github = syncNote({ provider: 'github', expensesSync: true, expensesSyncKnown: true, expensesRemote: 2, localCount: 2, readOnly: false })
+  check('note : GitHub à jour ne crie pas', /Dépôt GitHub à jour/.test(github) && !/alert/.test(github), github.slice(0, 70))
+
+  const githubReadOnly = syncNote({ provider: 'github', expensesSync: true, expensesSyncKnown: true, expensesRemote: 0, localCount: 2, readOnly: true })
+  check('note : un dépôt GitHub sans jeton est dit en lecture seule', /lecture seule/.test(githubReadOnly) && /restent sur cet appareil/.test(githubReadOnly), githubReadOnly.slice(0, 80))
 }
 
 async function run() {

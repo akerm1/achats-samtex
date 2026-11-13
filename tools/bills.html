@@ -340,6 +340,124 @@ async function routerBench() {
   }
 }
 
+/* GitHub porte désormais TOUT le partage — liste, factures, analyse et
+   dépenses. On simule l'API « contents » (base64 + SHA) pour vérifier
+   l'aller-retour ET la fusion en cas de conflit, sans toucher au réseau.
+   Un fichier v3 existant doit être promu en v6, pas ignoré. */
+async function githubBench() {
+  const github = await import('/src/data/github.js')
+  const sync = await import('/src/data/sync.js')
+  const owner = 'banc'
+  const repo = 'achats'
+  const branch = 'main'
+  const api = `https://api.github.com/repos/${owner}/${repo}`
+  const encode = (text) => {
+    const bytes = new TextEncoder().encode(text)
+    let binary = ''
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte)
+    })
+    return btoa(binary)
+  }
+  const decode = (encoded) =>
+    new TextDecoder().decode(Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0)))
+
+  /* Document historique : version 3, produits seuls. */
+  let text = JSON.stringify({
+    version: 3,
+    settings: null,
+    products: [{ id: 'p1', name: 'Ancien produit' }],
+  })
+  let sha = 'sha-1'
+  let commits = 0
+  const realFetch = window.fetch
+  window.fetch = async (input, init = {}) => {
+    const target = typeof input === 'string' ? input : input.url
+    if (!target.startsWith(api)) return realFetch(input, init)
+    const method = (init.method || 'GET').toUpperCase()
+    if (method === 'GET' && target.includes('/contents/')) {
+      if (!text) return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 })
+      return new Response(JSON.stringify({ content: encode(text), sha, encoding: 'base64' }), { status: 200 })
+    }
+    if (method === 'PUT') {
+      const body = JSON.parse(init.body)
+      if (body.sha && body.sha !== sha) {
+        return new Response(JSON.stringify({ message: 'sha does not match' }), { status: 409 })
+      }
+      text = decode(body.content)
+      sha = `sha-${++commits + 1}`
+      return new Response(JSON.stringify({ content: { sha } }), { status: 200 })
+    }
+    return new Response(JSON.stringify({}), { status: 200 })
+  }
+
+  try {
+    const config = { owner, repo, branch, token: 'banc-token' }
+    const first = await sync.putRemoteList(
+      config,
+      [{ id: 'p1', name: 'Produit' }],
+      'sha-1',
+      null,
+      [{ id: 'b1', supplier: 'Marché', amount: 42 }],
+      { rows: [{ id: 'a1' }] },
+      EXPENSES,
+    )
+    check('github : la publication écrit la version 6', first.ok && first.docVersion === 6, first.message || `version ${first.docVersion}`)
+
+    const stored = JSON.parse(text)
+    check(
+      'github : le fichier porte la liste et les factures',
+      stored.products?.[0]?.id === 'p1' && stored.bills?.[0]?.id === 'b1',
+      `${stored.products?.length ?? 0} produit(s), ${stored.bills?.length ?? 0} facture(s)`,
+    )
+    check(
+      'github : le fichier porte l’analyse et les dépenses',
+      stored.analysis?.rows?.[0]?.id === 'a1' && stored.expenses?.expenses?.[0]?.id === 'e1',
+      `${stored.analysis ? 'analyse' : 'rien'} · ${stored.expenses?.expenses?.length ?? 0} dépense(s)`,
+    )
+    check('github : l’appareil qui écrit est nommé', typeof stored.client === 'string' && stored.client.length > 0, String(stored.client))
+
+    const remote = await github.fetchRemoteList(config)
+    check(
+      'github : la relecture rend les dépenses et la version 6',
+      remote.ok && remote.docVersion === 6 && remote.expenses?.expenses?.[0]?.id === 'e1',
+      remote.message || `version ${remote.docVersion}`,
+    )
+
+    /* Un second appareil publie entre-temps : la publication avec le SHA
+       périmé doit fusionner, pas écraser. */
+    const other = JSON.parse(text)
+    other.expenses.expenses.push({ id: 'e-phone', categoryId: 'gas', amount: 90 })
+    other.bills.push({ id: 'b2', supplier: 'Autre', amount: 10 })
+    text = JSON.stringify(other)
+    sha = 'sha-9'
+    const merged = await sync.putRemoteList(
+      config,
+      [{ id: 'p1', name: 'Produit' }],
+      'sha-2',
+      null,
+      [{ id: 'b1', supplier: 'Marché', amount: 42 }],
+      { rows: [{ id: 'a1' }] },
+      { ...EXPENSES, expenses: [...EXPENSES.expenses, { id: 'e-local', categoryId: 'rent', amount: 30 }] },
+    )
+    check('github : un conflit fusionne au lieu d’écraser', merged.ok, merged.message || 'ok')
+    const after = JSON.parse(text)
+    const ids = (after.expenses?.expenses || []).map((expense) => expense.id)
+    check(
+      'github : les dépenses des deux appareils survivent',
+      ids.includes('e-phone') && ids.includes('e-local'),
+      ids.join(', ') || 'aucune dépense',
+    )
+    check(
+      'github : les factures du conflit aussi',
+      (after.bills || []).some((bill) => bill.id === 'b2') && (after.bills || []).some((bill) => bill.id === 'b1'),
+      `${after.bills?.length ?? 0} facture(s)`,
+    )
+  } finally {
+    window.fetch = realFetch
+  }
+}
+
 /* La sauvegarde est le seul endroit où les deux collections sortent du
    navigateur : si elle perd les factures, une restauration est un demi-effort. */
 async function backupBench() {
@@ -417,6 +535,7 @@ async function run() {
 
     await workerBench()
     await routerBench()
+    await githubBench()
     await backupBench()
 
     await screenBench()

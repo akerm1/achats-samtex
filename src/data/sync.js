@@ -9,6 +9,9 @@
 /*   - `worker`  : un lien privé Cloudflare, lecture + écriture,         */
 /*                 sans jeton ni expiration.                             */
 /*                                                                      */
+/* Les deux portent le même document complet : liste, factures, analyse */
+/* et dépenses.                                                          */
+/*                                                                      */
 /* Le dépôt par défaut d'un appareil neuf reste GitHub : il est public  */
 /* et lisible sans configuration, ce qui permet d'ouvrir le lien de la  */
 /* page et de voir la liste immédiatement.                               */
@@ -47,15 +50,14 @@ export function fetchRemoteList(config) {
 }
 
 export function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
-  /* Factures, analyse ET dépenses ne voyagent que par le lien privé :
-     `products.json` reste ce qu'il est, et un dépôt GitHub ne voit ni l'une
-     ni l'autre. Chaque argument doit être transmis ici : un seul oubli et
-     la collection concernée reste sur l'appareil sans que rien ne le dise
-     — c'est exactement ce qui est arrivé aux dépenses entre la 9.6 et la
-     9.6.5, l'aiguillage n'ayant que six paramètres. */
+  /* Le document porte TOUT le partage, chez les deux fournisseurs : liste,
+     factures, analyse et dépenses. Chaque argument doit être transmis ici :
+     un seul oubli et la collection concernée reste sur l'appareil sans que
+     rien ne le dise — c'est exactement ce qui est arrivé aux dépenses entre
+     la 9.6 et la 9.6.5, l'aiguillage n'ayant que six paramètres. */
   return providerOf(config) === PROVIDER_WORKER
     ? worker.putRemoteList(config, list, sha, settings, bills, analysis, expenses)
-    : github.putRemoteList(config, list, sha, settings)
+    : github.putRemoteList(config, list, sha, settings, bills, analysis, expenses)
 }
 
 export function testConnection(config) {

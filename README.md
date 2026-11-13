@@ -726,6 +726,34 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.7.0 - tout le partage peut vivre dans GitHub
+
+Jusqu'ici, GitHub ne portait que la liste : factures, analyse et dépenses ne voyageaient que par
+le lien privé Cloudflare. Le fichier `products.json` devient le **document complet**, identique à
+celui du Worker (version 6, avec `client`), et les Réglages laissent choisir le fournisseur.
+
+- **`products.json` porte liste, factures, analyse et dépenses** — photos de tickets comprises.
+- **Un conflit d'écriture fusionne au lieu d'écraser** : chaque collection est fusionnée par
+  `id` avec la version fraîche, puis l'écriture est retentée. Deux appareils convergent vers
+  l'union de leurs modifications.
+- **Réglages → Partage : GitHub ou lien privé.** GitHub demande compte, dépôt, branche et un
+  jeton *fine-grained* avec le droit **Contents : Read and write**. Sans jeton, un dépôt public
+  reste lisible en lecture seule — et l'écran Dépenses le dit, au lieu de laisser croire que la
+  saisie est partie.
+- **Basculer vers GitHub avec un jeton ne remplace rien** : l'appareil marque ses données comme
+  « à publier » ; la première écriture sans SHA déclenche le conflit GitHub, donc la fusion. Les
+  produits, factures, analyse et dépenses locaux rejoignent le dépôt au lieu d'être écrasés.
+- **L'écran Dépenses nomme le fournisseur** : « Dépôt GitHub à jour », « Lien privé à jour »,
+  écart en orange, ou lecture seule.
+- **Un appareil neuf connecté au dépôt par défaut charge aussi le reste** : factures, analyse et
+  dépenses, pas seulement la liste.
+
+Vérifié par `node tools/check.mjs --only bills` (API GitHub simulée, base64 + SHA) : « la
+publication écrit la version 6 », « le fichier porte la liste et les factures », « l'analyse et
+les dépenses », « un conflit fusionne au lieu d'écraser », « les dépenses des deux appareils
+survivent ». `--only expenses` ajoute « GitHub à jour ne crie pas » et « un dépôt GitHub sans
+jeton est dit en lecture seule ».
+
 ### Version 9.6.8 - un serveur vide ne peut plus effacer un appareil
 
 La synchronisation des dépenses fonctionnait — et créait un risque. Le serveur gagne à la
@@ -1000,10 +1028,11 @@ sinon la version distante remplace la liste locale.
 
 ### Arrière-plan : lecture seule du dépôt public
 
-Un appareil neuf, tant qu'aucun lien privé n'est collé, lit silencieusement le dépôt public
-(`sync-defaults.json` indique propriétaire/dépôt/branche) pour afficher la liste publiée —
-sans configuration ni clic. Ce dépôt ne reçoit plus que la publication des produits ; les
-factures, l'analyse et les dépenses ne voyagent que par le lien privé.
+Un appareil neuf, tant qu'aucune configuration n'est enregistrée, lit silencieusement le dépôt
+public (`sync-defaults.json` indique propriétaire/dépôt/branche) pour afficher le partage —
+sans configuration ni clic. Ce document porte désormais tout : liste, factures, analyse et
+dépenses. Sans jeton, il reste en **lecture seule** ; les Réglages permettent d'ajouter un
+jeton pour publier, ou de basculer sur un lien privé.
 
 ## Installer sur le téléphone
 
@@ -1024,12 +1053,13 @@ en arrière-plan (bandeau « Recharger »).
 
 ## Données
 
-`products.json` (format v3 ; les fichiers v1 et v2 restent lisibles) :
+`products.json` (format v6 ; les fichiers v1 à v3 restent lisibles) :
 
 ```json
 {
-  "version": 3,
-  "updatedAt": "2026-09-23T08:00:00.000Z",
+  "version": 6,
+  "client": "9.7.0",
+  "updatedAt": "2026-11-13T08:00:00.000Z",
   "settings": {
     "theme": "system",
     "filter": "todo",
@@ -1055,7 +1085,38 @@ en arrière-plan (bandeau « Recharger »).
       "createdAt": "2026-09-12T09:10:00.000Z",
       "updatedAt": "2026-09-12T09:10:00.000Z"
     }
-  ]
+  ],
+  "bills": [
+    {
+      "id": "bill-ab12cd",
+      "supplier": "Marché Saint-Pierre",
+      "amount": 4200,
+      "photo": "data:image/jpeg;base64,…",
+      "note": "",
+      "status": "pending",
+      "paidAt": null,
+      "createdAt": "2026-11-01T10:00:00.000Z",
+      "updatedAt": "2026-11-01T10:00:00.000Z"
+    }
+  ],
+  "analysis": {
+    "sales": [],
+    "purchases": [],
+    "investments": [],
+    "holdings": [],
+    "places": [],
+    "settings": {},
+    "holderLabels": {}
+  },
+  "expenses": {
+    "categories": [{ "id": "cat-food", "name": "Nourriture", "color": "#f59e0b" }],
+    "expenses": [
+      { "id": "exp-ab12cd", "categoryId": "cat-food", "amount": 1500, "date": "2026-11-13", "note": "" }
+    ],
+    "investments": [],
+    "revenues": [],
+    "settings": { "currency": "DZD" }
+  }
 }
 ```
 
@@ -1064,6 +1125,11 @@ Unités : `piece`, `metre`, `rouleau`. Priorités : `haute`, `normale`, `basse`.
 `colorRgb` est une table 0-255.
 `settings` contient les réglages partagés entre appareils (thème, tri, filtres) ; le jeton de
 connexion n'y figure jamais.
+`bills` porte les factures (photo du ticket comprise), `analysis` l'état complet de l'Analyse,
+`expenses` les catégories, dépenses, investissements, recettes et réglages de dépense.
+`client` nomme la version de l'application qui a écrit le fichier : c'est ainsi qu'un appareil
+resté en arrière se repère sans rien demander. Une collection absente d'un ancien document
+(`null`) est ignorée à la lecture : l'appareil garde la sienne, puis la publie.
 Tout champ inconnu d'un ancien fichier (ex. `sent`/`sentAt`, produits en v5) est conservé tel quel.
 
 Réglages mémorisés par appareil (dans `mes-achats-prefs` et la clé de thème) : tri/filtres et

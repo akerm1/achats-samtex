@@ -13,8 +13,9 @@ export const BACKUP_VERSION = 4
 
 /**
  * La sauvegarde emporte factures, analyse ET dépenses avec les produits : c'est le
- * seul endroit où les collections sortent du navigateur (GitHub ne porte
- * ni l'une ni l'autre). Le CSV reste produits seul.
+ * seul endroit où tout sort du navigateur en un fichier. Le partage (GitHub ou
+ * lien privé) les porte aussi, mais une sauvegarde reste le filet en cas de perte
+ * d'appareil ou de compte. Le CSV reste produits seul.
  */
 export function buildBackup(products, bills, analysis = null, expenses = null) {
   return {

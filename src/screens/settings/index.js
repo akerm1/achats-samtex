@@ -19,8 +19,8 @@ import { storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
 import { importAnalysis } from '../../data/analysis-store.js'
-import { importExpenses } from '../../data/expenses-store.js'
-import { LINK_PLACEHOLDER, normalizeConfig, testConnection } from '../../data/sync.js'
+import { getExpenses, importExpenses } from '../../data/expenses-store.js'
+import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, testConnection } from '../../data/sync.js'
 import { CARD_LAYOUTS } from '../../data/products-model.js'
 import {
   getBills,
@@ -121,6 +121,63 @@ function layoutTile() {
 
 /* Saisies en cours, conservées d'un redessin à l'autre. */
 let draft = {}
+/* Dépôt GitHub annoncé par l'application, lu une fois : il pré-remplit le
+   formulaire pour qu'un premier réglage ne demande pas de retenir un nom. */
+let defaults = null
+
+/** Fournisseur affiché : celui de la saisie, sinon celui de la config. */
+function selectedProvider(config = getConfig()) {
+  return draft.provider || (config?.provider === 'worker' ? 'worker' : 'github')
+}
+
+function providerSwitch(selected) {
+  return `<div class="segmented" role="group" aria-label="Mode de partage">
+    <button type="button" data-provider-choice="github" class="${selected === 'github' ? 'is-active' : ''}">
+      ${icon('cloud', 15)} GitHub
+    </button>
+    <button type="button" data-provider-choice="worker" class="${selected === 'worker' ? 'is-active' : ''}">
+      ${icon('link', 15)} Lien privé
+    </button>
+  </div>`
+}
+
+function githubFields(config) {
+  const owner = draft.owner ?? config?.owner ?? defaults?.owner ?? ''
+  const repo = draft.repo ?? config?.repo ?? defaults?.repo ?? ''
+  const branch = draft.branch ?? config?.branch ?? defaults?.branch ?? 'main'
+  const token = draft.token ?? config?.token ?? ''
+  return `
+      <div class="field">
+        <label for="setting-owner">Compte GitHub</label>
+        <input class="input" id="setting-owner" autocomplete="off" spellcheck="false"
+               autocapitalize="off" autocorrect="off" placeholder="votre-compte"
+               value="${esc(owner)}">
+      </div>
+      <div class="field">
+        <label for="setting-repo">Dépôt</label>
+        <input class="input" id="setting-repo" autocomplete="off" spellcheck="false"
+               autocapitalize="off" autocorrect="off" placeholder="achats-test"
+               value="${esc(repo)}">
+      </div>
+      <div class="field">
+        <label for="setting-branch">Branche</label>
+        <input class="input" id="setting-branch" autocomplete="off" spellcheck="false"
+               autocapitalize="off" autocorrect="off" placeholder="main"
+               value="${esc(branch)}">
+      </div>
+      <div class="field">
+        <label for="setting-token">Jeton d'écriture</label>
+        <input class="input" id="setting-token" type="password" autocomplete="off" spellcheck="false"
+               autocapitalize="off" autocorrect="off" placeholder="github_pat_…"
+               value="${esc(token)}">
+      </div>
+      <p class="field-hint">
+        Le fichier <code>products.json</code> du dépôt porte <strong>tout le partage</strong> : liste,
+        factures, analyse et dépenses. Créez sur GitHub un jeton « fine-grained » avec le droit
+        <strong>Contents : Read and write</strong> sur ce dépôt, puis collez-le ici : il reste sur cet
+        appareil. Sans jeton, un dépôt public reste lisible, mais rien ne peut être publié.
+      </p>`
+}
 
 function workerFields(config) {
   return `
@@ -145,29 +202,36 @@ function shareTile() {
   const config = getConfig()
   const { status, statusLabel, message, messageKind, readOnly } = getState()
   const lastSyncAt = getLastSyncAt()
+  const selected = selectedProvider(config)
+  const expenses = getExpenses().expenses.length
+  const description =
+    selected === 'worker'
+      ? 'La liste, les factures, l\'analyse et les dépenses sont enregistrées dans votre <strong>lien privé</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+      : 'La liste, les factures, l\'analyse et les dépenses sont enregistrées dans le fichier <code>products.json</code> d\'un <strong>dépôt GitHub</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+  const connection =
+    config?.provider === 'worker'
+      ? 'Connecté à votre lien privé.'
+      : config?.owner
+        ? `Connecté au dépôt <strong>${esc(config.owner)}/${esc(config.repo)}</strong>${readOnly ? ' — lecture seule, ajoutez un jeton pour publier.' : ' — lecture et écriture.'}`
+        : 'Aucun partage connecté : tout reste sur cet appareil.'
   return `
     <div class="setting setting--wide">
       <div class="setting-copy">
         <strong>${icon('cloud', 15)} Partage entre appareils</strong>
-        <p>
-          La liste est enregistrée dans votre <strong>lien privé</strong> : la même liste s'affiche
-          sur tous vos appareils, au rafraîchissement de la page ou d'un clic sur « Synchroniser ».
-          ${
-            config?.provider === 'worker'
-              ? 'Connecté à votre lien privé.'
-              : config?.owner
-                ? `Lecture seule du dépôt public <strong>${esc(config.owner)}/${esc(config.repo)}</strong> — collez votre lien privé pour lire <em>et</em> écrire.`
-                : 'Aucun partage connecté : la liste reste sur cet appareil.'
-          }
-        </p>
+        <p>${description} ${connection}</p>
       </div>
 
       <div class="setting-control">
         <form id="share-form" class="u-stack share-form">
-          ${workerFields(config)}
+          ${providerSwitch(selected)}
+          ${selected === 'worker' ? workerFields(config) : githubFields(config)}
           <div class="u-row u-wrap">
             <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
-            <button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>
+            ${
+              config?.provider === 'worker'
+                ? `<button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>`
+                : ''
+            }
             <button type="button" class="btn btn--ghost btn--sm" data-action="test-share">${icon('link', 13)} Tester la connexion</button>
             <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
             ${
@@ -189,12 +253,16 @@ function shareTile() {
             <strong>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : '—'}</strong>
           </div>
           <div class="kv-item">
-            <small>Produits partagés</small>
+            <small>Produits</small>
             <strong>${getProducts().length}</strong>
           </div>
           <div class="kv-item">
-            <small>Factures partagées</small>
+            <small>Factures</small>
             <strong>${getBills().length}</strong>
+          </div>
+          <div class="kv-item">
+            <small>Dépenses</small>
+            <strong>${expenses}</strong>
           </div>
           <div class="kv-item">
             <small>${config?.provider === 'worker' ? 'Lien privé' : 'Accès GitHub'}</small>
@@ -381,13 +449,25 @@ function template() {
     </section>`
 }
 
+/* Champs du formulaire de partage : identifiant DOM -> clé de `draft`. */
+const DRAFT_FIELDS = {
+  'setting-endpoint': 'endpoint',
+  'setting-owner': 'owner',
+  'setting-repo': 'repo',
+  'setting-branch': 'branch',
+  'setting-token': 'token',
+}
+
 /**
  * Saisies en cours, à conserver avant tout redessin.
- * Seuls les champs présents dans le DOM sont relus.
+ * Seuls les champs présents dans le DOM sont relus : changer de fournisseur
+ * ne doit pas effacer les valeurs de l'autre formulaire.
  */
 function readDraft() {
-  const field = host?.querySelector('#setting-endpoint')
-  if (field) draft.endpoint = field.value
+  for (const [id, key] of Object.entries(DRAFT_FIELDS)) {
+    const field = host?.querySelector(`#${id}`)
+    if (field) draft[key] = field.value
+  }
 }
 
 /**
@@ -400,26 +480,38 @@ function watchDraft() {
   const form = host?.querySelector('#share-form')
   if (!form) return
   form.addEventListener('input', (event) => {
-    if (event.target?.id === 'setting-endpoint') draft.endpoint = event.target.value
+    const key = DRAFT_FIELDS[event.target?.id]
+    if (key) draft[key] = event.target.value
   })
 }
 
-/** Configuration telle que saisie : uniquement le lien privé. */
+/** Configuration telle que saisie : GitHub (compte, dépôt, jeton) ou lien privé. */
 function currentConfig() {
-  return { provider: 'worker', endpoint: draft.endpoint }
+  if (selectedProvider() === 'worker') return { provider: 'worker', endpoint: draft.endpoint }
+  return {
+    owner: draft.owner,
+    repo: draft.repo,
+    branch: draft.branch,
+    token: draft.token,
+  }
 }
 
-  async function handleTest() {
-    /* Sans cette lecture, `draft` est encore vide : le bouton « Tester » ne
-       lisait jamais le champ, et un lien parfaitement collé était rejeté
-       comme « incomplet ». */
-    readDraft()
-    const config = normalizeConfig(currentConfig())
-    if (!config) {
-    setSyncMessage(
-      'Lien privé incomplet ou modifié. Collez la ligne entière du fichier worker\LIEN-PRIVE.txt, sans guillemets ni espace : le clavier du téléphone peut ajouter une majuscule ou couper le texte.',
-      'error',
-    )
+/** Message d'erreur adapté au formulaire affiché. */
+function incompleteMessage() {
+  if (selectedProvider() === 'worker') {
+    return 'Lien privé incomplet ou modifié. Collez la ligne entière du fichier worker\\LIEN-PRIVE.txt, sans guillemets ni espace : le clavier du téléphone peut ajouter une majuscule ou couper le texte.'
+  }
+  return 'Compte et dépôt GitHub nécessaires (par exemple akerm1 et achats-test). Sans jeton, le dépôt public reste lisible en lecture seule.'
+}
+
+async function handleTest() {
+  /* Sans cette lecture, `draft` est encore vide : le bouton « Tester » ne
+     lisait jamais le champ, et un lien parfaitement collé était rejeté
+     comme « incomplet ». */
+  readDraft()
+  const config = normalizeConfig(currentConfig())
+  if (!config) {
+    setSyncMessage(incompleteMessage(), 'error')
     return
   }
   setSyncMessage('Connexion en cours…')
@@ -518,21 +610,31 @@ function bind() {
     })
   })
 
+  host.querySelectorAll('[data-provider-choice]').forEach((button) => {
+    button.addEventListener('click', () => {
+      readDraft()
+      draft.provider = button.dataset.providerChoice
+      paint()
+    })
+  })
+
   host.querySelector('#share-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     /* Idem : « Enregistrer » ne lisait pas les champs non plus. */
     readDraft()
     const config = normalizeConfig(currentConfig())
     if (!config) {
-      setSyncMessage('Le lien privé doit ressembler à https://…workers.dev/une-clé.', 'error')
+      setSyncMessage(incompleteMessage(), 'error')
       return
     }
+    const provider = selectedProvider()
     draft = {}
     const state = await saveConfig(config)
     /* En cas d'échec, le store a déjà affiché et notifié le message exact. */
     if (state.messageKind === 'error') return
-    setSyncMessage('Connecté à votre lien privé.', 'ok')
-    toast('Liste connectée au lien privé.', { type: 'ok' })
+    const label = provider === 'worker' ? 'lien privé' : 'dépôt GitHub'
+    setSyncMessage(`Connecté au ${label}.`, 'ok')
+    toast(`Partage connecté au ${label}.`, { type: 'ok' })
   })
 
   host.querySelector('[data-action="test-share"]')?.addEventListener('click', handleTest)
@@ -558,6 +660,7 @@ function dataSignature() {
     state.lastSyncAt,
     state.products.length,
     state.bills.length,
+    getExpenses().expenses.length,
     state.isConfigured,
     update.published,
     update.available,
@@ -593,6 +696,16 @@ export const settingsView = {
     host = element
     signature = null
     paint()
+    /* Le dépôt public annoncé par l'application pré-remplit le formulaire
+       GitHub : un premier réglage ne doit pas demander de retenir un nom. */
+    if (!defaults) {
+      fetchDefaultConfig()
+        .then((value) => {
+          defaults = value
+          if (value && host && !getConfig()?.owner && !draft.owner) paint()
+        })
+        .catch(() => {})
+    }
   },
   update() {
     if (!host) return

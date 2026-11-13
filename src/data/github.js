@@ -6,10 +6,23 @@
 /*   - le jeton ne sert qu'à publier les modifications ;               */
 /*   - un jeton expiré ne casse donc plus la lecture : il est ignoré  */
 /*     et l'application bascule en lecture seule.                      */
+/*                                                                     */
+/* Le fichier porte TOUT le partage — liste, factures, analyse et      */
+/* dépenses — exactement comme le document du lien privé. Un conflit   */
+/* d'écriture fusionne chaque collection par `id` avant de retenter :   */
+/* aucune modification concurrente n'est écrasée en silence.            */
 /* ------------------------------------------------------------------ */
+
+import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { APP_VERSION } from '../core/app.js'
 
 const API = 'https://api.github.com'
 export const DATA_PATH = 'products.json'
+
+/* Version du document : 6 = il transporte les dépenses (comme le Worker).
+   Un products.json plus ancien n'a pas de numéro — donc 3, la dernière
+   version qui n'emportait que liste, réglages et factures. */
+export const DOC_VERSION = 6
 
 export const READ_ONLY_MESSAGE =
   'Lecture seule : un jeton GitHub valide est nécessaire pour publier vos modifications.'
@@ -112,7 +125,7 @@ async function repoReachable(config) {
   }
 }
 
-/** Extrait la liste, les réglages et le SHA d'une réponse `contents` valide. */
+/** Extrait le document complet et le SHA d'une réponse `contents` valide. */
 async function readContents(response) {
   const data = await response.json()
   let parsed = null
@@ -121,20 +134,33 @@ async function readContents(response) {
   } catch {
     return null
   }
+  const version = Number(parsed?.version)
   return {
     list: Array.isArray(parsed) ? parsed : Array.isArray(parsed?.products) ? parsed.products : [],
     settings: parsed && typeof parsed === 'object' && parsed.settings ? parsed.settings : null,
+    /* `null` = collection absente du fichier (document d'avant son
+       existence) : l'appareil garde la sienne au lieu de la perdre. */
+    bills: Array.isArray(parsed?.bills) ? parsed.bills : null,
+    analysis:
+      parsed?.analysis && typeof parsed.analysis === 'object' && !Array.isArray(parsed.analysis)
+        ? parsed.analysis
+        : null,
+    expenses:
+      parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
+        ? parsed.expenses
+        : null,
+    docVersion: Number.isFinite(version) ? version : 3,
     sha: data.sha,
   }
 }
 
 /**
- * Lit la liste distante (liste + réglages partagés).
+ * Lit le document distant (liste, factures, analyse, dépenses + réglages).
  *
  * Si GitHub refuse le jeton (401 « Bad credentials », cas d'un jeton expiré),
  * on réessaie une seule fois en anonyme : si le dépôt est public, la lecture
  * reste possible et l'application continue de fonctionner.
- * @returns {Promise<{ok:boolean, list:Array|null, settings:object|null, sha:string|null, status:string, message?:string, tokenRejected?:boolean}>}
+ * @returns {Promise<{ok:boolean, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, settings:object|null, sha:string|null, docVersion:number, status:string, message?:string, tokenRejected?:boolean}>}
  */
 export async function fetchRemoteList(config) {
   if (!config) return { ok: false, list: null, sha: null, status: 'config' }
@@ -166,7 +192,7 @@ export async function fetchRemoteList(config) {
     if (reachable === null) {
       return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
     }
-    return { ok: true, list: null, sha: null, status: 'ok', readOnly: !canWrite(config) }
+    return { ok: true, list: null, bills: null, analysis: null, expenses: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
   }
 
   if (response.status === 401 && canWrite(config)) {
@@ -208,11 +234,16 @@ export async function fetchRemoteList(config) {
 }
 
 /**
- * Écrit la liste distante (crée le fichier au besoin, retente en cas de conflit).
+ * Écrit le document distant (crée le fichier au besoin, retente en cas de conflit).
  * `settings` (réglages partagés) est inclus dans le même fichier quand fourni.
- * @returns {Promise<{ok:boolean, sha:string|null, status:string, message?:string}>}
+ * Factures, analyse et dépenses suivent le même chemin, chacune avec sa propre
+ * fusion par `id` en cas de conflit (l'état distant gagne).
+ * @param {Array|null} bills factures à publier, `null` pour ne rien changer
+ * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
+ * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
+ * @returns {Promise<{ok:boolean, sha:string|null, docVersion:number, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings) {
+export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   /* Sans jeton (ou jeton refusé), GitHub refusera l'écriture : inutile
      d'envoyer la requête, et l'utilisateur garde sa liste locale intacte. */
@@ -228,17 +259,34 @@ export async function putRemoteList(config, list, sha, settings) {
     }
   }
   const url = contentsUrl(config)
-  const payload = JSON.stringify(
-    {
-      version: 3,
-      updatedAt: new Date().toISOString(),
-      settings: settings || null,
-      products: list,
-    },
-    null,
-    2,
-  )
+
+  let outList = list
+  let outBills = bills ?? null
+  let outAnalysis =
+    analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null
+  let outExpenses =
+    expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null
+  let mergedBills = null
+  let mergedAnalysis = null
+  let mergedExpenses = null
+
   const buildBody = (ref) => {
+    const payload = JSON.stringify(
+      {
+        version: DOC_VERSION,
+        /* Quelle application écrit : le document dit ainsi, sans demander à
+           personne, quel appareil publie encore une version ancienne. */
+        client: APP_VERSION,
+        updatedAt: new Date().toISOString(),
+        settings: settings || null,
+        products: outList,
+        bills: outBills,
+        analysis: outAnalysis,
+        expenses: outExpenses,
+      },
+      null,
+      2,
+    )
     const body = {
       message: "Mise à jour de la liste d'achats",
       content: encodeBase64(payload),
@@ -255,6 +303,19 @@ export async function putRemoteList(config, list, sha, settings) {
       body: JSON.stringify(buildBody(ref)),
     })
 
+  /* Ce que la fusion a retenu : le store l'adopte pour que l'écran et le
+     document distant affichent exactement la même chose. */
+  const success = (data, ref) => ({
+    ok: true,
+    sha: data.content?.sha || ref,
+    status: 'ok',
+    docVersion: DOC_VERSION,
+    list: outList === list ? null : outList,
+    bills: mergedBills,
+    analysis: mergedAnalysis,
+    expenses: mergedExpenses,
+  })
+
   let response
   try {
     response = await send(sha)
@@ -269,7 +330,7 @@ export async function putRemoteList(config, list, sha, settings) {
 
   if (response.ok) {
     const data = await response.json()
-    return { ok: true, sha: data.content?.sha || sha, status: 'ok' }
+    return success(data, sha)
   }
 
   if (response.status === 401 || response.status === 403 || response.status === 429) {
@@ -281,7 +342,7 @@ export async function putRemoteList(config, list, sha, settings) {
     const retry = await send(null)
     if (retry.ok) {
       const data = await retry.json()
-      return { ok: true, sha: data.content?.sha || null, status: 'ok' }
+      return success(data, null)
     }
     if (retry.status === 401 || retry.status === 403 || retry.status === 429) {
       return { ok: false, sha, status: 'config', message: failureMessage(retry) }
@@ -300,7 +361,8 @@ export async function putRemoteList(config, list, sha, settings) {
     return { ok: false, sha, status: 'error', message: failureMessage(retry) }
   }
 
-  /* Conflit d'écriture : on relit la version fraîche puis on retente. */
+  /* Conflit d'écriture : on relit la version fraîche, on fusionne chaque
+     collection par `id`, puis on retente sur le SHA frais. */
   if (response.status === 409 || response.status === 422) {
     const fresh = await fetchRemoteList(config)
     if (!fresh.ok || fresh.list === null) {
@@ -311,10 +373,23 @@ export async function putRemoteList(config, list, sha, settings) {
         message: fresh.message || 'products.json introuvable sur GitHub',
       }
     }
+    outList = mergeProducts(outList, fresh.list).list
+    if (Array.isArray(fresh.bills)) {
+      mergedBills = mergeBills(outBills || [], fresh.bills).list
+      outBills = mergedBills
+    }
+    if (fresh.analysis && typeof fresh.analysis === 'object') {
+      mergedAnalysis = mergeAnalysis(outAnalysis || {}, fresh.analysis).analysis
+      outAnalysis = mergedAnalysis
+    }
+    if (fresh.expenses && typeof fresh.expenses === 'object') {
+      mergedExpenses = mergeExpenses(outExpenses || {}, fresh.expenses).expenses
+      outExpenses = mergedExpenses
+    }
     const retry = await send(fresh.sha)
     if (retry.ok) {
       const data = await retry.json()
-      return { ok: true, sha: data.content?.sha || fresh.sha, status: 'ok' }
+      return success(data, fresh.sha)
     }
     return {
       ok: false,
