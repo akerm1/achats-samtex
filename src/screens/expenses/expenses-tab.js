@@ -70,9 +70,12 @@ function toolbar() {
     id: 'expenses-sort',
     prefix: 'set-expenses',
     sort: state.sort.expenses,
-    sortOptions: SORT_OPTIONS,
+    sortOptions: SORTS,
     layout: state.layout.expenses,
-    layouts: CARD_LIST_LAYOUTS,
+    layouts: LAYOUTS,
+    dateFilter: true,
+    startDate: state.startDate,
+    endDate: state.endDate,
   })
 }
 

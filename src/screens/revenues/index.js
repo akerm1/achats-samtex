@@ -111,6 +111,9 @@ function toolbar() {
     sortOptions: SORTS,
     layout,
     layouts: LAYOUTS,
+    dateFilter: true,
+    startDate: startDate,
+    endDate: endDate,
   })
 }
 
