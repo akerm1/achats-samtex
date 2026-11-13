@@ -703,6 +703,13 @@ async function syncWithRemote() {
     changed = true
   }
   if (applyRemoteSettings(remote.settings)) changed = true
+  /* Document écrit avant les dépenses (Worker < v6) : le serveur sait
+     maintenant les recevoir mais n'en a encore aucune. Un appareil qui ne
+     fait que lire ne publierait jamais les siennes — on pousse donc une fois,
+     explicitement, pour que le document porte enfin les dépenses. */
+  if (remote.expenses == null && remoteDocVersion >= 6 && expensesStore.hasData()) {
+    return push({ force: true })
+  }
   return markReady(changed)
 }
 

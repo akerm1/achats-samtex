@@ -708,6 +708,23 @@ reviennent intactes », « les catégories, investissements et recettes voyagent
 « la dépense locale inconnue du serveur survit » et « le distant gagne sur un même
 identifiant ».
 
+### Version 9.6.1 - le lien privé publie vraiment les dépenses
+
+Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Worker v6 déployé.
+
+- **Un document écrit par une version antérieure ne fait plus croire à un Worker périmé.**
+  La lecture renvoie désormais la version du **Worker qui répond**, et non celle du document
+  stocké : un document écrit en v3 (donc sans dépenses) déclenchait sinon un faux encadré
+  orange « votre Worker n'est pas à jour » sur un Worker pourtant à jour. Son âge se lit sur
+  `expenses: null`, pas sur ce numéro.
+- **Un appareil qui ne fait que lire publie enfin ses dépenses.** Si le document du serveur
+  n'en porte aucune alors que le Worker sait les recevoir, l'application pousse une fois son
+  état local au lieu de se contenter de le garder pour elle — sans quoi un PC qui n'ouvre
+  l'application que pour consulter n'aurait jamais envoyé ses dépenses.
+
+Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
+Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |

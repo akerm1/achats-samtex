@@ -72,7 +72,12 @@ async function handleGet(env) {
     return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null })
   }
   return json({
-    version: raw.version || DOC_VERSION,
+    /* `version` = version du Worker qui répond, pas celle du document
+       stocké : c'est ce que le client lit pour savoir si `expenses` voyage.
+       Un document écrit par une version antérieure reste lisible (il est
+       réécrit à la prochaine publication) et signale son âge par
+       `expenses: null`, pas par ce numéro. */
+    version: DOC_VERSION,
     rev: raw.rev || 1,
     updatedAt: raw.updatedAt || null,
     settings: raw.settings || null,

@@ -139,7 +139,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='9.6.0'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.6.1'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`
@@ -266,4 +266,7 @@ et le drapeau d'installation restent locaux, jamais synchronisés.
    `share-list-worker.mjs` mis à jour dans le tableau de bord Cloudflare quand il change.
    Tant qu'un Worker v5 reste déployé, il reçoit `expenses` sans le stocker : seule la Liste
    se synchronise, et l'écran Dépenses affiche un encadré orange
-   (`expensesSync`/`expensesSyncKnown` dans `getState()`).
+   (`expensesSync`/`expensesSyncKnown` dans `getState()`). Depuis la 9.6.1, `GET` renvoie la
+   version du **Worker** et non celle du document stocké : un vieux document (`expenses: null`)
+   ne déclenche donc plus de fausse alerte, et un appareil qui n'avait fait que lire publie
+   une fois ses dépenses dès que le Worker sait les recevoir.

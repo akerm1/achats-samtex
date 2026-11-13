@@ -265,6 +265,15 @@ async function workerBench() {
   await call('PUT', { products: [], expenses: { ...EXPENSES, expenses: [], revenues: [] } }, 4)
   const cleared = await (await call('GET')).json()
   check('worker : des dépenses supprimées restent des listes vides', Array.isArray(cleared.expenses?.expenses) && cleared.expenses.expenses.length === 0 && cleared.expenses?.revenues?.length === 0, `${cleared.expenses?.expenses?.length} dépense(s), ${cleared.expenses?.revenues?.length} recette(s)`)
+
+  /* Un document écrit par un Worker v3 (avant les dépenses) ne doit pas faire
+     passer le Worker déployé pour périmé : `version` décrit le Worker qui
+     répond, pas l'âge du document stocké. L'absence de dépenses, elle, se lit
+     sur `expenses: null`. */
+  kv.set('doc', JSON.stringify({ version: 3, rev: 50, products: [{ id: 'vieux' }] }))
+  const oldDoc = await (await call('GET')).json()
+  check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 6, `version = ${oldDoc.version}`)
+  check('worker : un vieux document ne prétend pas avoir des dépenses', oldDoc.expenses === null, JSON.stringify(oldDoc.expenses))
 }
 
 /* La sauvegarde est le seul endroit où les deux collections sortent du
