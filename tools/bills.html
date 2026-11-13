@@ -101,6 +101,15 @@ function seed() {
 
 const TICKET = 'data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" fill="%23c94f4f"/%3E%3C/svg%3E'
 
+/* État de dépenses de référence : il sert au Worker nu et à l'aiguillage. */
+const EXPENSES = {
+  categories: [{ id: 'tools', label: 'Outils' }],
+  expenses: [{ id: 'e1', categoryId: 'tools', amount: 250 }],
+  investments: [{ id: 'i1', name: 'Stock', amount: 1000, remaining: 750 }],
+  revenues: [{ id: 'r1', date: '2026-11-05', amount: 1200 }],
+  settings: { currency: 'DZD' },
+}
+
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
   document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
@@ -233,14 +242,6 @@ async function workerBench() {
      n'arrivait ni sur l'autre ni sur le PC : le Worker la recevait et la
      jetait. On vérifie donc l'aller-retour, la compatibilité avec une
      écriture qui n'en envoie pas, le conflit et la suppression. */
-  const EXPENSES = {
-    categories: [{ id: 'tools', label: 'Outils' }],
-    expenses: [{ id: 'e1', categoryId: 'tools', amount: 250 }],
-    investments: [{ id: 'i1', name: 'Stock', amount: 1000, remaining: 750 }],
-    revenues: [{ id: 'r1', date: '2026-11-05', amount: 1200 }],
-    settings: { currency: 'DZD' },
-  }
-
   check('worker : un document vide ne prétend pas avoir des dépenses', 'expenses' in empty && empty.expenses === null, `expenses = ${JSON.stringify(empty.expenses)}`)
 
   const written = await (await call('PUT', { products: [{ id: 'p1' }], expenses: EXPENSES }, 2)).json()
@@ -280,6 +281,63 @@ async function workerBench() {
   await call('PUT', { products: [{ id: 'p1' }], client: '9.9.9' }, 51)
   const named = await (await call('GET')).json()
   check('worker : la version de l’appareil qui écrit est conservée', named.client === '9.9.9', String(named.client))
+}
+
+/* L'aiguillage du partage (`sync.js`) est le seul chemin qu'emprunte le
+   store. Il avait six paramètres quand les dépenses sont arrivées : le
+   Worker nu les acceptait (le banc ci-dessus le prouvait), mais le septième
+   argument était perdu en route et le document publié n'en portait aucune.
+   Ce banc passe donc par l'aiguillage, comme l'application, et non par le
+   Worker directement. */
+async function routerBench() {
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const sync = await import('/src/data/sync.js')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'banc-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.banc.workers.dev/banc-key'
+  const realFetch = window.fetch
+  /* Le client réel, le vrai Worker, un KV en mémoire : rien ne sort. */
+  window.fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : input.url
+    if (url.startsWith(endpoint)) return worker.fetch(new Request(url, init), env)
+    return realFetch(input, init)
+  }
+  try {
+    const put = await sync.putRemoteList(
+      { provider: 'worker', endpoint },
+      [{ id: 'p1' }],
+      '0',
+      null,
+      [],
+      null,
+      EXPENSES,
+    )
+    check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 6, put.message || `version ${put.docVersion}`)
+
+    const doc = await (await worker.fetch(new Request(endpoint), env)).json()
+    check(
+      'aiguillage : les dépenses traversent l’aiguillage du partage',
+      doc.expenses?.expenses?.[0]?.id === 'e1',
+      doc.expenses ? `${doc.expenses.expenses?.length ?? 0} dépense(s)` : 'aucune dépense reçue',
+    )
+    check(
+      'aiguillage : catégories, investissements et recettes aussi',
+      doc.expenses?.categories?.[0]?.id === 'tools' && doc.expenses?.investments?.[0]?.id === 'i1' && doc.expenses?.revenues?.[0]?.id === 'r1',
+      doc.expenses ? 'catégories + investissements + recettes' : 'rien reçu',
+    )
+  } finally {
+    window.fetch = realFetch
+  }
 }
 
 /* La sauvegarde est le seul endroit où les deux collections sortent du
@@ -343,6 +401,7 @@ async function run() {
     seed()
 
     await workerBench()
+    await routerBench()
     await backupBench()
 
     await screenBench()

@@ -726,6 +726,27 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.6.6 - les dépenses traversent enfin l'aiguillage
+
+C'était une ligne. Le store ne parle jamais au Worker directement : il passe par
+`src/data/sync.js`, qui choisit GitHub ou le lien privé. Ce chef d'orchestre avait
+**six paramètres** quand les dépenses sont arrivées — il en fallait sept. Le Worker, lui,
+les acceptait parfaitement : les bancs le prouvaient, et c'est bien pour cela que le
+problème a survécu à trois versions. Le septième argument était simplement abandonné en
+route, sans erreur, sans message, sans trace. Le document publié ne portait donc jamais
+`expenses`, et le serveur répondait `expenses: null` à juste titre.
+
+- **`putRemoteList` transmet les sept collections** : produits, réglages, factures,
+  analyse et dépenses.
+- **Le banc passe désormais par l'aiguillage**, comme l'application, et non plus par le
+  Worker seul : un contrôle sur disque vérifie en plus la signature, pour que ce genre
+  d'oubli silencieux ne puisse pas revenir.
+
+Rien à redéployer côté Cloudflare : le Worker était correct depuis la 9.6. Vérifié par
+`node tools/check.mjs --only bills` : « aiguillage : les dépenses traversent l'aiguillage
+du partage », « aiguillage : catégories, investissements et recettes aussi » et
+« aiguillage : les dépenses sont transmises au lien privé ».
+
 ### Version 9.6.5 - le serveur dit quel appareil écrit
 
 Quand un appareil publie la Liste, les factures et l'analyse mais jamais les dépenses, la

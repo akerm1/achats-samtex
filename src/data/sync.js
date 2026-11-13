@@ -46,11 +46,15 @@ export function fetchRemoteList(config) {
     : github.fetchRemoteList(config)
 }
 
-export function putRemoteList(config, list, sha, settings, bills, analysis) {
-  /* Factures ET analyse ne voyagent que par le lien privé : `products.json`
-     reste ce qu'il est, et un dépôt GitHub ne voit ni l'une ni l'autre. */
+export function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
+  /* Factures, analyse ET dépenses ne voyagent que par le lien privé :
+     `products.json` reste ce qu'il est, et un dépôt GitHub ne voit ni l'une
+     ni l'autre. Chaque argument doit être transmis ici : un seul oubli et
+     la collection concernée reste sur l'appareil sans que rien ne le dise
+     — c'est exactement ce qui est arrivé aux dépenses entre la 9.6 et la
+     9.6.5, l'aiguillage n'ayant que six paramètres. */
   return providerOf(config) === PROVIDER_WORKER
-    ? worker.putRemoteList(config, list, sha, settings, bills, analysis)
+    ? worker.putRemoteList(config, list, sha, settings, bills, analysis, expenses)
     : github.putRemoteList(config, list, sha, settings)
 }
 

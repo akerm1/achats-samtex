@@ -164,6 +164,19 @@ async function diskChecks() {
     detail: /le bouton est prêt/.test(settings) ? 'second clic encore exigé' : 'installation en un geste',
   })
 
+  /* L'aiguillage du partage doit transmettre TOUTES les collections. Il n'en
+     transmettait que six sur sept : les dépenses étaient perdues entre le
+     store et le Worker, sans erreur et sans trace. La signature est donc
+     vérifiée ici, en plus du banc de bout en bout. */
+  const sync = fs.readFileSync(path.join(ROOT, 'src/data/sync.js'), 'utf8')
+  const router = sync.match(/export function putRemoteList\(([^)]*)\)/)
+  const params = router ? router[1].split(',').map((p) => p.trim()) : []
+  results.push({
+    name: 'aiguillage : les dépenses sont transmises au lien privé',
+    pass: params.length === 7 && /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\)/.test(sync),
+    detail: params.length === 7 ? 'sept arguments transmis' : `${params.length} argument(s) — « expenses » perdu`,
+  })
+
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
 
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
