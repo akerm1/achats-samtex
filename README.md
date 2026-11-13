@@ -228,9 +228,9 @@ l'application* affiche en permanence un bouton :
 
 1. **Rechercher une mise à jour** interroge `version.json` (le seul repère de
    version, publié à la racine du dépôt) sans passer par un cache.
-2. Si une version plus récente existe, le bouton devient **Installer la mise à
-   jour 7.0.1**. Depuis la 9.6.2 elle s'installe aussi d'elle-même au démarrage
-   (une fois par session) ; le bouton reste le recours manuel.
+2. Si une version plus récente existe, elle s'installe aussitôt (un seul clic
+   depuis la 9.6.4), et au démarrage l'application la prend d'elle-même une
+   fois par session.
 3. L'installation vide le cache, revalide la coquille hors-ligne et recharge la
    page avec une empreinte dans l'URL.
 
@@ -725,6 +725,18 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
+
+### Version 9.6.4 - un seul clic pour se mettre à jour
+
+Le bouton des Réglages demandait deux clics : le premier trouvait la version, le second
+l'installait — avec un message « le bouton est prêt » que personne ne comprend comme « appuie
+encore ». Un appareil pouvait donc rester des versions en arrière, en publiant la Liste, les
+factures et l'analyse mais jamais les dépenses.
+
+- **Un clic cherche et installe.** Si une version plus récente est en ligne, elle part
+  aussitôt, sans second geste.
+
+Vérifié par `node tools/check.mjs` : « Réglages : un clic cherche et installe ».
 
 ### Version 9.6.3 - aucune section privilégiée
 

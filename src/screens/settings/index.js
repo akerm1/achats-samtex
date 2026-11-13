@@ -269,7 +269,7 @@ function updateTile() {
     } (${APP_RELEASE}). ${
       available
         ? 'Nouvelle version disponible : cliquez pour l\'installer et recharger l\'application.'
-        : 'Cliquez pour interroger GitHub ; si une version plus récente est publiée, le bouton devient « Installer la mise à jour ».'
+        : 'Cliquez pour interroger GitHub : si une version plus récente est publiée, elle s\'installe aussitôt.'
     } ${offline ? ' Vérification impossible hors ligne.' : ''}`,
     `<button type="button" class="btn btn--${available ? 'primary' : 'secondary'} btn--sm" data-action="check-update" ${busy ? 'disabled' : ''}>
       ${icon('refresh', 14)} ${label}
@@ -468,8 +468,11 @@ async function handleImport(event) {
 }
 
 /**
- * Deux temps, volontairement : un clic cherche, un second clic installe.
- * L'application ne se remplace jamais toute seule.
+ * Un seul geste : chercher, et installer si une version plus récente est en
+ * ligne. Le « deux temps » d'avant laissait le bouton afficher « Installer la
+ * mise à jour » sans que rien ne se passe au clic suivant — un appareil
+ * pouvait donc rester des versions en arrière sans que personne ne s'en
+ * aperçoive.
  */
 async function handleCheckUpdate() {
   const { available, published } = getUpdateState()
@@ -484,9 +487,8 @@ async function handleCheckUpdate() {
     return
   }
   if (result.available) {
-    setSyncMessage(`Version ${result.published} en ligne — cliquez sur « Installer la mise à jour ».`, 'ok')
-    toast(`Version ${result.published} disponible : le bouton est prêt.`, { type: 'ok' })
-    return
+    setSyncMessage(`Version ${result.published} en ligne — installation…`, 'ok')
+    return installUpdate()
   }
   setSyncMessage(`Déjà à jour (version ${published || result.current}).`, 'ok')
   toast('Aucune mise à jour disponible.', { type: 'info' })

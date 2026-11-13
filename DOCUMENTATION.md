@@ -60,7 +60,8 @@ de page, clic sur la pastille, ou « Synchroniser »).
 `cache:no-store` et le compare à `APP_VERSION` de `src/core/app.js` ; si la version publiée est
 plus récente, elle **s'installe d'elle-même au démarrage** (une seule tentative par session,
 `sessionStorage`), puis la page se recharge avec une empreinte `?v=`. Le bouton des Réglages
-reste le recours manuel. L'installation vide tous les caches, rafraîchit le SW et recharge.
+reste le recours manuel : un clic y cherche **et** installe (depuis la 9.6.4). L'installation vide
+tous les caches, rafraîchit le SW et recharge.
 `sw.js` **ne met jamais le code en cache** — réseau d'abord uniquement, le cache ne servant
 qu'en repli hors-ligne → impossible d'avoir un mélange de versions.
 
@@ -141,7 +142,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='9.6.3'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.6.4'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`

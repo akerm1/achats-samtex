@@ -155,6 +155,14 @@ async function diskChecks() {
     pass: /installUpdate\s*\(/.test(pwa) && /sessionStorage/.test(pwa),
     detail: /installUpdate\s*\(/.test(pwa) ? 'installation automatique' : 'mise à jour laissée au clic',
   })
+  /* Le bouton des Réglages doit installer dès qu'il trouve une version :
+     « le bouton est prêt » demandait un second clic que personne ne faisait. */
+  const settings = fs.readFileSync(path.join(ROOT, 'src/screens/settings/index.js'), 'utf8')
+  results.push({
+    name: 'Réglages : un clic cherche et installe',
+    pass: /if \(result\.available\) \{[\s\S]{0,160}installUpdate\(\)/.test(settings),
+    detail: /le bouton est prêt/.test(settings) ? 'second clic encore exigé' : 'installation en un geste',
+  })
 
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
 
