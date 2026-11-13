@@ -726,6 +726,15 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.7.1 - le jeton GitHub se voit enfin
+
+Un appareil déjà réglé sur le **lien privé** n'affichait que le champ de ce lien : pour coller un
+jeton GitHub, il fallait deviner qu'un petit sélecteur « GitHub » existait au-dessus. Les Réglages
+montrent maintenant **deux grandes cartes** — « GitHub · Dépôt + jeton » et « Lien privé · Une seule
+adresse » — sous la phrase « Enregistrer les données dans… ». Choisir GitHub fait apparaître les
+champs compte, dépôt, branche et **« Jeton GitHub — collez-le ici »**, avec la marche à suivre
+(GitHub → Settings → Developer settings → Fine-grained tokens → Contents : Read and write).
+
 ### Version 9.7.0 - tout le partage peut vivre dans GitHub
 
 Jusqu'ici, GitHub ne portait que la liste : factures, analyse et dépenses ne voyageaient que par

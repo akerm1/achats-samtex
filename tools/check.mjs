@@ -163,6 +163,17 @@ async function diskChecks() {
     pass: /if \(result\.available\) \{[\s\S]{0,160}installUpdate\(\)/.test(settings),
     detail: /le bouton est prêt/.test(settings) ? 'second clic encore exigé' : 'installation en un geste',
   })
+  /* Un appareil déjà réglé sur le lien privé n'affichait que ce champ : le
+     jeton GitHub restait introuvable. Le choix doit être deux cartes visibles
+     et le champ du jeton nommé sans ambiguïté. */
+  results.push({
+    name: 'Réglages : le choix GitHub et le champ du jeton sont visibles',
+    pass:
+      /class="provider-choice"/.test(settings) &&
+      /data-provider-choice="github"/.test(settings) &&
+      /Jeton GitHub/.test(settings),
+    detail: /provider-card/.test(settings) ? 'deux cartes + champ nommé' : 'choix encore discret',
+  })
 
   /* L'aiguillage du partage doit transmettre TOUTES les collections. Il n'en
      transmettait que six sur sept : les dépenses étaient perdues entre le

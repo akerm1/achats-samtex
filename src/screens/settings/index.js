@@ -131,13 +131,20 @@ function selectedProvider(config = getConfig()) {
 }
 
 function providerSwitch(selected) {
-  return `<div class="segmented" role="group" aria-label="Mode de partage">
-    <button type="button" data-provider-choice="github" class="${selected === 'github' ? 'is-active' : ''}">
-      ${icon('cloud', 15)} GitHub
-    </button>
-    <button type="button" data-provider-choice="worker" class="${selected === 'worker' ? 'is-active' : ''}">
-      ${icon('link', 15)} Lien privé
-    </button>
+  return `<div class="provider-picker">
+    <p class="provider-label">Enregistrer les données dans…</p>
+    <div class="provider-choice" role="radiogroup" aria-label="Mode de partage">
+      <button type="button" role="radio" aria-checked="${selected === 'github'}" data-provider-choice="github"
+              class="provider-card ${selected === 'github' ? 'is-active' : ''}">
+        <span class="provider-card-title">${icon('cloud', 15)} GitHub</span>
+        <span class="provider-card-sub">Dépôt + jeton</span>
+      </button>
+      <button type="button" role="radio" aria-checked="${selected === 'worker'}" data-provider-choice="worker"
+              class="provider-card ${selected === 'worker' ? 'is-active' : ''}">
+        <span class="provider-card-title">${icon('link', 15)} Lien privé</span>
+        <span class="provider-card-sub">Une seule adresse</span>
+      </button>
+    </div>
   </div>`
 }
 
@@ -166,16 +173,17 @@ function githubFields(config) {
                value="${esc(branch)}">
       </div>
       <div class="field">
-        <label for="setting-token">Jeton d'écriture</label>
+        <label for="setting-token">Jeton GitHub — collez-le ici</label>
         <input class="input" id="setting-token" type="password" autocomplete="off" spellcheck="false"
                autocapitalize="off" autocorrect="off" placeholder="github_pat_…"
                value="${esc(token)}">
       </div>
       <p class="field-hint">
-        Le fichier <code>products.json</code> du dépôt porte <strong>tout le partage</strong> : liste,
-        factures, analyse et dépenses. Créez sur GitHub un jeton « fine-grained » avec le droit
-        <strong>Contents : Read and write</strong> sur ce dépôt, puis collez-le ici : il reste sur cet
-        appareil. Sans jeton, un dépôt public reste lisible, mais rien ne peut être publié.
+        <strong>Où le trouver :</strong> GitHub → Settings → Developer settings → Fine-grained
+        tokens → Generate new token. Choisissez le dépôt <code>${esc(repo || 'achats-test')}</code> et le droit
+        <strong>Contents : Read and write</strong>, puis collez le jeton ci-dessus.
+        Il reste sur cet appareil et n'est jamais publié. Sans jeton, un dépôt public reste lisible,
+        mais rien ne peut être publié.
       </p>`
 }
 
