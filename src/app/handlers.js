@@ -153,7 +153,6 @@ export async function handleDeleteCategory(id) {
   const { categories, expenses } = getExpenses()
   const category = categories.find((item) => item.id === id)
   if (!category) return
-  if (category.isDefault) return toast('Impossible de supprimer une catégorie par défaut.', { type: 'error' })
   const count = expenses.filter((item) => item.categoryId === id).length
   const confirmed = await confirmAction({
     title: 'Supprimer cette catégorie ?',

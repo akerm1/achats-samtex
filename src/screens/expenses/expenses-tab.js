@@ -9,10 +9,17 @@
 import { esc, formatMoney } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
 import { getState } from '../../data/store.js'
+import { CARD_LIST_LAYOUTS, toolbarHtml } from '../../ui/toolbar.js'
 import * as expModel from '../../data/expenses-model.js'
 import * as expStore from '../../data/expenses-store.js'
 import { renderExpenseCard } from './cards.js'
 import { state } from './state.js'
+
+const SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récentes' },
+  { value: 'oldest', label: 'Plus anciennes' },
+  { value: 'amount', label: 'Montant élevé' },
+]
 
 /** Somme par catégorie, pour donner du sens à chaque case. */
 function totalsByCategory(expenses) {
@@ -58,6 +65,37 @@ export function quickAdd(categories, expenses, settings) {
     </section>`
 }
 
+function toolbar() {
+  return toolbarHtml({
+    id: 'expenses-sort',
+    prefix: 'set-expenses',
+    sort: state.sort.expenses,
+    sortOptions: SORT_OPTIONS,
+    layout: state.layout.expenses,
+    layouts: CARD_LIST_LAYOUTS,
+  })
+}
+
+/** Barre d'actions de l'onglet : ajout, tri et présentation. */
+export function controls() {
+  return `
+    <div class="section-actions">
+      <button type="button" class="btn btn--primary btn--sm" data-action="open-expense-form">${icon('plus', 14)} Ajouter une dépense</button>
+    </div>
+    ${toolbar()}`
+}
+
+function sortedExpenses(list) {
+  const sorted = [...list]
+  if (state.sort.expenses === 'oldest') {
+    return sorted.sort((a, b) => String(a.date).localeCompare(String(b.date)) || new Date(a.createdAt) - new Date(b.createdAt))
+  }
+  if (state.sort.expenses === 'amount') {
+    return sorted.sort((a, b) => (b.amount ?? -1) - (a.amount ?? -1) || String(b.date).localeCompare(String(a.date)))
+  }
+  return sorted.sort((a, b) => String(b.date).localeCompare(String(a.date)) || new Date(b.createdAt) - new Date(a.createdAt))
+}
+
 export function results() {
   const { expenses, categories, investments, settings } = expStore.getExpenses()
 
@@ -80,12 +118,13 @@ export function results() {
 
   if (!filtered.length) return `${quick}${emptyState()}`
 
-  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date))
+  const sorted = sortedExpenses(filtered)
+  const gridClass = state.layout.expenses === 'list' ? 'grid grid--list' : 'grid grid--card'
 
   return `
     ${quick}
     <section class="group">
-      <div class="grid grid--card">${sorted.map((exp) => renderExpenseCard(exp, categories, investments, settings)).join('')}</div>
+      <div class="${gridClass}">${sorted.map((exp) => renderExpenseCard(exp, categories, investments, settings)).join('')}</div>
     </section>`
 }
 

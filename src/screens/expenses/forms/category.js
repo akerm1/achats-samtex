@@ -74,7 +74,7 @@ export function openCategoryForm(category = null) {
 
       <div class="dialog-foot">
         <button type="button" class="btn btn--ghost" data-close>${icon('x', 13)} Annuler</button>
-        ${isEdit && !category.isDefault ? `<button type="button" class="btn btn--danger btn--sm" data-action="delete-category-form" data-id="${esc(category.id)}">${icon('trash', 13)} Supprimer</button>` : ''}
+        ${isEdit ? `<button type="button" class="btn btn--danger btn--sm" data-action="delete-category-form" data-id="${esc(category.id)}">${icon('trash', 13)} Supprimer</button>` : ''}
         <button type="submit" class="btn btn--primary">${icon('save', 13)} ${isEdit ? 'Enregistrer' : 'Ajouter'}</button>
       </div>
     </form>`

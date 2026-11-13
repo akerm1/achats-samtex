@@ -8,24 +8,24 @@ import { navigate, startRouter } from '../core/router.js'
 import { setActiveRoute } from '../ui/shell.js'
 import { listView } from '../screens/list/index.js'
 import { billsView } from '../screens/bills/index.js'
-import { analysisView } from '../screens/analysis/index.js'
+import { revenuesView } from '../screens/revenues/index.js'
 import { expensesView } from '../screens/expenses/index.js'
 import { settingsView } from '../screens/settings/index.js'
 import { openProductForm } from '../screens/list/form.js'
 
 export const VIEWS = {
+  recettes: revenuesView,
+  depenses: expensesView,
   liste: listView,
   factures: billsView,
-  depenses: expensesView,
-  analyse: analysisView,
   reglages: settingsView,
 }
 
 export const ROUTE_ORDER = Object.keys(VIEWS)
 
 /** Route affichée quand le hash est vide ou inconnu. L'application ouvre
-    le suivi des dépenses : c'est l'écran de travail quotidien. */
-export const DEFAULT_ROUTE = 'depenses'
+    sur les recettes : c'est le premier chiffre du shop. */
+export const DEFAULT_ROUTE = 'recettes'
 
 /** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
 const REDIRECT = { accueil: 'liste', marche: 'liste' }

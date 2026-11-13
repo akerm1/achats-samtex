@@ -139,7 +139,6 @@ export function deleteCategory(id) {
   const index = state.categories.findIndex((c) => c.id === id)
   if (index < 0) return null
   const cat = state.categories[index]
-  if (cat.isDefault) return null
   state = { ...state, categories: state.categories.filter((c) => c.id !== id) }
   touch()
   return { cat, index }

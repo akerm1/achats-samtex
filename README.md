@@ -574,7 +574,7 @@ la mise en page.
   montent à 44 px partout, coche de mosaïque comprise.
 
 Vérifié par `node tools/check.mjs` (rendu à 1200 px et 430 px), `--e2e`, `--only bills`
-et `--only analysis` : tout passe.
+et `--only expenses` : tout passe.
 
 ### Version 9.1 - la dépense en cases
 
@@ -635,8 +635,7 @@ carnet. Deux changements d'usage, aucune fonction perdue.
   l'ouverture (`normalizeExpenseSettings`) ; tout code invalide retombe sur le dinar.
   Aucun montant n'est réécrit — seule l'étiquette change.
 
-Vérifié par `node tools/check.mjs` (rendu, `--e2e`), `--only bills`, `--only analysis`
-et `--only expenses` : tout passe, y compris « un hash vide ouvre les Dépenses »,
+Vérifié par `node tools/check.mjs` (rendu, `--e2e`), `--only bills`, `--only expenses` : tout passe, y compris « un hash vide ouvre les Recettes »,
 « le stockage garde le dinar » et « ni euro ni dirham à l'écran ».
 
 ### Version 9.4 - les deux listes à l'ouverture
@@ -959,8 +958,8 @@ src/
     bills/                  index.js (écran) · form.js (fiche facture)
     analysis/index.js       écran Analyse (une seule feuille, volontairement)
     expenses/               index.js · state.js · header.js · filters.js · cards.js
-                            expenses-tab.js · categories-tab.js · investments-tab.js
-                            revenues-tab.js · forms/*.js
+                            expenses-tab.js · categories-tab.js · investments-tab.js · forms/*.js
+    revenues/               index.js ( écran Recettes, ouvert par défaut )
     settings/index.js       écran Réglages
   ui/
     icons.js                icônes SVG inline
@@ -972,7 +971,7 @@ src/
     base.css                réinitialisation, typographie, utilitaires
     layout.css              barre du haut, navigation, toasts, responsive
     components.css          boutons, champs, cartes, pastilles de couleur, dialogues
-    views.css               styles des vues (liste, analyse, dépenses, réglages)
+    views.css               styles des vues (liste, factures, recettes, dépenses, réglages)
 icons/                      icônes de l'application (PWA)
 tools/
   check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic

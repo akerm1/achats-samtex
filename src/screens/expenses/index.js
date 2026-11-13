@@ -1,9 +1,9 @@
 /* ------------------------------------------------------------------ */
 /* Écran Dépenses                                                      */
 /*                                                                     */
-/* Quatre onglets : Dépenses, Catégories, Investissements, Recettes.   */
-/* L'écran ouvre sur le premier, dans cet ordre, sans section          */
-/* privilégiée : chaque section est à un appui.                        */
+/* Trois onglets : Dépenses, Catégories, Investissements. Les recettes */
+/* ont leur propre écran. L'écran ouvre sur le premier onglet, sans    */
+/* section privilégiée : chaque section est à un appui.                */
 /* Ce fichier ne fait que l'assemblage : chaque onglet a son module,    */
 /* l'état partagé vit dans state.js.                                   */
 /* ------------------------------------------------------------------ */
@@ -11,28 +11,34 @@
 import { esc } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
 import { deferWhileEditing } from '../../ui/dialog.js'
-import { categoriesHtml, bindCategoryReorder, saveCategoryOrder } from './categories-tab.js'
-import { results } from './expenses-tab.js'
+import { bindToolbar } from '../../ui/toolbar.js'
+import { categoriesHtml, bindCategoryReorder, saveCategoryOrder, controls as categoriesControls } from './categories-tab.js'
+import { results, controls as expensesControls } from './expenses-tab.js'
 import { categoryTabsHtml, typeTabsHtml, filterbar } from './filters.js'
 import { header } from './header.js'
-import { investmentsHtml } from './investments-tab.js'
-import { revenuesHtml } from './revenues-tab.js'
+import { investmentsHtml, controls as investmentsControls } from './investments-tab.js'
 import { resetFilters, resetState, state } from './state.js'
 
 const TABS = [
   { value: 'expenses', label: 'Dépenses', icon: 'creditCard' },
   { value: 'categories', label: 'Catégories', icon: 'tag' },
   { value: 'investments', label: 'Investissements', icon: 'chart' },
-  { value: 'revenues', label: 'Recettes', icon: 'trendingUp' },
 ]
 
+const TOOLBAR_TABS = TABS.map((tab) => tab.value)
+
 /* L'écran ouvre sur la première section (voir state.js) ; les autres
-   restent à un appui, avec leurs cases de catégorie. */
+   restent à un appui, avec leur case de catégorie. */
 function bodyHtml() {
   if (state.tab === 'categories') return categoriesHtml()
   if (state.tab === 'investments') return investmentsHtml()
-  if (state.tab === 'revenues') return revenuesHtml()
   return results()
+}
+
+function controlsHtml() {
+  if (state.tab === 'categories') return categoriesControls()
+  if (state.tab === 'investments') return investmentsControls()
+  return expensesControls()
 }
 
 function tabsHtml() {
@@ -57,7 +63,8 @@ function paint() {
     <section class="view view--expenses">
       ${header()}
       ${tabsBar()}
-      ${filterbar()}
+      ${state.tab === 'expenses' ? filterbar() : ''}
+      <div class="section-controls" data-role="controls">${controlsHtml()}</div>
       <div class="list-results" data-role="results">${bodyHtml()}</div>
     </section>`
   bindBody()
@@ -121,6 +128,20 @@ function bindBody() {
     if (!state.reorderMode) saveCategoryOrder(host)
     refresh()
   })
+
+  /* Tri & présentation : un seul onglet est monté à la fois. */
+  for (const tab of TOOLBAR_TABS) {
+    bindToolbar(host, `set-${tab}`, {
+      onSort: (value) => {
+        state.sort[tab] = value
+        refresh()
+      },
+      onLayout: (value) => {
+        state.layout[tab] = value === 'list' ? 'list' : 'cards'
+        refresh()
+      },
+    })
+  }
 
   if (state.reorderMode) bindCategoryReorder(host)
 }

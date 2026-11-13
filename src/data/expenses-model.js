@@ -33,15 +33,15 @@ export function normalizeCategory(raw = {}) {
   }
 }
 
-/** Normalise la liste des catégories. */
+/** Normalise la liste des catégories. Une liste existante est respectée
+    telle quelle : supprimer « Gaz » ne doit pas le faire réapparaître au
+    prochain chargement. */
 export function normalizeCategoryList(list) {
   if (!Array.isArray(list)) return [...DEFAULT_EXPENSE_CATEGORIES].map(normalizeCategory)
-  const normalized = list.filter((item) => item && typeof item === 'object').map(normalizeCategory)
-  const existingIds = new Set(normalized.map((c) => c.id))
-  for (const def of DEFAULT_EXPENSE_CATEGORIES) {
-    if (!existingIds.has(def.id)) normalized.push(normalizeCategory({ ...def, isDefault: true }))
-  }
-  return normalized.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, 'fr'))
+  return list
+    .filter((item) => item && typeof item === 'object')
+    .map(normalizeCategory)
+    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, 'fr'))
 }
 
 /** Normalise une dépense. */

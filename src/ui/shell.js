@@ -17,20 +17,20 @@ import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../da
    dans le pied du rail et dans la barre haute : cinq onglets égaux
    tassaient les libellés sur téléphone. */
 export const NAV_ITEMS = [
+  { route: 'recettes', label: 'Recettes', short: 'Recettes', icon: 'trendingUp' },
+  { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
   { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
   { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
-  { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
-  { route: 'analyse', label: 'Analyse', short: 'Analyse', icon: 'analysis' },
 ]
 
 const SETTINGS_ITEM = { route: 'reglages', label: 'Réglages', short: 'Réglages', icon: 'sliders' }
 
 /* Le bouton flottant suit l'écran : il ajoute ce que l'on regarde. */
 const FAB_CONFIG = {
+  recettes: { label: 'Ajouter une recette', icon: 'plus' },
+  depenses: { label: 'Ajouter une dépense', icon: 'plus' },
   liste: { label: 'Ajouter un produit', icon: 'plus' },
   factures: { label: 'Ajouter une facture', icon: 'plus' },
-  depenses: { label: 'Ajouter une dépense', icon: 'plus' },
-  analyse: { label: 'Saisir une recette', icon: 'plus' },
 }
 
 const shell = {

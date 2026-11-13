@@ -1,17 +1,31 @@
 /* ------------------------------------------------------------------ */
-/* Écran Dépenses — état partagé entre les quatre onglets              */
+/* Écran Dépenses — état partagé entre les trois onglets               */
 /*                                                                     */
 /* Un seul objet mutable, remis à zéro au montage. Les onglets lisent  */
 /* ce qu'ils veulent et ne se passent rien entre eux.                  */
 /* ------------------------------------------------------------------ */
 
+export const SORTS = {
+  expenses: 'recent',
+  categories: 'order',
+  investments: 'recent',
+}
+
+export const LAYOUTS = {
+  expenses: 'cards',
+  categories: 'cards',
+  investments: 'cards',
+}
+
 export const state = {
   host: null,
-  tab: 'expenses', // expenses | categories | investments | revenues
+  tab: 'expenses', // expenses | categories | investments
   categoryFilter: 'all',
   typeFilter: 'all',
   query: '',
   reorderMode: false,
+  sort: { ...SORTS },
+  layout: { ...LAYOUTS },
 }
 
 export function resetState(host) {
@@ -23,6 +37,8 @@ export function resetState(host) {
   state.typeFilter = 'all'
   state.query = ''
   state.reorderMode = false
+  state.sort = { ...SORTS }
+  state.layout = { ...LAYOUTS }
 }
 
 export function resetFilters() {

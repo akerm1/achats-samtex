@@ -20,17 +20,7 @@ import {
 } from '../data/store.js'
 import { exportCSV, exportJSON } from '../data/backup.js'
 import {
-  addHolding,
-  addInvestment,
-  addPlace,
-  addPurchase,
-  clearSale,
-  deleteHolding,
-  deleteInvestment,
-  deletePlace,
-  deletePurchase,
   getAnalysis,
-  toggleSaleKind,
 } from '../data/analysis-store.js'
 import {
   getExpenses,
@@ -48,7 +38,6 @@ import {
 } from '../ui/shell.js'
 import { listView } from '../screens/list/index.js'
 import { billsView } from '../screens/bills/index.js'
-import { analysisView } from '../screens/analysis/index.js'
 import {
   openCategoryForm,
   openExpenseForm,
@@ -82,7 +71,7 @@ export const ACTIONS = {
     const route = getActiveRoute()
     if (route === 'factures') return openBillForm()
     if (route === 'depenses') return openExpenseForm()
-    if (route === 'analyse') return openRevenueQuickForm()
+    if (route === 'recettes') return openRevenueForm()
     return openProductForm()
   },
   'set-sort': (node) => setPrefs({ sort: node.value }),
@@ -142,25 +131,6 @@ export const ACTIONS = {
     billsView.resetFilters()
     toast('Filtres réinitialisés.', { type: 'info' })
   },
-
-  /* Analyse */
-  'analysis-home': () => analysisView.setTab('generale'),
-  'analysis-fy-prev': () => analysisView.shiftFy(-1),
-  'analysis-fy-next': () => analysisView.shiftFy(1),
-  'analysis-month-prev': () => analysisView.shiftMonth(-1),
-  'analysis-month-next': () => analysisView.shiftMonth(1),
-  'analysis-today': () => analysisView.goToday(),
-  'analysis-goto': (node) => analysisView.gotoSection(node.dataset.target, node.dataset.tab),
-  'analysis-day-kind': (node) => toggleSaleKind(node.dataset.date, node.dataset.kind),
-  'analysis-day-clear': (node) => clearSale(node.dataset.date),
-  'analysis-investment-add': () => addInvestment({}),
-  'analysis-investment-del': (node) => deleteInvestment(node.dataset.id),
-  'analysis-purchase-add': () => addPurchase({}),
-  'analysis-purchase-del': (node) => deletePurchase(node.dataset.id),
-  'analysis-holding-add': (node) => addHolding({ holder: node.dataset.holder }),
-  'analysis-holding-del': (node) => deleteHolding(node.dataset.id),
-  'analysis-place-add': () => addPlace({}),
-  'analysis-place-del': (node) => deletePlace(node.dataset.id),
 
   /* Dépenses */
   'open-expense-form': (node) => {

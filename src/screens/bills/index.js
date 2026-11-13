@@ -4,6 +4,7 @@
 
 import { esc, formatMoney } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
+import { CARD_LIST_LAYOUTS, bindToolbar, toolbarHtml } from '../../ui/toolbar.js'
 import { BILL_STATUS, filterBills, sortBills, sumBills } from '../../data/bills-model.js'
 import { PROVIDER_WORKER } from '../../data/sync.js'
 import { getBills, getState, isLoaded } from '../../data/store.js'
@@ -11,6 +12,14 @@ import { deferWhileEditing, loadingBlock } from '../../ui/dialog.js'
 
 let host = null
 let query = ''
+let sort = 'recent'
+let layout = 'cards'
+
+const SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récentes' },
+  { value: 'supplier', label: 'Fournisseur (A → Z)' },
+  { value: 'amount', label: 'Montant élevé' },
+]
 
 const STATUS_TABS = [
   { value: 'all', label: 'Toutes' },
@@ -105,13 +114,25 @@ function filterbar() {
     </div>`
 }
 
+function toolbar() {
+  return toolbarHtml({
+    id: 'bills-sort',
+    prefix: 'set-bills',
+    sort,
+    sortOptions: SORT_OPTIONS,
+    layout,
+    layouts: CARD_LIST_LAYOUTS,
+  })
+}
+
 function results() {
-  const sorted = sortBills(filterBills(getBills(), { status: statusFilter, query }), 'recent')
+  const sorted = sortBills(filterBills(getBills(), { status: statusFilter, query }), sort)
   if (!sorted.length) return emptyState()
 
+  const gridClass = layout === 'list' ? 'grid grid--list' : 'grid grid--card'
   return `
     <section class="group">
-      <div class="grid grid--card">${sorted.map((bill) => renderBillCard(bill)).join('')}</div>
+      <div class="${gridClass}">${sorted.map((bill) => renderBillCard(bill)).join('')}</div>
     </section>`
 }
 
@@ -204,9 +225,20 @@ function paint() {
     <section class="view view--list">
       ${header()}
       ${filterbar()}
+      ${toolbar()}
       <div class="list-results" data-role="results">${results()}</div>
     </section>`
   bindSearch()
+  bindToolbar(host, 'set-bills', {
+    onSort: (value) => {
+      sort = SORT_OPTIONS.some((option) => option.value === value) ? value : 'recent'
+      paint()
+    },
+    onLayout: (value) => {
+      layout = value === 'list' ? 'list' : 'cards'
+      paint()
+    },
+  })
 }
 
 /** La recherche a son propre cycle de vie : elle ne se repeint qu'elle-même. */

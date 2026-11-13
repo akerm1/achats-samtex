@@ -178,16 +178,13 @@ async function formBench() {
   check('écran : l’écran Dépenses s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
   if (!opened.ok) return
 
-  /* L'écran n'a plus de section privilégiée : il ouvre sur la première,
-     dans l'ordre des onglets, comme n'importe quel écran. */
+  /* L'écran Dépenses n'a plus de section privilégiée : il ouvre sur la première,
+     dans l'ordre des onglets, comme n'importe quel écran. Les recettes ont
+     leur propre écran, elles ne sont plus un onglet ici. */
   const active = doc().querySelector('.expense-tab.is-active')
   check('écran : l’ouverture est la première section', active?.dataset.value === 'expenses', active ? text(active) : 'aucun onglet actif')
   check('écran : les cases de catégorie sont visibles d’emblée', Boolean(doc().querySelector('.quick-add')), doc().querySelector('.quick-add') ? 'bloc présent' : 'bloc absent')
-  check('écran : les recettes ne sont plus imposées', !doc().querySelector('.revenue-day-card'), doc().querySelector('.revenue-day-card') ? 'recettes affichées' : 'section dépenses seule')
-
-  /* Le passage par l'onglet Recettes reste vérifié plus bas. */
-  doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')?.click()
-  await sleep(200)
+  check('accès : l’onglet Recettes n’existe plus', !doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]'), 'recettes à un appui')
 
   /* Les catégories sont déjà sur l'écran, avant toute boîte. */
   const quick = await waitFor('.quick-add')
@@ -379,31 +376,34 @@ async function narrowBench() {
   stage.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
 }
 
-/* L'application s'ouvre sur l'écran Dépenses, sur sa première section, et
-   compte en dinars. Trois choix d'usage : un hash vide atterrit sur l'écran,
-   la première section est affichée (aucune n'est privilégiée), et le moindre
-   montant porte « DA » — jamais « € » ni « MAD ». */
+/* L'application s'ouvre sur l'écran Recettes, qui affiche les entrées du shop
+   en dinars. Un hash vide atterrit sur les Recettes, la première section est
+   affichée, et le moindre montant porte « DA » — jamais « € » ni « MAD ». */
 async function landingBench() {
   const opened = await mount('', '.screen-head')
-  check('défaut : un hash vide ouvre les Dépenses', opened.ok, opened.ok ? '' : opened.screen)
+  check('défaut : un hash vide ouvre les Recettes', opened.ok, opened.ok ? '' : opened.screen)
   if (!opened.ok) return
 
   const rail = doc().querySelector('.rail-link.is-active[aria-current="page"]')
-  check('défaut : le rail marque Dépenses', /depenses/.test(rail?.getAttribute('href') || ''), rail?.getAttribute('href') || 'aucun lien actif')
+  check('défaut : le rail marque Recettes', /recettes/.test(rail?.getAttribute('href') || ''), rail?.getAttribute('href') || 'aucun lien actif')
 
   const title = text(doc().querySelector('#screen-title'))
-  check('défaut : la barre haute nomme Dépenses', /dépenses/i.test(title), title || 'titre vide')
+  check('défaut : la barre haute nomme Recettes', /recettes/i.test(title), title || 'titre vide')
 
   const active = doc().querySelector('.expense-tab.is-active')
-  check('défaut : la première section est affichée', active?.dataset.value === 'expenses', active ? text(active) : 'aucun onglet actif')
+  check('défaut : l\'onglet dépenses existe', Boolean(doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')), 'onglet dans le rail')
   const revenueTab = doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]')
-  check('défaut : les recettes sont à un appui', Boolean(revenueTab), revenueTab ? text(revenueTab) : 'onglet absent')
+  check('défaut : les recettes n\'ont plus d\'onglet dans dépenses', !revenueTab, revenueTab ? text(revenueTab) : 'onglet absent')
 
-  doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]')?.click()
-  const revenue = await waitFor('.revenue-day-card')
-  const amount = text(revenue?.querySelector('.card-amount'))
+  // Naviguer vers l'écran Recettes via le rail
+  doc().querySelector('[href="#/recettes"]')?.click()
+  await sleep(200)
+  const revScreen = await waitFor('.view--revenues')
+  check('recettes : l\'écran Recettes s\'ouvre', Boolean(revScreen), revScreen ? 'écran monté' : 'écran absent')
+  if (!revScreen) return
+  const amount = text(doc().querySelector('.view--revenues .screen-total'))
   check('devise : la recette compte en dinars', /DA$/.test(amount), amount || 'aucun montant')
-  check('devise : ni euro ni dirham à l’écran', !/€|MAD/.test(text(doc().querySelector('.screen'))), /€|MAD/.test(text(doc().querySelector('.screen'))) ? 'ancienne devise visible' : 'aucune trace')
+  check('devise : ni euro ni dirham à l\'écran', !/€|MAD/.test(text(doc().querySelector('.screen'))), /€|MAD/.test(text(doc().querySelector('.screen'))) ? 'ancienne devise visible' : 'aucune trace')
 
   let stored = {}
   try { stored = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}') } catch { stored = {} }

@@ -4,8 +4,42 @@
 
 import { esc, formatMoney } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
+import { CARD_LIST_LAYOUTS, toolbarHtml } from '../../ui/toolbar.js'
 import * as expModel from '../../data/expenses-model.js'
 import * as expStore from '../../data/expenses-store.js'
+import { state } from './state.js'
+
+const SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récents' },
+  { value: 'name', label: 'Nom (A → Z)' },
+  { value: 'amount', label: 'Montant élevé' },
+]
+
+function sortedInvestments(investments) {
+  const sorted = [...investments]
+  if (state.sort.investments === 'name') {
+    return sorted.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  }
+  if (state.sort.investments === 'amount') {
+    return sorted.sort((a, b) => (b.amount || 0) - (a.amount || 0))
+  }
+  return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+}
+
+export function controls() {
+  return `
+    <div class="section-actions">
+      <button type="button" class="btn btn--primary btn--sm" data-action="open-investment-form">${icon('plus', 14)} Nouvel investissement</button>
+    </div>
+    ${toolbarHtml({
+      id: 'investments-sort',
+      prefix: 'set-investments',
+      sort: state.sort.investments,
+      sortOptions: SORT_OPTIONS,
+      layout: state.layout.investments,
+      layouts: CARD_LIST_LAYOUTS,
+    })}`
+}
 
 export function investmentsHtml() {
   const { investments, expenses, settings } = expStore.getExpenses()
@@ -24,11 +58,8 @@ export function investmentsHtml() {
         <strong class="kpi-value">${formatMoney(totalRemaining, settings.currency)}</strong>
       </div>
     </div>
-    <div class="ana-toolbar">
-      <button type="button" class="btn btn--primary btn--sm" data-action="open-investment-form">${icon('plus', 14)} Nouvel investissement</button>
-    </div>
-    <div class="investment-list" data-role="investment-list">
-      ${investments
+    <div class="investment-list ${state.layout.investments === 'list' ? 'is-list' : ''}" data-role="investment-list">
+      ${sortedInvestments(investments)
         .map((inv) => {
           const linkedExpenses = expenses.filter((e) => e.linkedInvestmentId === inv.id)
           const transferred = linkedExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)

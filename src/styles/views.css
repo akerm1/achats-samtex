@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* ATELIER — vues                                                      */
 /*                                                                      */
-/* Liste, factures, analyse, dépenses, réglages et formulaires.        */
+/* Liste, factures, recettes, dépenses, réglages et formulaires.       */
 /* Les noms de classes hérités sont conservés là où le JavaScript les   */
 /* interroge ; tout leur habillage est neuf.                            */
 /* ------------------------------------------------------------------ */
@@ -194,6 +194,19 @@
   box-shadow: 0 1px 2px rgba(27, 24, 20, 0.12);
 }
 
+/* Barre d'actions d'une section (ajout, réorganisation) ------------ */
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.section-actions .btn {
+  flex: 0 0 auto;
+}
+
 /* Carte d'aide à la connexion ------------------------------------- */
 
 .setup-card {
@@ -302,6 +315,12 @@
 
 .grid--card {
   grid-template-columns: 1fr;
+}
+
+/* Présentation « liste » : une seule colonne, même sur grand écran.
+   `.grid.grid--list` pèse plus lourd que les règles de largeur. */
+.grid.grid--list {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid--mosaic {
@@ -1044,11 +1063,11 @@
   gap: clamp(16px, 2.4vw, 24px);
 }
 
-/* Les quatre sections deviennent quatre tuiles, pas une rangée de
+/* Les trois sections deviennent trois tuiles, pas une rangée de
    pilules : sur téléphone, chacune reste lisible et atteignable. */
 .expenses-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   padding: 0;
   border: 0;
@@ -1057,17 +1076,20 @@
 
 .expense-tab {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 0 12px;
+  justify-content: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink-2);
-  font-size: var(--text-xs);
+  font-size: 10px;
   font-weight: 800;
-  text-align: left;
+  line-height: 1.15;
+  text-align: center;
   transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
     border-color var(--dur) var(--ease);
 }
@@ -1263,6 +1285,12 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
+}
+
+/* Présentation « liste » : une seule colonne partout. */
+.category-list.is-list,
+.investment-list.is-list {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .category-card {
@@ -1479,6 +1507,76 @@
   gap: 3px;
 }
 
+/* Écran Recettes -------------------------------------------------- */
+
+.view--revenues {
+  gap: clamp(16px, 2.4vw, 24px);
+}
+
+.revenue-card .card-name {
+  color: var(--ink);
+}
+
+.revenue-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.revenue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.revenue-row-when {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.revenue-row-when strong {
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.revenue-row-when span {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.revenue-row-amount {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.revenue-row .card-actions {
+  margin-top: 0;
+}
+
+/* Sur téléphone, la ligne reste compacte : deux actions de 34 px
+   tiennent à côté du montant sans écraser la date. */
+@media (max-width: 420px) {
+  .revenue-row {
+    flex-wrap: wrap;
+  }
+
+  .revenue-row-when {
+    flex-basis: calc(100% - 110px);
+  }
+}
+
 /* Sélecteurs d'icône et de couleur -------------------------------- */
 
 .icon-picker,
@@ -1520,678 +1618,6 @@
   border: 1.5px solid var(--line-strong);
   border-radius: 8px;
   background: var(--surface);
-}
-
-/* ================================================================== */
-/* 4. Analyse                                                          */
-/* ================================================================== */
-
-.view--analysis {
-  gap: clamp(16px, 2.4vw, 22px);
-}
-
-.ana-fybar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.ana-fybar .icon-btn {
-  border-color: transparent;
-  background: transparent;
-}
-
-.ana-fy-label {
-  flex: 1;
-  text-align: center;
-  font-family: var(--font-head);
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-/* Barre de feuille : collante sous la barre haute. */
-.ana-chrome {
-  position: sticky;
-  top: calc(var(--topbar-h) + env(safe-area-inset-top) + 8px);
-  z-index: 20;
-  margin: 0 -4px;
-  padding: 4px;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.ana-chrome-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 6px 6px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.ana-chrome-title {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.ana-home {
-  min-height: 36px;
-  padding: 0 12px;
-  font-size: var(--text-xs);
-}
-
-.ana-body {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(18px, 2.6vw, 26px);
-}
-
-.ana-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.ana-toolbar .btn {
-  flex: 0 0 auto;
-}
-
-.ana-monthpick {
-  display: flex;
-  flex: 1;
-  min-width: 170px;
-}
-
-.ana-monthpick .select {
-  min-height: 40px;
-  font-weight: 700;
-}
-
-.ana-today {
-  margin-left: auto;
-}
-
-/* Fiche des jours ------------------------------------------------- */
-
-.ana-days {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.ana-days-head {
-  display: none;
-}
-
-.ana-day {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 108px auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-top: 1px solid var(--line);
-}
-
-.ana-day:first-of-type {
-  border-top: 0;
-}
-
-.ana-day-when {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.ana-day-date {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.ana-day-week {
-  font-size: 10px;
-  color: var(--ink-3);
-  text-transform: capitalize;
-}
-
-.ana-day-now {
-  display: inline-block;
-  margin-top: 2px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 8.5px;
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  width: fit-content;
-}
-
-.ana-day-slot {
-  min-width: 0;
-}
-
-.ana-day-slot .input {
-  min-height: 38px;
-  padding: 7px 9px;
-  font-size: var(--text-sm);
-  text-align: right;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.ana-day-input {
-  border-color: transparent;
-  background: var(--surface-2);
-}
-
-.ana-day-input:focus {
-  background: var(--surface);
-}
-
-.ana-day-toggles {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.ana-day-toggles .btn {
-  min-height: 32px;
-  padding: 0 8px;
-  font-size: 10px;
-}
-
-.ana-day-toggles .icon-btn {
-  width: 32px;
-  height: 32px;
-}
-
-.ana-toggle.is-on {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
-}
-
-.ana-day--we .ana-day-week {
-  color: var(--ink-3);
-}
-
-.ana-day.is-today {
-  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.ana-day-mark {
-  display: inline-flex;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-/* Pieds de statistiques ------------------------------------------- */
-
-.ana-foot {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ana-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  min-width: 0;
-}
-
-.ana-stat span {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ana-stat strong {
-  font-family: var(--font-head);
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Comparaison ----------------------------------------------------- */
-
-.ana-compare {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.ana-compare-head,
-.ana-compare-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 12px;
-}
-
-.ana-compare-head {
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.ana-compare-head span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ana-compare-head small {
-  display: block;
-  font-size: 9px;
-  opacity: 0.7;
-}
-
-.ana-compare-row {
-  border-top: 1px solid var(--line);
-  font-size: var(--text-xs);
-}
-
-.ana-compare-row:nth-child(even) {
-  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
-}
-
-.ana-compare-row:first-of-type {
-  border-top: 0;
-}
-
-.ana-compare-row > span:not(:first-child) {
-  text-align: right;
-}
-
-.ana-num {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.ana-cell-empty {
-  color: var(--ink-3);
-}
-
-/* Sommaire -------------------------------------------------------- */
-
-.ana-sections {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 7px;
-}
-
-.ana-section-card {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  text-align: left;
-  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease),
-    transform var(--dur-fast) var(--ease);
-}
-
-.ana-section-card:hover,
-.ana-section-card:active {
-  border-color: var(--line-strong);
-  background: var(--surface-2);
-}
-
-.ana-section-card:active {
-  transform: scale(0.99);
-}
-
-.ana-section-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 auto;
-  border-radius: 9px;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.ana-section-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.ana-section-copy strong {
-  font-size: var(--text-sm);
-  font-weight: 800;
-}
-
-.ana-section-copy small {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ana-section-go {
-  color: var(--ink-3);
-  flex: 0 0 auto;
-}
-
-/* Panneaux -------------------------------------------------------- */
-
-.ana-sec {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  scroll-margin-top: calc(var(--topbar-h) + 70px);
-}
-
-.ana-panel {
-  display: block;
-  padding: clamp(14px, 2.4vw, 22px);
-}
-
-.ana-panel-title {
-  margin-bottom: 12px;
-  font-size: var(--text-lg);
-  font-weight: 800;
-}
-
-.ana-table-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 7px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.ana-table-head span:last-child {
-  text-align: right;
-}
-
-.ana-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 2px;
-  border-bottom: 1px dashed var(--line);
-  font-size: var(--text-xs);
-  color: var(--ink-2);
-}
-
-.ana-line strong {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.ana-line--total {
-  border-bottom: 0;
-  border-top: 1.5px solid var(--ink);
-  margin-top: 4px;
-  padding-top: 9px;
-  color: var(--ink);
-  font-weight: 800;
-}
-
-.ana-line--total strong {
-  font-size: var(--text-base);
-  font-weight: 700;
-}
-
-.ana-edit {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px 34px;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-}
-
-.ana-edit .input {
-  min-height: 36px;
-  padding: 6px 8px;
-  font-size: var(--text-xs);
-  border-color: transparent;
-  background: var(--surface-2);
-}
-
-.ana-edit .input:focus {
-  border-color: var(--accent);
-  background: var(--surface);
-}
-
-.ana-edit .icon-btn {
-  width: 34px;
-  height: 34px;
-}
-
-.ana-amount {
-  font-family: var(--font-mono);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Synthèse -------------------------------------------------------- */
-
-.ana-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.ana-card {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  min-width: 0;
-}
-
-.ana-card-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ana-card-value {
-  font-family: var(--font-head);
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ana-card-hint {
-  font-size: 9px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Possession ------------------------------------------------------ */
-
-.ana-holders {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.ana-holder {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-}
-
-.ana-holder-label {
-  min-height: 34px;
-  padding: 5px 8px;
-  font-family: var(--font-head);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  border-color: transparent;
-  background: transparent;
-}
-
-/* Sur téléphone, les commandes compactes reprennent la cible de 44 px. */
-@media (max-width: 720px) {
-  .ana-home,
-  .ana-holder-label {
-    min-height: 44px;
-  }
-}
-
-.ana-holder-row {
-  grid-template-columns: minmax(0, 1fr) 32px;
-}
-
-.ana-holder-note {
-  grid-column: 1 / -1;
-  min-height: 32px;
-}
-
-.ana-holder-sum {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line-strong);
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.ana-holder-sum strong {
-  font-size: var(--text-sm);
-  letter-spacing: 0;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Paramètres ------------------------------------------------------ */
-
-.ana-settings {
-  padding: 0;
-}
-
-.ana-settings > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  font-family: var(--font-head);
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  list-style: none;
-}
-
-.ana-settings > summary::-webkit-details-marker {
-  display: none;
-}
-
-.ana-settings > summary::after {
-  content: '+';
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 400;
-  color: var(--ink-3);
-}
-
-.ana-settings[open] > summary {
-  border-bottom: 1px solid var(--line);
-}
-
-.ana-settings[open] > summary::after {
-  content: '−';
-}
-
-.ana-settings-body {
-  padding: 14px 16px 18px;
 }
 
 /* ================================================================== */
@@ -2653,42 +2079,16 @@ input.color-box::-webkit-color-swatch {
   }
 
   .expenses-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .ana-sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ana-cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .ana-foot {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .ana-holders {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ana-days-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 108px auto;
+  .expense-tab {
+    flex-direction: row;
     gap: 8px;
-    padding: 8px 10px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--line);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-  }
-
-  .ana-days-head span:last-child {
-    text-align: right;
+    min-height: 48px;
+    padding: 0 12px;
+    font-size: var(--text-xs);
+    text-align: left;
   }
 
   .form-grid {
@@ -2720,18 +2120,6 @@ input.color-box::-webkit-color-swatch {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .ana-sections {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .ana-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .ana-chrome {
-    top: 10px;
-  }
-
   .setting {
     padding: 16px 20px;
   }
@@ -2754,33 +2142,32 @@ input.color-box::-webkit-color-swatch {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .ana-sections {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .ana-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 /* ================================================================== */
 /* 8. Petits écrans                                                    */
 /* ================================================================== */
 
+/* Sur téléphone, le libellé prend sa ligne : le select et les deux
+   boutons de présentation restent côte à côte, jamais tassés. */
+@media (max-width: 720px) {
+  .list-toolbar-label {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .list-sort {
+    flex: 1 1 150px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .layout-switch {
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 420px) {
-  .ana-day {
-    grid-template-columns: minmax(0, 1fr) 96px;
-    row-gap: 5px;
-  }
-
-  .ana-day-toggles {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-  }
-
-  .ana-edit {
-    grid-template-columns: minmax(0, 1fr) 88px 32px;
-  }
 
   .product--row {
     grid-template-columns: 46px minmax(0, 1fr) auto;

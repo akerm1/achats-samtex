@@ -56,7 +56,7 @@ function remoteLabel(count) {
 }
 
 export function header() {
-  const { expenses, categories, investments, revenues, settings } = expStore.getExpenses()
+  const { expenses, categories, investments, settings } = expStore.getExpenses()
 
   let filtered = expenses
   if (state.categoryFilter !== 'all') filtered = filtered.filter((e) => e.categoryId === state.categoryFilter)
@@ -72,7 +72,6 @@ export function header() {
   const totalAmount = expModel.totalExpenses(filtered)
   const totalInvested = expModel.totalInvestments(investments)
   const remainingInvested = expModel.remainingInvestments(investments)
-  const totalRevenue = expModel.totalRevenues(revenues)
 
   return `
     <header class="screen-head">
@@ -90,13 +89,9 @@ export function header() {
           <span class="stat-label">Investi</span>
           <span class="stat-value">${formatMoney(totalInvested, settings.currency)}</span>
         </div>
-        <div class="stat">
+        <div class="stat stat--accent">
           <span class="stat-label">Restant</span>
           <span class="stat-value">${formatMoney(remainingInvested, settings.currency)}</span>
-        </div>
-        <div class="stat stat--accent">
-          <span class="stat-label">Recettes</span>
-          <span class="stat-value">${formatMoney(totalRevenue, settings.currency)}</span>
         </div>
       </div>
     </header>`
