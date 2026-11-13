@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "9.7.1",
-  "updatedAt": "2026-11-13T15:52:50.776Z",
+  "updatedAt": "2026-11-13T15:52:52.955Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -50,7 +50,9 @@
       "status": "todo",
       "boughtAt": null,
       "createdAt": "2026-09-23T10:30:00.000Z",
-      "updatedAt": "2026-09-23T10:30:00.000Z"
+      "updatedAt": "2026-09-23T10:30:00.000Z",
+      "receipt": "",
+      "receiptAt": null
     },
     {
       "id": "test-002",
@@ -72,7 +74,9 @@
       "status": "todo",
       "boughtAt": null,
       "createdAt": "2026-09-23T10:30:00.000Z",
-      "updatedAt": "2026-09-23T10:30:00.000Z"
+      "updatedAt": "2026-09-23T10:30:00.000Z",
+      "receipt": "",
+      "receiptAt": null
     }
   ],
   "bills": [
