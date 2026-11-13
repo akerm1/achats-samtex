@@ -25,23 +25,30 @@ export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
  * @param {boolean} options.dateFilter afficher le filtre de date
  * @param {string} options.startDate date de début
  * @param {string} options.endDate date de fin
- * @param {string} options.onStartDateChange callback when start date changes
- * @param {string} options.onEndDateChange callback when end date changes
+ * @param {boolean} options.searchFilter afficher le champ de recherche
+ * @param {string} options.query texte de recherche
  */
-export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, dateFilter = false, startDate = '', endDate = '', onStartDateChange, onEndDateChange }) {
-  // Date filter: two inputs side by side, modern style
+export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, dateFilter = false, startDate = '', endDate = '', searchFilter = false, query = '' }) {
   const dateHtml = dateFilter
     ? `
       <div class="date-filter-row" role="region" aria-label="Filtre par date">
         <div class="date-filter-col">
-          <label class="sr-only" for="${esc(id)}-start">Date début</label>
-          <input type="date" id="${esc(id)}-start" class="date-input" value="${startDate || ''}" autocomplete="off">
+          <label for="${esc(id)}-start">Du</label>
+          <input type="date" id="${esc(id)}-start" class="date-input" data-action="${esc(prefix)}-start-date" value="${startDate || ''}" autocomplete="off">
         </div>
-        <span class="date-filter-separator">–</span>
+        <span class="date-filter-separator">à</span>
         <div class="date-filter-col">
-          <label class="sr-only" for="${esc(id)}-end">Date fin</label>
-          <input type="date" id="${esc(id)}-end" class="date-input" value="${endDate || ''}" autocomplete="off">
+          <label for="${esc(id)}-end">Au</label>
+          <input type="date" id="${esc(id)}-end" class="date-input" data-action="${esc(prefix)}-end-date" value="${endDate || ''}" autocomplete="off">
         </div>
+      </div>`
+    : ''
+
+  const searchHtml = searchFilter
+    ? `
+      <div class="search-filter-row" role="search">
+        <input type="search" id="${esc(id)}-search" class="text-input search-input" placeholder="Rechercher" value="${esc(query)}" data-action="${esc(prefix)}-search">
+        <button type="button" class="btn icon-btn" data-action="${esc(prefix)}-clear-search" aria-label="Effacer la recherche" title="Effacer">${icon('searchX', 16)}</button>
       </div>`
     : ''
 
@@ -71,6 +78,7 @@ export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, da
           .join('')}
       </div>
       ${dateHtml}
+      ${searchHtml}
     </div>`
 }
 
@@ -82,9 +90,9 @@ export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, da
  *
  * @param {HTMLElement|null} root conteneur de la barre
  * @param {string} prefix préfixe d'action de la barre
- * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDateChange?: (string)=>void, onEndDateChange?: (string)=>void}} handlers
+ * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDateChange?: (string)=>void, onEndDateChange?: (string)=>void, onSearch?: (string)=>void, onClearSearch?: ()=>void}} handlers
  */
-export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange, onEndDateChange }) {
+export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange, onEndDateChange, onSearch, onClearSearch }) {
   const select = root?.querySelector(`[data-action="${prefix}-sort"]`)
   select?.addEventListener('change', () => {
     const value = select.value
@@ -103,5 +111,14 @@ export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange,
   })
   root?.querySelector(`[data-action="${prefix}-end-date"]`)?.addEventListener('change', (event) => {
     onEndDateChange?.(event.target.value)
+  })
+  // Handle search input
+  const searchInput = root?.querySelector(`[data-action="${prefix}-search"]`)
+  searchInput?.addEventListener('input', (event) => {
+    onSearch?.(event.target.value)
+  })
+  root?.querySelector(`[data-action="${prefix}-clear-search"]`)?.addEventListener('click', () => {
+    if (searchInput) searchInput.value = ''
+    onClearSearch?.()
   })
 }
