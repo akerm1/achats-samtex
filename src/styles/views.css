@@ -2202,3 +2202,8 @@ input.color-box::-webkit-color-swatch {
     justify-content: flex-start;
   }
 }
+.date-filter-row { display: flex; align-items: center; gap: 12px; margin-left: 8px; font-size: var(--text-size); }
+.date-filter-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.date-filter-separator { margin: 0 8px; color: var(--ink-2); font-size: var(--text-xs); font-weight: 700; }
+.date-input { min-height: 36px; padding: 6px 12px; font-size: var(--text-size); font-family: var(--font-base); border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); color: var(--ink); width: 140px; appearance: none; }
+.date-input::placeholder { color: var(--ink-2); }
