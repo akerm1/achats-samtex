@@ -50,6 +50,10 @@ const PRODUCTS_KEY = 'purchase-gros-list-v2'
 const CONFIG_KEY = 'purchase-gros-github-v1'
 const PREFS_KEY = 'purchase-gros-prefs-v1'
 const DIRTY_KEY = 'purchase-gros-dirty-v1'
+/* Un document du lien privé a-t-il déjà porté les dépenses ? Sert une seule
+   fois : à la première rencontre avec un Worker v6, on fusionne au lieu
+   d'écraser (voir `syncWithRemote`). */
+const EXPENSES_SEEN_KEY = 'purchase-gros-expenses-sync-v1'
 /* L'utilisateur a demandé à rester hors GitHub : on ne reconnecte pas. */
 const OPTOUT_KEY = 'purchase-gros-github-optout-v1'
 
@@ -109,6 +113,9 @@ let state = {
 let sha = null
 /* Révision numérique du dernier document connu (lien privé uniquement). */
 let remoteRev = 0
+/* Version du document publié par le Worker : 6 = il garde les dépenses.
+   0 = pas encore su (aucun document lu ni écrit depuis l'ouverture). */
+let remoteDocVersion = 0
 let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
 const NOTIFY_COOLDOWN_MS = 8000
@@ -209,6 +216,11 @@ export function getState() {
     storageFull: storageProblem === 'quota',
     photosSeparated,
     usage,
+    /* Le lien privé transporte-t-il les dépenses ? Un Worker v5 les
+       reçoit puis les ignore : l'écran doit le dire, sinon la saisie
+       reste sur un seul appareil sans que rien ne l'explique. */
+    expensesSync: providerOf(config) === PROVIDER_WORKER ? remoteDocVersion >= 6 : false,
+    expensesSyncKnown: providerOf(config) === PROVIDER_WORKER && remoteDocVersion > 0,
   }
 }
 
@@ -635,6 +647,9 @@ async function syncWithRemote() {
     return markReady(false)
   }
   if (typeof remote.rev === 'number') remoteRev = Math.max(remoteRev, remote.rev)
+  if (typeof remote.docVersion === 'number' && remote.docVersion > 0) {
+    remoteDocVersion = remote.docVersion
+  }
 
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
@@ -669,7 +684,24 @@ async function syncWithRemote() {
      garde alors l'analyse locale, exactement comme pour les factures. */
   if (analysisStore.applyRemoteAnalysis(remote.analysis)) changed = true
   /* `expenses: null` = document écrit avant les dépenses : on garde les locales. */
-  if (expensesStore.applyRemoteExpenses(remote.expenses)) changed = true
+  if (remote.expenses) {
+    /* Première rencontre avec un document qui porte les dépenses : les
+       appareils qui ont saisi pendant que le Worker les ignorait en ont que
+       le serveur ne connaît pas. On fusionne par `id` une seule fois — le
+       distant gagne sur un même `id`, le local unique est conservé — puis la
+       fusion repart au serveur, au lieu d'écraser l'historique local. */
+    const firstWithExpenses = !storage.get(EXPENSES_SEEN_KEY, false)
+    if (firstWithExpenses && expensesStore.hasData()) {
+      const merged = expensesStore.importExpenses(remote.expenses, { mode: 'merge' })
+      storage.set(EXPENSES_SEEN_KEY, true)
+      if (merged.added || merged.updated) changed = true
+    } else {
+      storage.set(EXPENSES_SEEN_KEY, true)
+      if (expensesStore.applyRemoteExpenses(remote.expenses)) changed = true
+    }
+  } else if (expensesStore.applyRemoteExpenses(remote.expenses)) {
+    changed = true
+  }
   if (applyRemoteSettings(remote.settings)) changed = true
   return markReady(changed)
 }
@@ -802,6 +834,9 @@ export async function push({ force = false } = {}) {
   if (result.ok) {
     sha = result.sha
     if (typeof result.rev === 'number') remoteRev = Math.max(remoteRev, result.rev)
+    if (typeof result.docVersion === 'number' && result.docVersion > 0) {
+      remoteDocVersion = result.docVersion
+    }
     if (Array.isArray(result.list)) {
       /* Une fusion propose la liste retenue : on l'adopte pour que l'écran et
          le distant affichent exactement la même chose. */

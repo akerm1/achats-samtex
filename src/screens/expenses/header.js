@@ -13,10 +13,16 @@ import { state } from './state.js'
 /**
  * Les dépenses ne voyagent que par le lien privé : sans cette phrase,
  * quelqu'un peut changer d'appareil et croire à une perte de données.
+ * Et si le Worker déployé est resté en v5, il reçoit les dépenses sans
+ * les garder — c'est exactement le symptôme « seule la Liste est en
+ * ligne ». Le dire vaut mieux que laisser chercher.
  */
 function syncNote() {
-  const { provider } = getState()
-  if (provider === PROVIDER_WORKER) return ''
+  const { provider, expensesSync, expensesSyncKnown } = getState()
+  if (provider === PROVIDER_WORKER) {
+    if (!expensesSyncKnown || expensesSync) return ''
+    return `<p class="screen-note screen-note--alert">${icon('cloud', 12)} Le lien privé fonctionne pour la Liste mais son Worker n'est pas à jour : il ne garde pas encore les dépenses. Recollez <strong>worker/share-list-worker.mjs</strong> dans Cloudflare, puis rechargez.</p>`
+  }
   return `<p class="screen-note">${icon('cloud', 12)} Les dépenses ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
 }
 

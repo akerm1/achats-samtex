@@ -304,7 +304,7 @@ async function workerBench() {
   try {
     const empty = await (await call('GET')).json()
     check("worker : document vide porte 'analysis: null'", 'analysis' in empty && empty.analysis === null, JSON.stringify(empty.analysis))
-    check('worker : le document vide est en version 5', empty.version === 5, `v${empty.version}`)
+    check('worker : le document vide est en version 6', empty.version === 6, `v${empty.version}`)
 
     const config = { provider: 'worker', endpoint }
     const remoteState = {
@@ -316,7 +316,7 @@ async function workerBench() {
     const first = await client.putRemoteList(config, [{ id: 'p1' }], '0', null, [], remoteState)
     const stored = JSON.parse(kv.get('doc'))
     check('worker : première publication acceptée', first.ok && first.rev === 1, first.message || `rev ${first.rev}`)
-    check('worker : le document v5 porte l’analyse', stored.version === 5 && stored.analysis?.sales?.[0]?.amount === 111, `v${stored.version}`)
+    check('worker : le document v6 porte l’analyse', stored.version === 6 && stored.analysis?.sales?.[0]?.amount === 111, `v${stored.version}`)
 
     /* Un second appareil, resté sur la révision 0, envoie SA journée :
        le 409 doit fusionner — distant gagne sur le jour commun, la

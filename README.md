@@ -674,6 +674,40 @@ Vérifié par `node tools/check.mjs --only expenses` : 63 contrôles, dont « l'
 la section Recettes », « les dépenses ne sont pas à l'ouverture » et « les dépenses sont
 à un appui ».
 
+### Version 9.6 - les dépenses passent enfin par le lien privé
+
+Le symptôme : une dépense saisie sur un téléphone n'arrivait ni sur l'autre téléphone ni sur
+le PC — **seule la Liste était « en ligne »**. Ce n'était pas l'application : elle envoyait
+bien les dépenses, mais le **Cloudflare Worker déployé (v5) les recevait puis les jetait**.
+Le document publié ne portait que `products`, `bills` et `analysis`.
+
+- **Le Worker v6 garde `expenses`** : catégories, dépenses, investissements, recettes et
+  réglages de dépense voyagent avec la liste. Écriture, lecture et conflit 409 passent tous
+  par le même objet, fusionné par `id`.
+- **Une écriture sans dépenses ne les efface plus** : une application antérieure (ou une
+  autre source) qui publie sans `expenses` laisse le document courant intact. Un objet vide,
+  lui, reste une suppression volontaire.
+- **Rien ne se perd au passage** : à la première rencontre avec un document qui porte les
+  dépenses, l'application **fusionne par `id`** (le serveur gagne sur un même identifiant,
+  une dépense locale inconnue du serveur est conservée) puis republie le tout — au lieu
+  d'écraser l'historique d'un appareil qui avait saisi pendant que le Worker l'ignorait.
+- **L'application repère un Worker resté en v5** : la réponse d'écriture porte `version: 6`
+  et `expenses: true`. Si le Worker ne les annonce pas, l'écran Dépenses affiche un encadré
+  orange — « son Worker n'est pas à jour, recollez `worker/share-list-worker.mjs` » — au lieu
+  de laisser croire que tout est synchronisé.
+
+> **À faire une fois** : recoller `worker/share-list-worker.mjs` dans Cloudflare
+> (*Edit code* → *Deploy*). Sans cette étape, la Liste continue de passer et les dépenses
+> restent locales — c'est exactement ce que l'encadré signalera.
+
+Vérifié par `node tools/check.mjs --only bills` : le banc importe le Worker tel quel avec
+un faux KV (aucun réseau) et vérifie l'aller-retour, dont « les dépenses publiées relues
+reviennent intactes », « les catégories, investissements et recettes voyagent », « une
+écriture sans dépenses les conserve », « le conflit renvoie les dépenses à fusionner » et
+« des dépenses supprimées restent des listes vides ». `--only expenses` ajoute la fusion :
+« la dépense locale inconnue du serveur survit » et « le distant gagne sur un même
+identifiant ».
+
 ## Écrans & fonctionnalités
 
 | Vue | Ce qu'elle contient |
@@ -801,11 +835,17 @@ case : la 8.1 passait les vérifications automate *et* ces deux défauts.
 
 ## Synchronisation : le lien privé
 
-La liste, les factures, l'analyse **et les réglages partagés** (thème, tri, filtres) sont
-enregistrés dans votre **lien privé** (Cloudflare Worker). Les appareils qui ouvrent la même
-page relisent ce lien **à chaque rafraîchissement de la page** (ou d'un clic sur le bouton
-« Synchroniser ») — il n'y a pas de synchronisation automatique en arrière-plan. Le réglage
-le plus récent gagne côté préférences.
+La liste, les factures, l'analyse, **les dépenses** (catégories, dépenses, investissements,
+recettes) **et les réglages partagés** (thème, tri, filtres) sont enregistrés dans votre
+**lien privé** (Cloudflare Worker). Les appareils qui ouvrent la même page relisent ce lien
+**à chaque rafraîchissement de la page** (ou d'un clic sur le bouton « Synchroniser ») — il
+n'y a pas de synchronisation automatique en arrière-plan. Le réglage le plus récent gagne
+côté préférences.
+
+> **Le Worker doit être en v6.** Il est déployé à la main : après toute mise à jour de
+> `worker/share-list-worker.mjs`, recopiez-le dans Cloudflare (*Edit code* → *Deploy*).
+> Un Worker v5 reçoit les dépenses sans les garder — l'écran Dépenses le signale alors par
+> un encadré orange, et seule la Liste se synchronise.
 
 > Restent **locaux** (jamais envoyés) : le drapeau d'installation PWA et, pour les anciennes
 > installations, le jeton GitHub éventuellement resté en mémoire.
@@ -833,7 +873,7 @@ sinon la version distante remplace la liste locale.
 Un appareil neuf, tant qu'aucun lien privé n'est collé, lit silencieusement le dépôt public
 (`sync-defaults.json` indique propriétaire/dépôt/branche) pour afficher la liste publiée —
 sans configuration ni clic. Ce dépôt ne reçoit plus que la publication des produits ; les
-factures et l'analyse ne voyagent que par le lien privé.
+factures, l'analyse et les dépenses ne voyagent que par le lien privé.
 
 ## Installer sur le téléphone
 

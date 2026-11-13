@@ -408,6 +408,28 @@ async function landingBench() {
   check('devise : le stockage garde le dinar', stored.settings?.currency === 'DZD', stored.settings?.currency || 'aucune devise')
 }
 
+/* Le Worker v5 recevait les dépenses sans les garder : à la première
+   rencontre avec un Worker v6, l'application FUSIONNE au lieu d'écraser.
+   Sans cela, le second appareil perdrait ses dépenses locales — celles
+   qu'il avait saisies pendant que le serveur les ignorait. */
+async function mergeBench() {
+  const model = await import('/src/data/expenses-model.js')
+  const local = { expenses: [{ id: 'e-local', categoryId: 'tools', amount: 100, date: '2026-11-01' }] }
+  const remote = { expenses: [{ id: 'e-remote', categoryId: 'gas', amount: 200, date: '2026-11-02' }] }
+
+  const merged = model.mergeExpenses(local, remote)
+  const mergedExpenses = merged.expenses.expenses
+  check('fusion : la dépense locale inconnue du serveur survit', mergedExpenses.some((e) => e.id === 'e-local'), `${mergedExpenses.length} dépense(s)`)
+  check('fusion : la dépense du serveur arrive', mergedExpenses.some((e) => e.id === 'e-remote'), `${mergedExpenses.length} dépense(s)`)
+
+  const sameId = model.mergeExpenses(
+    { expenses: [{ id: 'x', categoryId: 'tools', amount: 100, date: '2026-11-01' }] },
+    { expenses: [{ id: 'x', categoryId: 'tools', amount: 300, date: '2026-11-01' }] },
+  )
+  const winner = sameId.expenses.expenses.find((e) => e.id === 'x')
+  check('fusion : le distant gagne sur un même identifiant', winner?.amount === 300, String(winner?.amount))
+}
+
 async function run() {
   const report = { theme: 'light', fatal: null, results, errors, detail: {} }
   try {
@@ -424,6 +446,8 @@ async function run() {
     await narrowBench()
     log('ouverture par défaut…')
     await landingBench()
+    log('fusion…')
+    await mergeBench()
     check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
   } catch (error) {
     report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }

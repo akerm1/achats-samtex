@@ -139,7 +139,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='9.5.0'`, `APP_RELEASE='2026-11-11'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.6.0'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`
@@ -173,7 +173,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 ### `worker/*` (backend optionnel)
 | Fichier | Contenu |
 |---|---|
-| **share-list-worker.mjs** | Routes : `OPTIONS`→204 CORS, chemin≠`LIST_KEY`→**404 indistinguable**, absence de binding KV→500, `GET`→document (`{version:4, rev, settings, products, bills}`, ou `empty:true` au premier usage), `PUT`→ garde 20 Mo→413, JSON invalide→400, `products` non tableau→400, **`X-Rev` < `rev` courant → 409 avec le document courant factures comprises** (pour que le client fusionne), sinon écriture `rev+1` → `{rev, updatedAt, count}` ; autres méthodes→405. |
+| **share-list-worker.mjs** | Routes : `OPTIONS`→204 CORS, chemin≠`LIST_KEY`→**404 indistinguable**, absence de binding KV→500, `GET`→document (`{version:6, rev, settings, products, bills, analysis, expenses}`, ou `empty:true` au premier usage ; `expenses: null` = document écrit avant la v6), `PUT`→ garde 20 Mo→413, JSON invalide→400, `products` non tableau→400, **`X-Rev` < `rev` courant → 409 avec le document courant, factures, analyse et dépenses comprises** (pour que le client fusionne), sinon écriture `rev+1` → `{version:6, rev, updatedAt, count, expenses:true}` ; une écriture sans `expenses` conserve celles déjà publiées ; autres méthodes→405. |
 | **wrangler.toml** | nom `liste-achats`, binding KV `LIST`, `workers_dev=true`. |
 | **setup.ps1** (261) | Script relançable en une exécution : `wrangler login` → création/réutilisation du namespace KV → génération/réutilisation d'une clé de 32 caractères → `secret put LIST_KEY` → `deploy` → vérification GET → écriture du lien dans `LIEN-PRIVE.txt` (git-ignoré) → instructions d'installation. |
 | **LIEN-PRIVE.txt** | Le lien secret lui-même (git-ignoré, jamais commité). |
@@ -184,7 +184,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **Sur disque** | `version.json` ≡ `APP_VERSION`/`APP_RELEASE` ; `.gitignore` protège le lien privé ; `node --check` sur chaque module `js/**` + scripts en ligne des bancs. |
 | **Rendu (navigateur)** | Edge/Chrome sans interface charge `check-page.html`, importe les **vrais** modules, renvoie ~140 mesures : 27 jetons × 2 thèmes, contraste WCAG (encre 15,3:1…), comportement cartes/aperçus/clavier, les 3 présentations, carré de la mosaïque + part photo %, densité de la ligne, débordements de la coque, rail/barre haute/dock/FAB selon la largeur, police d'affichage des titres, zéro erreur JS. |
 | **`--e2e`** | lance la vraie application dans une iframe : seed 3 produits, rend chaque présentation, clique sur Réglages → change la présentation → vérifie que la liste **se repeint** (prouve que le réglage arrive à l'écran). |
-| **`--only bills`** | profil séparé : pilote le module Worker sur un KV en mémoire (contrat de fusion 409), aller-retour backup, écran factures, et les deux régressions photo (prune ne doit pas supprimer les tickets ; vider une photo ne doit pas la faire réapparaître). |
+| **`--only bills`** | profil séparé : pilote le module Worker sur un KV en mémoire (contrat de fusion 409, **et le transport des dépenses** : aller-retour, écriture sans dépenses qui les conserve, suppression, version 6 annoncée), aller-retour backup, écran factures, et les deux régressions photo (prune ne doit pas supprimer les tickets ; vider une photo ne doit pas la faire réapparaître). |
 | **`--only expenses`** | profil séparé : l'écran ouvre sur la **section Recettes** (les dépenses sont à un appui), les catégories sont des cases **sur l'écran** (6 cases, total par catégorie), toucher une case ouvre la dépense déjà catégorisée (rappel + grille repliée), « Changer » rouvre la grille, les cases s'effacent pendant une recherche, une dépense ordinaire ne touche pas l'investissement (restant = 1000), le transfert ne s'ouvre que depuis un investissement, à 430 px la grille tient deux colonnes avec des cibles ≥ 44 px, un hash vide ouvre les Dépenses, et tous les montants s'écrivent en « DA » (stockage `DZD`, aucun « € » ni « MAD »). |
 | Options | `--width 430`, `--theme dark`, `--shot x.png`, `--keep`, `BROWSER=…`. **Code de sortie 0 = tout passe, 1 = au moins un échec.** |
 
@@ -260,7 +260,10 @@ et le drapeau d'installation restent locaux, jamais synchronisés.
    groupement par catégorie.
 3. Les actions `share-list`, `clear-bought`, `install-update` sont câblées mais sans déclencheur
    DOM.
-4. **Les factures ne synchronisent qu'via le lien privé Cloudflare** — GitHub reste limité aux
-   produits (volontaire, affiché dans l'interface).
+4. **Factures, analyse et dépenses ne synchronisent qu'via le lien privé Cloudflare** — GitHub
+   reste limité aux produits (volontaire, affiché dans l'interface).
 5. Le déploiement du Worker est **manuel par conception** : recoller le
    `share-list-worker.mjs` mis à jour dans le tableau de bord Cloudflare quand il change.
+   Tant qu'un Worker v5 reste déployé, il reçoit `expenses` sans le stocker : seule la Liste
+   se synchronise, et l'écran Dépenses affiche un encadré orange
+   (`expensesSync`/`expensesSyncKnown` dans `getState()`).

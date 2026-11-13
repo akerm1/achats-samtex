@@ -60,6 +60,7 @@ function parseDocument(payload) {
       ? payload.settings
       : null
   const rev = Number(payload?.rev)
+  const version = Number(payload?.version)
   return {
     list: Array.isArray(payload?.products) ? payload.products : [],
     bills: Array.isArray(payload?.bills) ? payload.bills : null,
@@ -74,6 +75,9 @@ function parseDocument(payload) {
     settings,
     sha: String(payload?.rev ?? 0),
     rev: Number.isFinite(rev) ? rev : 0,
+    /* Version du document publié : 6 = le Worker transporte les dépenses.
+       Un Worker v5 répond `{rev, updatedAt, count}`, donc 5 par défaut. */
+    docVersion: Number.isFinite(version) ? version : 5,
     updatedAt: payload?.updatedAt || null,
   }
 }
@@ -114,7 +118,7 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, bills: null, analysis: null, sha: '0', rev: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, analysis: null, expenses: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
@@ -123,7 +127,7 @@ export async function fetchRemoteList(config) {
 
 function buildBody(list, settings, bills, analysis, expenses) {
   return JSON.stringify({
-    version: 5,
+    version: 6,
     updatedAt: new Date().toISOString(),
     settings: settings || null,
     products: list,
@@ -221,10 +225,15 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
 
   const data = await response.json().catch(() => null)
   const rev = Number(data?.rev)
+  /* Un Worker v6 renvoie `version: 6` ; un Worker v5 ne renvoie pas de
+     version du tout, donc 5 : c'est ainsi que l'application repère un
+     Worker qui reçoit les dépenses sans les garder. */
+  const docVersion = Number.isFinite(Number(data?.version)) ? Number(data.version) : 5
   return {
     ok: true,
     sha: data?.rev === undefined ? sha : String(data.rev),
     rev: Number.isFinite(rev) ? rev : null,
+    docVersion,
     list: out === list ? null : out,
     bills: mergedBills,
     analysis: mergedAnalysis,

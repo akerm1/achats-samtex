@@ -227,6 +227,44 @@ async function workerBench() {
   await call('PUT', { products: [], bills: [] })
   const emptied = await (await call('GET')).json()
   check('worker : des factures supprimées restent un tableau vide, pas null', Array.isArray(emptied.bills) && emptied.bills.length === 0, JSON.stringify(emptied.bills))
+
+  /* Les dépenses suivent le même contrat. Leur absence du document est
+     exactement ce qui faisait qu'une dépense saisie sur un téléphone
+     n'arrivait ni sur l'autre ni sur le PC : le Worker la recevait et la
+     jetait. On vérifie donc l'aller-retour, la compatibilité avec une
+     écriture qui n'en envoie pas, le conflit et la suppression. */
+  const EXPENSES = {
+    categories: [{ id: 'tools', label: 'Outils' }],
+    expenses: [{ id: 'e1', categoryId: 'tools', amount: 250 }],
+    investments: [{ id: 'i1', name: 'Stock', amount: 1000, remaining: 750 }],
+    revenues: [{ id: 'r1', date: '2026-11-05', amount: 1200 }],
+    settings: { currency: 'DZD' },
+  }
+
+  check('worker : un document vide ne prétend pas avoir des dépenses', 'expenses' in empty && empty.expenses === null, `expenses = ${JSON.stringify(empty.expenses)}`)
+
+  const written = await (await call('PUT', { products: [{ id: 'p1' }], expenses: EXPENSES }, 2)).json()
+  check('worker : l’écriture annonce la version 6', written.version === 6, String(written.version))
+  check('worker : l’écriture annonce que les dépenses passent', written.expenses === true, String(written.expenses))
+
+  const withExpenses = await (await call('GET')).json()
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  check('worker : les dépenses publiées relues reviennent intactes', same(withExpenses.expenses?.expenses, EXPENSES.expenses), JSON.stringify(withExpenses.expenses?.expenses))
+  check('worker : les catégories, investissements et recettes voyagent', same(withExpenses.expenses?.categories, EXPENSES.categories) && same(withExpenses.expenses?.investments, EXPENSES.investments) && same(withExpenses.expenses?.revenues, EXPENSES.revenues), 'catégories + investissements + recettes')
+  check('worker : la devise des dépenses voyage', withExpenses.expenses?.settings?.currency === 'DZD', String(withExpenses.expenses?.settings?.currency))
+
+  /* Une application antérieure publie sans `expenses` : ne rien effacer. */
+  await call('PUT', { products: [{ id: 'p1' }] }, 3)
+  const afterOldClient = await (await call('GET')).json()
+  check('worker : une écriture sans dépenses les conserve', same(afterOldClient.expenses, EXPENSES), afterOldClient.expenses ? 'dépenses intactes' : 'dépenses perdues')
+
+  const expensesConflict = await call('PUT', { products: [{ id: 'p2' }], expenses: { expenses: [] } }, 0)
+  const conflictBody = await expensesConflict.json()
+  check('worker : le conflit renvoie les dépenses à fusionner', expensesConflict.status === 409 && same(conflictBody.expenses, EXPENSES), `${expensesConflict.status} · ${conflictBody.expenses ? 'objet présent' : 'aucune dépense'}`)
+
+  await call('PUT', { products: [], expenses: { ...EXPENSES, expenses: [], revenues: [] } }, 4)
+  const cleared = await (await call('GET')).json()
+  check('worker : des dépenses supprimées restent des listes vides', Array.isArray(cleared.expenses?.expenses) && cleared.expenses.expenses.length === 0 && cleared.expenses?.revenues?.length === 0, `${cleared.expenses?.expenses?.length} dépense(s), ${cleared.expenses?.revenues?.length} recette(s)`)
 }
 
 /* La sauvegarde est le seul endroit où les deux collections sortent du

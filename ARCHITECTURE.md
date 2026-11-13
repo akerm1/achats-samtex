@@ -88,6 +88,7 @@ worker/               worker Cloudflare (synchro privée)
 | Changer le rappel de catégorie dans la boîte de dépense | `src/screens/expenses/forms/fields.js` (`categoryPickerBody`, `categoryChoiceField`) |
 | Changer une règle de calcul (TVA, totaux, tri) | le `*-model.js` correspondant dans `src/data/` |
 | Changer la façon dont les données sont enregistrées / synchronisées | `src/data/store.js` |
+| Changer ce que le lien privé transporte (produits, factures, analyse, **dépenses**) | `worker/share-list-worker.mjs` (`DOC_VERSION`, `handleGet`, `handlePut`) **et** `src/data/worker-api.js` (`buildBody`, `parseDocument`) — puis recoller le Worker dans Cloudflare |
 | Changer un format (montant, date, nombre) | `src/core/format.js` |
 | Changer un espacement, une couleur, une ombre | `src/styles/tokens.css` d'abord, puis le fichier CSS concerné |
 | Changer un raccourci clavier | `src/app/shortcuts.js` |

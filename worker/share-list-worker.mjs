@@ -15,10 +15,17 @@
 /* compromis « aucun mot de passe », assumé et documenté.               */
 /*                                                                     */
 /* Le document échangé porte `products`, `bills` (factures, photo    */
-/* du ticket comprise) et `analysis` (recettes, achats, possession). */
-/* C'est ici, et seulement ici, que factures et analyse se           */
+/* du ticket comprise), `analysis` (recettes, achats, possession) et */
+/* `expenses` (catégories, dépenses, investissements, recettes).     */
+/* C'est ici, et seulement ici, que factures, analyse et dépenses se */
 /* synchronisent : la voie GitHub reste produits seule.              */
+/*                                                                   */
+/* v6 ajoute `expenses`. Un Worker v5 le recevait puis l'ignorait :  */
+/* l'application envoyait les dépenses, le serveur ne les gardait    */
+/* pas, et elles restaient sur l'appareil qui les avait saisies.     */
 /* ------------------------------------------------------------------ */
+
+const DOC_VERSION = 6
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -52,15 +59,20 @@ function analysisOf(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : null
 }
 
+/** `expenses` : même contrat que `analysis` (objet, sinon `null`). */
+function expensesOf(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null
+}
+
 async function handleGet(env) {
   const raw = await env.LIST.get(DOC_KEY, 'json')
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
   if (!raw) {
-    return json({ version: 5, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null })
+    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null })
   }
   return json({
-    version: raw.version || 5,
+    version: raw.version || DOC_VERSION,
     rev: raw.rev || 1,
     updatedAt: raw.updatedAt || null,
     settings: raw.settings || null,
@@ -74,6 +86,9 @@ async function handleGet(env) {
     /* Même contrat pour `analysis` : `null` = document écrit avant
        l'analyse (Worker v4), l'appareil garde alors la sienne. */
     analysis: analysisOf(raw.analysis),
+    /* Idem pour `expenses` : `null` = document écrit avant la v6, et
+       l'appareil garde alors ses dépenses locales. */
+    expenses: expensesOf(raw.expenses),
   })
 }
 
@@ -103,7 +118,7 @@ async function handlePut(request, env) {
   if (sentRev !== null && Number.isFinite(Number(sentRev)) && Number(sentRev) < currentRev) {
     return json(
       {
-        version: 5,
+        version: DOC_VERSION,
         rev: currentRev,
         updatedAt: current?.updatedAt || null,
         settings: current?.settings || null,
@@ -115,6 +130,9 @@ async function handlePut(request, env) {
         /* Idem pour l'analyse : c'est ce document que le client fusionne
            par `id` avant de retenter l'écriture. */
         analysis: analysisOf(current?.analysis),
+        /* Idem pour les dépenses : sans elles, la fusion par `id` n'aurait
+           rien à fusionner et l'écriture suivante les écraserait. */
+        expenses: expensesOf(current?.expenses),
       },
       { status: 409 },
     )
@@ -123,7 +141,7 @@ async function handlePut(request, env) {
   const rev = currentRev + 1
   const updatedAt = new Date().toISOString()
   const document = {
-    version: 5,
+    version: DOC_VERSION,
     rev,
     updatedAt,
     settings: payload.settings || null,
@@ -133,6 +151,10 @@ async function handlePut(request, env) {
     bills: Array.isArray(payload.bills) ? payload.bills : null,
     /* Idem pour l'analyse : objet publié, `null` = envoyée sans elle. */
     analysis: analysisOf(payload.analysis),
+    /* Une écriture sans `expenses` (application antérieure à la v6) ne doit
+       pas effacer celles déjà publiées : on garde alors le document courant.
+       Un objet vide, lui, reste une suppression volontaire et s'applique. */
+    expenses: expensesOf(payload.expenses) ?? expensesOf(current?.expenses),
   }
 
   try {
@@ -140,7 +162,9 @@ async function handlePut(request, env) {
   } catch (error) {
     return json({ error: `Écriture KV impossible : ${String(error?.message || error)}` }, { status: 500 })
   }
-  return json({ rev, updatedAt, count: payload.products.length })
+  /* `version` est renvoyée pour que l'application sache si ce Worker sait
+     transporter les dépenses (`expenses: true`) ou non. */
+  return json({ version: DOC_VERSION, rev, updatedAt, count: payload.products.length, expenses: true })
 }
 
 export default {
