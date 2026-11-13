@@ -726,6 +726,16 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.6.3 - aucune section privilégiée
+
+L'écran Dépenses ouvrait d'office sur les Recettes. Cette préférence est retirée : il ouvre
+sur sa **première section**, dans l'ordre des onglets — Dépenses, Catégories,
+Investissements, Recettes. Chaque section est à un appui, aucune n'est imposée.
+
+Vérifié par `node tools/check.mjs --only expenses` : « l'ouverture est la première section »,
+« les cases de catégorie sont visibles d'emblée », « les recettes ne sont plus imposées » et
+« les recettes sont à un appui ».
+
 ### Version 9.6.2 - l'application se met à jour toute seule
 
 Un appareil resté sur une version antérieure publiait la Liste, les factures et l'analyse —
@@ -772,8 +782,9 @@ colonnes sur téléphone). Une dépense ordinaire ne propose aucun investissemen
 modifie aucun reste à récupérer ; le mode transfert n'existe que depuis le bouton
 « Transférer » d'une fiche d'investissement.
 
-À l'ouverture, l'écran Dépenses montre la **section Recettes** ; l'onglet « Dépenses » —
-cases de catégorie puis fiches — est à un appui.
+À l'ouverture, l'écran Dépenses montre sa **première section**, dans l'ordre des onglets
+(Dépenses, Catégories, Investissements, Recettes) ; aucune section n'est privilégiée, chacune
+est à un appui.
 
 ## Structure du projet
 

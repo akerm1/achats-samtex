@@ -178,13 +178,14 @@ async function formBench() {
   check('écran : l’écran Dépenses s’ouvre au chargement', opened.ok, opened.ok ? '' : opened.screen)
   if (!opened.ok) return
 
-  /* La demande : l'écran ouvre sur la section Recettes, pas sur les dépenses. */
+  /* L'écran n'a plus de section privilégiée : il ouvre sur la première,
+     dans l'ordre des onglets, comme n'importe quel écran. */
   const active = doc().querySelector('.expense-tab.is-active')
-  check('écran : l’ouverture est la section Recettes', active?.dataset.value === 'revenues', active ? text(active) : 'aucun onglet actif')
-  check('écran : les recettes sont visibles d’emblée', Boolean(doc().querySelector('.revenue-day-card')), doc().querySelector('.revenue-day-card') ? text(doc().querySelector('.revenue-day-card')).slice(0, 40) : 'aucune recette')
-  check('écran : les dépenses ne sont pas à l’ouverture', !doc().querySelector('.quick-add'), doc().querySelector('.quick-add') ? 'bloc dépenses visible' : 'section recettes seule')
+  check('écran : l’ouverture est la première section', active?.dataset.value === 'expenses', active ? text(active) : 'aucun onglet actif')
+  check('écran : les cases de catégorie sont visibles d’emblée', Boolean(doc().querySelector('.quick-add')), doc().querySelector('.quick-add') ? 'bloc présent' : 'bloc absent')
+  check('écran : les recettes ne sont plus imposées', !doc().querySelector('.revenue-day-card'), doc().querySelector('.revenue-day-card') ? 'recettes affichées' : 'section dépenses seule')
 
-  /* On passe aux dépenses : la suite du banc les concerne. */
+  /* Le passage par l'onglet Recettes reste vérifié plus bas. */
   doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')?.click()
   await sleep(200)
 
@@ -378,10 +379,10 @@ async function narrowBench() {
   stage.setAttribute('style', 'position:fixed;left:-20000px;top:0;width:1200px;height:1400px;border:0')
 }
 
-/* L'application s'ouvre sur l'écran Dépenses, section Recettes, et compte
-   en dinars. Trois choix d'usage : un hash vide atterrit sur l'écran, la
-   section affichée est Recettes, et le moindre montant porte « DA » —
-   jamais « € » ni « MAD ». */
+/* L'application s'ouvre sur l'écran Dépenses, sur sa première section, et
+   compte en dinars. Trois choix d'usage : un hash vide atterrit sur l'écran,
+   la première section est affichée (aucune n'est privilégiée), et le moindre
+   montant porte « DA » — jamais « € » ni « MAD ». */
 async function landingBench() {
   const opened = await mount('', '.screen-head')
   check('défaut : un hash vide ouvre les Dépenses', opened.ok, opened.ok ? '' : opened.screen)
@@ -394,10 +395,11 @@ async function landingBench() {
   check('défaut : la barre haute nomme Dépenses', /dépenses/i.test(title), title || 'titre vide')
 
   const active = doc().querySelector('.expense-tab.is-active')
-  check('défaut : la section affichée est Recettes', active?.dataset.value === 'revenues', active ? text(active) : 'aucun onglet actif')
-  const expensesTab = doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')
-  check('défaut : les dépenses sont à un appui', Boolean(expensesTab), expensesTab ? text(expensesTab) : 'onglet absent')
+  check('défaut : la première section est affichée', active?.dataset.value === 'expenses', active ? text(active) : 'aucun onglet actif')
+  const revenueTab = doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]')
+  check('défaut : les recettes sont à un appui', Boolean(revenueTab), revenueTab ? text(revenueTab) : 'onglet absent')
 
+  doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]')?.click()
   const revenue = await waitFor('.revenue-day-card')
   const amount = text(revenue?.querySelector('.card-amount'))
   check('devise : la recette compte en dinars', /DA$/.test(amount), amount || 'aucun montant')

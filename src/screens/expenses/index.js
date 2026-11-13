@@ -2,8 +2,8 @@
 /* Écran Dépenses                                                      */
 /*                                                                     */
 /* Quatre onglets : Dépenses, Catégories, Investissements, Recettes.   */
-/* L'écran ouvre sur les recettes du jour ; les dépenses (cases de      */
-/* catégorie + liste) sont à un appui.                                 */
+/* L'écran ouvre sur le premier, dans cet ordre, sans section          */
+/* privilégiée : chaque section est à un appui.                        */
 /* Ce fichier ne fait que l'assemblage : chaque onglet a son module,    */
 /* l'état partagé vit dans state.js.                                   */
 /* ------------------------------------------------------------------ */
@@ -26,7 +26,7 @@ const TABS = [
   { value: 'revenues', label: 'Recettes', icon: 'trendingUp' },
 ]
 
-/* L'écran ouvre sur la section Recettes (voir state.js) ; les dépenses
+/* L'écran ouvre sur la première section (voir state.js) ; les autres
    restent à un appui, avec leurs cases de catégorie. */
 function bodyHtml() {
   if (state.tab === 'categories') return categoriesHtml()
