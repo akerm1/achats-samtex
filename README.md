@@ -229,7 +229,8 @@ l'application* affiche en permanence un bouton :
 1. **Rechercher une mise à jour** interroge `version.json` (le seul repère de
    version, publié à la racine du dépôt) sans passer par un cache.
 2. Si une version plus récente existe, le bouton devient **Installer la mise à
-   jour 7.0.1** et attend le clic : rien ne s'installe tout seul.
+   jour 7.0.1**. Depuis la 9.6.2 elle s'installe aussi d'elle-même au démarrage
+   (une fois par session) ; le bouton reste le recours manuel.
 3. L'installation vide le cache, revalide la coquille hors-ligne et recharge la
    page avec une empreinte dans l'URL.
 
@@ -724,6 +725,24 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
+
+### Version 9.6.2 - l'application se met à jour toute seule
+
+Un appareil resté sur une version antérieure publiait la Liste, les factures et l'analyse —
+mais pas les dépenses : son code ne les connaissait pas. La mise à jour existait, proposée
+dans les Réglages, et il fallait penser à cliquer.
+
+- **La version publiée s'installe d'elle-même** au démarrage, une fois par session, puis
+  l'application se recharge. Le bouton des Réglages reste là pour le cas où l'installation
+  n'aurait pas pu se faire. Une seule tentative par session, pour qu'un `version.json`
+  publié en avance sur le dépôt ne fasse pas boucler le rechargement.
+- **L'écran Dépenses affiche ce que le serveur porte vraiment** : « Lien privé à jour :
+  12 dépenses sur le serveur, comme ici. » Deux nombres différents passent en orange —
+  « 12 ici, 3 sur le serveur : la saisie n'est pas encore partie » — au lieu de laisser
+  croire que tout est synchronisé.
+
+Vérifié par `node tools/check.mjs --only expenses` : la phrase de synchronisation est
+contrôlée dans les quatre cas (d'accord, en écart, Worker v5, aucun lien privé).
 
 ## Écrans & fonctionnalités
 

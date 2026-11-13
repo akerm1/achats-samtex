@@ -16,14 +16,29 @@ import { state } from './state.js'
  * Et si le Worker déployé est resté en v5, il reçoit les dépenses sans
  * les garder — c'est exactement le symptôme « seule la Liste est en
  * ligne ». Le dire vaut mieux que laisser chercher.
+ *
+ * `info` est l'état de synchronisation (par défaut celui du store), ce qui
+ * rend la phrase vérifiable sans monter d'écran : c'est la seule preuve
+ * visible que la saisie d'un appareil est arrivée au serveur.
  */
-function syncNote() {
-  const { provider, expensesSync, expensesSyncKnown } = getState()
+export function syncNote(info = getState()) {
+  const { provider, expensesSync, expensesSyncKnown, expensesRemote, localCount = 0 } = info
   if (provider === PROVIDER_WORKER) {
-    if (!expensesSyncKnown || expensesSync) return ''
-    return `<p class="screen-note screen-note--alert">${icon('cloud', 12)} Le lien privé fonctionne pour la Liste mais son Worker n'est pas à jour : il ne garde pas encore les dépenses. Recollez <strong>worker/share-list-worker.mjs</strong> dans Cloudflare, puis rechargez.</p>`
+    if (!expensesSyncKnown) return ''
+    if (!expensesSync) {
+      return `<p class="screen-note screen-note--alert">${icon('cloud', 12)} Le lien privé fonctionne pour la Liste mais son Worker n'est pas à jour : il ne garde pas encore les dépenses. Recollez <strong>worker/share-list-worker.mjs</strong> dans Cloudflare, puis rechargez.</p>`
+    }
+    if (typeof expensesRemote !== 'number') return ''
+    if (expensesRemote === localCount) {
+      return `<p class="screen-note">${icon('cloud', 12)} Lien privé à jour : <strong>${remoteLabel(expensesRemote)}</strong> sur le serveur, comme ici.</p>`
+    }
+    return `<p class="screen-note screen-note--alert">${icon('cloud', 12)} <strong>${localCount}</strong> dépense(s) ici, <strong>${remoteLabel(expensesRemote)}</strong> sur le serveur : la saisie n'est pas encore partie. Appuyez sur la pastille de synchronisation en haut de l'écran.</p>`
   }
   return `<p class="screen-note">${icon('cloud', 12)} Les dépenses ne sont synchronisées qu'avec le lien privé Cloudflare — ici, elles restent sur cet appareil.</p>`
+}
+
+function remoteLabel(count) {
+  return count === 0 ? 'aucune dépense' : `${count} dépense${count > 1 ? 's' : ''}`
 }
 
 export function header() {
@@ -54,7 +69,7 @@ export function header() {
           <strong>${filtered.length}</strong> dépense${filtered.length > 1 ? 's' : ''}
           ${totalAmount ? ` · <span class="screen-total">${formatMoney(totalAmount, settings.currency)}</span>` : ''}
         </p>
-        ${syncNote()}
+        ${syncNote({ ...getState(), localCount: expenses.length })}
       </div>
       <div class="screen-stats">
         <div class="stat">

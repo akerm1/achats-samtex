@@ -146,6 +146,16 @@ async function diskChecks() {
     pass: ignored.includes('worker/LIEN-PRIVE.txt'),
   })
 
+  /* Un appareil resté sur du vieux code publie une liste sans les dépenses :
+     la version publiée doit donc s'installer d'elle-même, une fois par
+     session, sans dépendre d'un clic. */
+  const pwa = fs.readFileSync(path.join(ROOT, 'src/app/pwa.js'), 'utf8')
+  results.push({
+    name: 'pwa.js installe la mise à jour publiée',
+    pass: /installUpdate\s*\(/.test(pwa) && /sessionStorage/.test(pwa),
+    detail: /installUpdate\s*\(/.test(pwa) ? 'installation automatique' : 'mise à jour laissée au clic',
+  })
+
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
 
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne

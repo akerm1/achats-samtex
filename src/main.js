@@ -43,7 +43,8 @@ function init() {
      recharger l'application sur `#/factures` retombe sur la liste. */
   showRoute(currentRoute())
 
-  /* Une seule vérification silencieuse au démarrage : elle n'installe rien. */
+  /* Une seule vérification au démarrage : elle installe la version publiée
+     si elle est plus récente (une fois par session), sinon elle ne fait rien. */
   checkUpdateInBackground()
 }
 

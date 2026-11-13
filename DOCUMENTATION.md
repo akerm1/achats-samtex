@@ -57,10 +57,12 @@ de page, clic sur la pastille, ou « Synchroniser »).
 
 ### Mécanisme de mise à jour
 `version.json` (racine) est le seul repère de version publié. `src/core/update.js` le lit avec
-`cache:no-store` et le compare à `APP_VERSION` de `src/core/app.js` ; l'installation n'a lieu
-qu'au clic explicite (vidage de tous les caches → rafraîchissement du SW → rechargement avec
-empreinte `?v=`). `sw.js` **ne met jamais le code en cache** — réseau d'abord uniquement, le cache
-ne servant qu'en repli hors-ligne → impossible d'avoir un mélange de versions.
+`cache:no-store` et le compare à `APP_VERSION` de `src/core/app.js` ; si la version publiée est
+plus récente, elle **s'installe d'elle-même au démarrage** (une seule tentative par session,
+`sessionStorage`), puis la page se recharge avec une empreinte `?v=`. Le bouton des Réglages
+reste le recours manuel. L'installation vide tous les caches, rafraîchit le SW et recharge.
+`sw.js` **ne met jamais le code en cache** — réseau d'abord uniquement, le cache ne servant
+qu'en repli hors-ligne → impossible d'avoir un mélange de versions.
 
 ---
 
@@ -111,7 +113,7 @@ icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 | `initActions()` | délegation document click/keydown pour `[data-action]` et `[data-role="card-body"]` |
 | `isTyping(target)` | vrai dans input/textarea/select/contenteditable |
 | `initShortcuts()` | `N` nouveau · `/` recherche · `S` sync · `1 2 3` vues (bloqué en saisie/dialogue ouvert) |
-| `initServiceWorker()` / `checkUpdateInBackground()` / `initInstallFlow()` | enregistrement SW, vérification silencieuse (bandeau seulement), `beforeinstallprompt`/`appinstalled` |
+| `initServiceWorker()` / `checkUpdateInBackground()` / `initInstallFlow()` | enregistrement SW, vérification de `version.json` au démarrage qui **installe la version publiée d'elle-même** (une seule fois par session, `sessionStorage`), `beforeinstallprompt`/`appinstalled` |
 | `init()` | ordre de démarrage complet ; `handleDisconnect()` confirmation → `clearConfig()` |
 
 Registre `ACTIONS` (68) : `open-form, fab-add, set-sort, set-layout, edit, preview-color,
@@ -139,13 +141,13 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='9.6.1'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.6.2'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`
 | Fichier | Contenu |
 |---|---|
-| **store.js** (1140 lignes, le cœur) | **État :** `products, bills, config, prefs, sha, remoteRev, state{loaded,status,message,messageKind,lastSyncAt,pending,dirty}`, `usage`, `storageProblem`, `writeChain` (écritures sérialisées). **Exports :** `DEFAULT_PREFS`, `subscribe`, `statusLabel` (À jour/Connexion…/Envoi…/Hors ligne/Erreur/Local seul), `getState` (ajoute `provider, readOnly, unpublished, pendingCount, storageFull, usage…`), `isStorageFull`, `arePhotosSeparated`, `getProducts/getBills`, `isLoaded/getStatus/getSyncMessage/getConfig/getLastSyncAt/getPrefs/isPending`, `setPrefs` (prefs partagées poussées), `saveConfig`, `setSyncMessage`, `clearConfig` (drapeau d'opt-out), `load`, `refresh` (la seule lecture distante), `push({force})` (publie produits+réglages+factures), `importFromGithub` (migration GitHub → Worker en un clic), **CRUD produit** `addProduct/updateProduct/toggleBought/setBought/deleteProduct/restoreProduct/clearBought/restoreMany/clearAll/importProducts/replaceAll`, **CRUD facture** `addBill/updateBill/toggleBillPaid/deleteBill/restoreBill/importBills`. **Internes :** `persistLocal/persistBills` (photos séparées dans IndexedDB, rapport de quota), `writePhotos` (nettoie les orphelins avec produits ∪ factures), `syncWithRemote` (garde anti-version-ancienne, `dirty` → push sinon adoption du distant), `markTokenRejected`, `readOnlyNote`, `settingsSnapshot/applyRemoteSettings`, `connectDefault`, `notify` (cooldown 8 s). |
+| **store.js** (1140 lignes, le cœur) | **État :** `products, bills, config, prefs, sha, remoteRev, state{loaded,status,message,messageKind,lastSyncAt,pending,dirty}`, `usage`, `storageProblem`, `writeChain` (écritures sérialisées). **Exports :** `DEFAULT_PREFS`, `subscribe`, `statusLabel` (À jour/Connexion…/Envoi…/Hors ligne/Erreur/Local seul), `getState` (ajoute `provider, readOnly, unpublished, pendingCount, storageFull, usage, expensesSync/expensesSyncKnown/expensesRemote…`), `isStorageFull`, `arePhotosSeparated`, `getProducts/getBills`, `isLoaded/getStatus/getSyncMessage/getConfig/getLastSyncAt/getPrefs/isPending`, `setPrefs` (prefs partagées poussées), `saveConfig`, `setSyncMessage`, `clearConfig` (drapeau d'opt-out), `load`, `refresh` (la seule lecture distante), `push({force})` (publie produits+réglages+factures), `importFromGithub` (migration GitHub → Worker en un clic), **CRUD produit** `addProduct/updateProduct/toggleBought/setBought/deleteProduct/restoreProduct/clearBought/restoreMany/clearAll/importProducts/replaceAll`, **CRUD facture** `addBill/updateBill/toggleBillPaid/deleteBill/restoreBill/importBills`. **Internes :** `persistLocal/persistBills` (photos séparées dans IndexedDB, rapport de quota), `writePhotos` (nettoie les orphelins avec produits ∪ factures), `syncWithRemote` (garde anti-version-ancienne, `dirty` → push sinon adoption du distant), `markTokenRejected`, `readOnlyNote`, `settingsSnapshot/applyRemoteSettings`, `connectDefault`, `notify` (cooldown 8 s). |
 | **products-model.js** (`bills-model.js` pour les factures) (420) | Enums : `STATUS`, `CATEGORIES` (8 catégories avec unité par défaut), `UNITS` (piece/metre/rouleau), `PRIORITIES`, `SORTS` (recent/name/price/qty/priority), `CARD_LAYOUTS` (card/mosaic/row), `BILL_STATUS`. Fonctions : `colorCss/colorHex`, `displayName`, `categoryLabel`, `unitLabel/unitShort`, `priorityMeta`, `defaultUnitFor`, `normalizeProduct`/`normalizeList` (tolérant, conserve les champs inconnus), `productView`, `describeQty`, `matchesQuery` (AND de jetons, insensible accents), `sortProducts` (achetés toujours en bas), `filterProducts`, `groupByCategory`, `sumTotal`, `computeStats`, `knownSuppliers`, `listSummaryText` (texte à partager), `normalizeBill`/`normalizeBillList`, `billView`, `sortBills`, `filterBills`, `sumBills` (total/payé/à venir), `knownBillSuppliers`. |
 | **colors.js** (350) | ~157 couleurs françaises → hex ; `normalize`, `colorFromText` (exact puis sous-chaîne la plus longue), `colorList`, `hexToRgb`, `rgbToHex`, `hslToHex`, `rgbToHsl`, `searchColors(text,limit=8)` (exact→préfixe→mot→sous-chaîne), `nearestColor(hex)` (distance HSL pondérée — nomme les couleurs choisies à la roue). |
 | **github.js** (394) | `normalizeConfig` (jeton/owner/repo/branche), `canWrite` (jeton && !tokenRejected), `fetchDefaultConfig` (lit `sync-defaults.json`), `fetchRemoteList` (GET contents ; 404→sondage du dépôt ; **401→un nouvel essai anonyme** → lecture seule ; 403/429→messages distincts ; hors-ligne), `putRemoteList` (PUT base64 ; ignoré en lecture seule ; 404→création sans sha ; 409/422→sha frais + un nouvel essai), `testConnection`, `READ_ONLY_MESSAGE`. |

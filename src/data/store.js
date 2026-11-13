@@ -116,6 +116,10 @@ let remoteRev = 0
 /* Version du document publié par le Worker : 6 = il garde les dépenses.
    0 = pas encore su (aucun document lu ni écrit depuis l'ouverture). */
 let remoteDocVersion = 0
+/* Nombre de dépenses que le serveur porte réellement, d'après la dernière
+   lecture : `null` = inconnu (aucune lecture, ou document d'avant la v6).
+   C'est la seule preuve visible que la saisie d'un appareil est bien arrivée. */
+let remoteExpensesCount = null
 let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
 const NOTIFY_COOLDOWN_MS = 8000
@@ -221,6 +225,9 @@ export function getState() {
        reste sur un seul appareil sans que rien ne l'explique. */
     expensesSync: providerOf(config) === PROVIDER_WORKER ? remoteDocVersion >= 6 : false,
     expensesSyncKnown: providerOf(config) === PROVIDER_WORKER && remoteDocVersion > 0,
+    /* Combien de dépenses le serveur en a : l'écran les affiche à côté des
+       locales, pour que « rien n'est arrivé » se voie au lieu de se deviner. */
+    expensesRemote: remoteExpensesCount,
   }
 }
 
@@ -702,6 +709,8 @@ async function syncWithRemote() {
   } else if (expensesStore.applyRemoteExpenses(remote.expenses)) {
     changed = true
   }
+  /* Ce que le serveur porte vraiment, pour l'afficher à côté du local. */
+  remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
   if (applyRemoteSettings(remote.settings)) changed = true
   /* Document écrit avant les dépenses (Worker < v6) : le serveur sait
      maintenant les recevoir mais n'en a encore aucune. Un appareil qui ne
@@ -866,6 +875,12 @@ export async function push({ force = false } = {}) {
     analysisStore.applyRemoteAnalysis(result.analysis)
     /* Idem pour les dépenses fusionnées par le 409 (objet, sinon `null`). */
     expensesStore.applyRemoteExpenses(result.expenses)
+    /* Ce que le serveur vient d'accepter, c'est ce que l'appareil a envoyé
+       (ou la fusion retenue) : la preuve affichée sur l'écran Dépenses est
+       donc à jour sans attendre une relecture. */
+    if (providerOf(config) === PROVIDER_WORKER && remoteDocVersion >= 6) {
+      remoteExpensesCount = expensesStore.getSnapshot().expenses.length
+    }
     state.dirty = false
     storage.remove(DIRTY_KEY)
     state.status = 'ready'

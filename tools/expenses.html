@@ -430,6 +430,26 @@ async function mergeBench() {
   check('fusion : le distant gagne sur un même identifiant', winner?.amount === 300, String(winner?.amount))
 }
 
+/* La phrase de l'écran est la seule preuve visible que la saisie est arrivée
+   au serveur : deux nombres différents doivent s'y lire sans ambiguïté. */
+async function noteBench() {
+  const { syncNote } = await import('/src/screens/expenses/header.js')
+  const base = { provider: 'worker', expensesSync: true, expensesSyncKnown: true }
+
+  const aligned = syncNote({ ...base, expensesRemote: 3, localCount: 3 })
+  check('note : serveur et appareil d’accord ne crient pas', /à jour/.test(aligned) && !/alert/.test(aligned), aligned.slice(0, 70))
+
+  const behind = syncNote({ ...base, expensesRemote: 1, localCount: 4 })
+  check('note : un écart est signalé en orange', /screen-note--alert/.test(behind), behind.slice(0, 70))
+  check('note : l’écart donne les deux nombres', /4/.test(behind) && /1\s*dépense/.test(behind), behind.slice(0, 90))
+
+  const oldWorker = syncNote({ provider: 'worker', expensesSync: false, expensesSyncKnown: true, expensesRemote: null, localCount: 2 })
+  check('note : un Worker v5 est nommé', /Worker n’est pas à jour|Worker n'est pas à jour/.test(oldWorker), oldWorker.slice(0, 70))
+
+  const local = syncNote({ provider: null, localCount: 2 })
+  check('note : sans lien privé, l’écran dit que tout reste ici', /restent sur cet appareil/.test(local), local.slice(0, 70))
+}
+
 async function run() {
   const report = { theme: 'light', fatal: null, results, errors, detail: {} }
   try {
@@ -448,6 +468,8 @@ async function run() {
     await landingBench()
     log('fusion…')
     await mergeBench()
+    log('note de synchronisation…')
+    await noteBench()
     check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
   } catch (error) {
     report.fatal = { message: error?.message || String(error), stack: error?.stack || '' }
