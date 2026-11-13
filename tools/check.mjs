@@ -177,6 +177,18 @@ async function diskChecks() {
     detail: params.length === 7 ? 'sept arguments transmis' : `${params.length} argument(s) — « expenses » perdu`,
   })
 
+  /* Même piège à la sauvegarde : un `exportJSON` à trois paramètres écrit un
+     fichier valide mais sans les dépenses, et personne ne le voit avant d'en
+     avoir besoin. */
+  const backup = fs.readFileSync(path.join(ROOT, 'src/data/backup.js'), 'utf8')
+  const exporter = backup.match(/export function exportJSON\(([^)]*)\)/)
+  const exportParams = exporter ? exporter[1].split(',').map((p) => p.trim()) : []
+  results.push({
+    name: 'sauvegarde : les dépenses sortent dans le fichier JSON',
+    pass: exportParams.length === 4 && /toJSON\([^)]*\bexpenses\b[^)]*\)/.test(backup),
+    detail: exportParams.length === 4 ? 'produits, factures, analyse, dépenses' : `${exportParams.length} argument(s) — « expenses » perdu`,
+  })
+
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
 
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne

@@ -156,8 +156,15 @@ function mergeById(current, incoming) {
   return { list: [...map.values()], added, updated }
 }
 
-export function exportJSON(products, bills, analysis = null) {
-  downloadText(backupFilename('json'), toJSON(products, bills, analysis), 'application/json')
+/**
+ * Sauvegarde JSON : produits, factures, analyse ET dépenses.
+ *
+ * Le quatrième argument doit être transmis — un `toJSON` à trois paramètres
+ * produisait un fichier parfaitement valide, simplement sans les dépenses,
+ * et personne ne s'en apercevait avant d'en avoir besoin.
+ */
+export function exportJSON(products, bills, analysis = null, expenses = null) {
+  downloadText(backupFilename('json'), toJSON(products, bills, analysis, expenses), 'application/json')
 }
 
 export function exportCSV(products) {

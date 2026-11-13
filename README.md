@@ -726,6 +726,20 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.6.7 - la sauvegarde JSON contient les dépenses
+
+Même oubli que la 9.6.6, à un autre endroit : `exportJSON` n'avait que trois paramètres.
+Le bouton « Sauvegarde JSON » produisait donc un fichier parfaitement valide — produits,
+factures, analyse — **sans les dépenses**. Le seul filet de sécurité en cas de perte d'un
+appareil était troué, et rien ne le signalait.
+
+- **La sauvegarde JSON emporte les dépenses**, catégories, investissements et recettes
+  comprises.
+- Le banc vérifie l'aller-retour complet, et un contrôle sur disque surveille la signature.
+
+Vérifié par `node tools/check.mjs --only bills` : « sauvegarde : les dépenses sortent dans
+le fichier JSON » et « sauvegarde : catégories, investissements et recettes aussi ».
+
 ### Version 9.6.6 - les dépenses traversent enfin l'aiguillage
 
 C'était une ligne. Le store ne parle jamais au Worker directement : il passe par

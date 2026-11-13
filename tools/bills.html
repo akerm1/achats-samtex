@@ -350,6 +350,21 @@ async function backupBench() {
 
   const legacy = backup.parseBackup(JSON.stringify({ products: [{ id: 'p1', name: 'Ruban de satin' }] }))
   check('sauvegarde : un fichier sans factures reste importable', legacy.ok && legacy.bills.length === 0, legacy.message || 'ok')
+
+  /* Les dépenses doivent sortir dans la sauvegarde : c'est le seul filet si
+     un appareil est perdu. Un `exportJSON` à trois paramètres produisait un
+     fichier valide mais sans elles, et rien ne le signalait. */
+  const withExpenses = backup.parseBackup(backup.toJSON([{ id: 'p1', name: 'Ruban' }], [], null, EXPENSES))
+  check(
+    'sauvegarde : les dépenses sortent dans le fichier JSON',
+    withExpenses.ok && withExpenses.expenses?.expenses?.[0]?.id === 'e1',
+    withExpenses.expenses ? `${withExpenses.expenses.expenses?.length ?? 0} dépense(s)` : 'aucune dépense dans le fichier',
+  )
+  check(
+    'sauvegarde : catégories, investissements et recettes aussi',
+    withExpenses.expenses?.categories?.some((c) => c.id === 'tools') && withExpenses.expenses?.investments?.[0]?.id === 'i1' && withExpenses.expenses?.revenues?.[0]?.id === 'r1',
+    withExpenses.expenses ? `${withExpenses.expenses.categories?.length ?? 0} catégorie(s), ${withExpenses.expenses.investments?.length ?? 0} investissement(s), ${withExpenses.expenses.revenues?.length ?? 0} recette(s)` : 'rien dans le fichier',
+  )
 }
 
 /* Le parcours d'écran : ouvrir l'onglet, vérifier la fiche, puis les deux
