@@ -72,7 +72,7 @@ function toolbar() {
     sort: state.sort.expenses,
     sortOptions: SORT_OPTIONS,
     layout: state.layout.expenses,
-    layouts: LAYOUTS,
+    layouts: CARD_LIST_LAYOUTS,
     dateFilter: true,
     startDate: state.startDate,
     endDate: state.endDate,
@@ -179,3 +179,4 @@ function emptyState() {
       }
     </div>`
 }
+
