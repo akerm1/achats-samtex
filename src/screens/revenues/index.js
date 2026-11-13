@@ -32,6 +32,8 @@ let host = null
    écran comme on l'a laissé. */
 let sort = 'recent'
 let layout = 'days'
+let startDate = ''
+let endDate = ''
 
 /** Une date « AAAA-MM-JJ » reste locale : midi évite le décalage de fuseau. */
 function dayLabel(date) {
