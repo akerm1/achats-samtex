@@ -726,6 +726,25 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.6.8 - un serveur vide ne peut plus effacer un appareil
+
+La synchronisation des dépenses fonctionnait — et créait un risque. Le serveur gagne à la
+lecture : si un appareil **sans** dépenses publiait le premier, son état vide remplaçait
+celui de l'appareil qui en avait. Une seule ouverture suffisait pour perdre des semaines de
+saisie, sans avertissement. La fusion de la 9.6.1 existait, mais elle ne repartait pas vers
+le serveur : la lecture suivante retombait sur le document vide, cette fois pour l'appliquer.
+
+- **Un document vide ne remplace jamais un appareil qui a des données** : les deux états
+  sont fusionnés par `id`, et la fusion est **republiée aussitôt**. Le serveur se remplit
+  donc avec ce que l'appareil avait déjà.
+- Une suppression voulue reste une suppression : elle voyage dès que le serveur porte
+  encore quelque chose. Seul le cas « serveur entièrement vide » protège l'appareil.
+
+Vérifié par `node tools/check.mjs --only expenses` : « serveur vide : la dépense de
+l'appareil survit à la lecture », « l'investissement et la recette aussi », « la fusion
+repart au serveur » et « le serveur reçoit enfin la dépense ». Le banc fait tourner le vrai
+store contre le vrai Worker, avec un KV en mémoire.
+
 ### Version 9.6.7 - la sauvegarde JSON contient les dépenses
 
 Même oubli que la 9.6.6, à un autre endroit : `exportJSON` n'avait que trois paramètres.

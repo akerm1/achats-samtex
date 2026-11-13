@@ -692,20 +692,31 @@ async function syncWithRemote() {
   if (analysisStore.applyRemoteAnalysis(remote.analysis)) changed = true
   /* `expenses: null` = document écrit avant les dépenses : on garde les locales. */
   if (remote.expenses) {
+    const localHasData = expensesStore.hasData()
+    const remoteCount = (remote.expenses.expenses?.length || 0)
+      + (remote.expenses.investments?.length || 0)
+      + (remote.expenses.revenues?.length || 0)
     /* Première rencontre avec un document qui porte les dépenses : les
        appareils qui ont saisi pendant que le Worker les ignorait en ont que
        le serveur ne connaît pas. On fusionne par `id` une seule fois — le
-       distant gagne sur un même `id`, le local unique est conservé — puis la
-       fusion repart au serveur, au lieu d'écraser l'historique local. */
+       distant gagne sur un même `id`, le local unique est conservé.
+
+       Même règle quand le serveur est VIDE et l'appareil rempli : c'est ce
+       qui se produit dès qu'un appareil sans dépenses publie avant celui qui
+       en a. Remplacer le local par ce vide effacerait des semaines de saisie
+       en une lecture — la fusion, elle, ne peut que conserver. */
     const firstWithExpenses = !storage.get(EXPENSES_SEEN_KEY, false)
-    if (firstWithExpenses && expensesStore.hasData()) {
+    if (localHasData && (firstWithExpenses || remoteCount === 0)) {
       const merged = expensesStore.importExpenses(remote.expenses, { mode: 'merge' })
       storage.set(EXPENSES_SEEN_KEY, true)
       if (merged.added || merged.updated) changed = true
-    } else {
-      storage.set(EXPENSES_SEEN_KEY, true)
-      if (expensesStore.applyRemoteExpenses(remote.expenses)) changed = true
+      remoteExpensesCount = expensesStore.getSnapshot().expenses.length
+      /* La fusion doit repartir au serveur : sans cela la lecture suivante
+         retrouverait un document vide et, cette fois, remplacerait le local. */
+      return push({ force: true })
     }
+    storage.set(EXPENSES_SEEN_KEY, true)
+    if (expensesStore.applyRemoteExpenses(remote.expenses)) changed = true
   } else if (expensesStore.applyRemoteExpenses(remote.expenses)) {
     changed = true
   }

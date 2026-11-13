@@ -432,6 +432,98 @@ async function mergeBench() {
   check('fusion : le distant gagne sur un même identifiant', winner?.amount === 300, String(winner?.amount))
 }
 
+/* Un serveur VIDE ne doit jamais effacer un appareil qui a des données :
+   c'est le scénario exact d'aujourd'hui — un appareil sans dépenses publie
+   le premier, l'autre lit ce vide et perd des semaines de saisie. Le banc
+   fait tourner le vrai store contre le vrai Worker (KV en mémoire). */
+async function emptyRemoteBench() {
+  document.getElementById('stage')?.remove()
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'banc-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.banc.workers.dev/banc-key'
+  const emptyExpenses = {
+    categories: [{ id: 'tools', label: 'Outils', icon: 'tag', color: '#757575', order: 0 }],
+    expenses: [],
+    investments: [],
+    revenues: [],
+    settings: { currency: 'DZD' },
+  }
+  kv.set('doc', JSON.stringify({
+    version: 6,
+    rev: 7,
+    updatedAt: new Date().toISOString(),
+    settings: null,
+    products: [],
+    bills: [],
+    analysis: null,
+    expenses: emptyExpenses,
+    client: '9.6.7',
+  }))
+
+  /* L'appareil qui a les données : une dépense, un investissement, une recette. */
+  localStorage.setItem(KEY_CONFIG, JSON.stringify({ provider: 'worker', endpoint }))
+  localStorage.removeItem('purchase-gros-dirty-v1')
+  localStorage.removeItem('purchase-gros-expenses-sync-v1')
+  localStorage.setItem(KEY_EXPENSES, JSON.stringify({
+    categories: emptyExpenses.categories,
+    expenses: [{ id: 'e-phone', categoryId: 'tools', amount: 250, date: '2026-11-10' }],
+    investments: [{ id: 'i-phone', name: 'Stock', amount: 900, remaining: 900 }],
+    revenues: [{ id: 'r-phone', date: '2026-11-09', amount: 1500 }],
+    settings: { currency: 'DZD' },
+  }))
+
+  const sent = []
+  const realFetch = window.fetch
+  window.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.url
+    if (url.startsWith(endpoint)) {
+      if (init?.method === 'PUT' && init.body) {
+        try { sent.push(JSON.parse(init.body)) } catch { sent.push(null) }
+      }
+      return worker.fetch(new Request(url, init), env)
+    }
+    return realFetch(input, init)
+  }
+
+  let store
+  let expensesStore
+  try {
+    store = await import('/src/data/store.js')
+    expensesStore = await import('/src/data/expenses-store.js')
+    await store.load()
+    /* Le push de la fusion est asynchrone : on attend qu'il parte. */
+    for (let i = 0; i < 60 && !sent.length; i += 1) await sleep(50)
+  } finally {
+    window.fetch = realFetch
+  }
+
+  const kept = expensesStore.getExpenses()
+  check('serveur vide : la dépense de l’appareil survit à la lecture', kept.expenses.some((e) => e.id === 'e-phone'), `${kept.expenses.length} dépense(s) en local`)
+  check('serveur vide : l’investissement et la recette aussi', kept.investments.some((i) => i.id === 'i-phone') && kept.revenues.some((r) => r.id === 'r-phone'), `${kept.investments.length} investissement(s), ${kept.revenues.length} recette(s)`)
+
+  const published = sent.find((body) => body?.expenses?.expenses?.some((e) => e.id === 'e-phone'))
+  check('serveur vide : la fusion repart au serveur', Boolean(published), published ? 'dépense publiée' : `${sent.length} envoi(s), aucun avec la dépense`)
+
+  const stored = kv.has('doc') ? JSON.parse(kv.get('doc')) : null
+  check('serveur vide : le serveur reçoit enfin la dépense', stored?.expenses?.expenses?.some((e) => e.id === 'e-phone'), `${stored?.expenses?.expenses?.length ?? 0} dépense(s) au serveur`)
+
+  /* On rend le profil aux autres passes. */
+  localStorage.removeItem(KEY_CONFIG)
+  localStorage.setItem(KEY_OPTOUT, 'true')
+  seed()
+}
+
 /* La phrase de l'écran est la seule preuve visible que la saisie est arrivée
    au serveur : deux nombres différents doivent s'y lire sans ambiguïté. */
 async function noteBench() {
@@ -470,6 +562,8 @@ async function run() {
     await landingBench()
     log('fusion…')
     await mergeBench()
+    log('serveur vide…')
+    await emptyRemoteBench()
     log('note de synchronisation…')
     await noteBench()
     check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
