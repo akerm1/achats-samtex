@@ -726,6 +726,23 @@ Deux détails empêchaient encore la synchronisation d'aboutir, une fois le Work
 Vérifié par `node tools/check.mjs --only bills` : « un vieux document ne fait pas passer le
 Worker pour périmé » et « un vieux document ne prétend pas avoir des dépenses ».
 
+### Version 9.6.5 - le serveur dit quel appareil écrit
+
+Quand un appareil publie la Liste, les factures et l'analyse mais jamais les dépenses, la
+question est toujours la même : **quel appareil, et avec quelle version ?** Jusqu'ici il
+fallait le demander. Désormais le serveur le sait.
+
+- **Chaque publication porte la version de l'application** (`client`). Le Worker la range
+  avec le document et la renvoie en lecture, dans le conflit `409` et dans sa réponse
+  d'écriture.
+- **Un document écrit par une version antérieure ne peut plus passer inaperçu** : si
+  `client` est absent (donc antérieur à la 9.6.5) ou inférieur à 9.6, c'est cet appareil qui
+  ignore les dépenses.
+- Aucune donnée personnelle en plus : un simple numéro de version, à côté de `updatedAt`.
+
+Vérifié par `node tools/check.mjs --only bills` : « la version de l'appareil qui écrit est
+conservée ».
+
 ### Version 9.6.4 - un seul clic pour se mettre à jour
 
 Le bouton des Réglages demandait deux clics : le premier trouvait la version, le second

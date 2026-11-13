@@ -69,7 +69,7 @@ async function handleGet(env) {
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
   if (!raw) {
-    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null })
+    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null, client: null })
   }
   return json({
     /* `version` = version du Worker qui répond, pas celle du document
@@ -94,6 +94,9 @@ async function handleGet(env) {
     /* Idem pour `expenses` : `null` = document écrit avant la v6, et
        l'appareil garde alors ses dépenses locales. */
     expenses: expensesOf(raw.expenses),
+    /* Version de l'application du dernier appareil qui a publié : c'est
+       elle qui dit si un appareil écrit encore sans les dépenses. */
+    client: typeof raw.client === 'string' ? raw.client : null,
   })
 }
 
@@ -138,6 +141,7 @@ async function handlePut(request, env) {
         /* Idem pour les dépenses : sans elles, la fusion par `id` n'aurait
            rien à fusionner et l'écriture suivante les écraserait. */
         expenses: expensesOf(current?.expenses),
+        client: typeof current?.client === 'string' ? current.client : null,
       },
       { status: 409 },
     )
@@ -160,6 +164,8 @@ async function handlePut(request, env) {
        pas effacer celles déjà publiées : on garde alors le document courant.
        Un objet vide, lui, reste une suppression volontaire et s'applique. */
     expenses: expensesOf(payload.expenses) ?? expensesOf(current?.expenses),
+    /* L'appareil qui a écrit, pour diagnostiquer à distance. */
+    client: typeof payload.client === 'string' ? payload.client : null,
   }
 
   try {
@@ -169,7 +175,7 @@ async function handlePut(request, env) {
   }
   /* `version` est renvoyée pour que l'application sache si ce Worker sait
      transporter les dépenses (`expenses: true`) ou non. */
-  return json({ version: DOC_VERSION, rev, updatedAt, count: payload.products.length, expenses: true })
+  return json({ version: DOC_VERSION, rev, updatedAt, count: payload.products.length, expenses: true, client: document.client })
 }
 
 export default {

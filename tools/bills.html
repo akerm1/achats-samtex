@@ -274,6 +274,12 @@ async function workerBench() {
   const oldDoc = await (await call('GET')).json()
   check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 6, `version = ${oldDoc.version}`)
   check('worker : un vieux document ne prétend pas avoir des dépenses', oldDoc.expenses === null, JSON.stringify(oldDoc.expenses))
+
+  /* L'appareil qui écrit se nomme : sans cela, un téléphone resté sur une
+     version qui ignore les dépenses est indétectable à distance. */
+  await call('PUT', { products: [{ id: 'p1' }], client: '9.9.9' }, 51)
+  const named = await (await call('GET')).json()
+  check('worker : la version de l’appareil qui écrit est conservée', named.client === '9.9.9', String(named.client))
 }
 
 /* La sauvegarde est le seul endroit où les deux collections sortent du

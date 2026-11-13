@@ -16,6 +16,7 @@
 /* ------------------------------------------------------------------ */
 
 import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { APP_VERSION } from '../core/app.js'
 
 export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.workers.dev/<clé-secrète>'
 
@@ -128,6 +129,10 @@ export async function fetchRemoteList(config) {
 function buildBody(list, settings, bills, analysis, expenses) {
   return JSON.stringify({
     version: 6,
+    /* Quelle application écrit : le serveur le garde, ce qui permet de
+       savoir — sans demander à personne — quel appareil publie encore avec
+       une version qui ignore les dépenses. */
+    client: APP_VERSION,
     updatedAt: new Date().toISOString(),
     settings: settings || null,
     products: list,

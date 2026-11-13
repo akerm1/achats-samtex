@@ -142,7 +142,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **theme.js** | `THEMES` (Clair/Sombre/Système), `resolveTheme`, `getThemePreference`, `applyTheme` (pose `data-theme` + réécrit les deux `<meta theme-color>`), `setTheme`, `initTheme` (suit `prefers-color-scheme` seulement en mode Système) ; clé `purchase-gros-theme-v1` |
 | **feedback.js** | `toast(msg,{type,actionLabel,onAction,duration})` — max 3, 4,5 s, bouton d'action (servi pour l'annulation) · `confirmAction({title,message,danger})` → `Promise<boolean>` sur `<dialog>` natif, repli `window.confirm` |
 | **photo.js** | `isImageFile`, `compressPhoto(file,maxSide=900,quality=0.72)` → canvas → JPEG (fond blanc), `readableSize`, `fileToDataUrl` (ne rejette jamais, messages en français) |
-| **app.js** | `APP_VERSION='9.6.4'`, `APP_RELEASE='2026-11-13'` — doit égaler `version.json` |
+| **app.js** | `APP_VERSION='9.6.5'`, `APP_RELEASE='2026-11-13'` - doit égaler `version.json` |
 | **update.js** | `VERSION_FILE`, `subscribe`, `compareVersions`, `isUpdateAvailable`, `getUpdateState`, `checkForUpdate` (fetch no-store, garde anti-réentrance, indicateur hors-ligne), `installUpdate` (vide les caches → `registration.update()` → SKIP_WAITING → `location.replace('?v=…')`, chien de garde 15 s) |
 
 ### `src/data/*`
@@ -176,7 +176,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 ### `worker/*` (backend optionnel)
 | Fichier | Contenu |
 |---|---|
-| **share-list-worker.mjs** | Routes : `OPTIONS`→204 CORS, chemin≠`LIST_KEY`→**404 indistinguable**, absence de binding KV→500, `GET`→document (`{version:6, rev, settings, products, bills, analysis, expenses}`, ou `empty:true` au premier usage ; `expenses: null` = document écrit avant la v6), `PUT`→ garde 20 Mo→413, JSON invalide→400, `products` non tableau→400, **`X-Rev` < `rev` courant → 409 avec le document courant, factures, analyse et dépenses comprises** (pour que le client fusionne), sinon écriture `rev+1` → `{version:6, rev, updatedAt, count, expenses:true}` ; une écriture sans `expenses` conserve celles déjà publiées ; autres méthodes→405. |
+| **share-list-worker.mjs** | Routes : `OPTIONS`→204 CORS, chemin≠`LIST_KEY`→**404 indistinguable**, absence de binding KV→500, `GET`→document (`{version:6, rev, settings, products, bills, analysis, expenses}`, ou `empty:true` au premier usage ; `expenses: null` = document écrit avant la v6), `PUT`→ garde 20 Mo→413, JSON invalide→400, `products` non tableau→400, **`X-Rev` < `rev` courant → 409 avec le document courant, factures, analyse et dépenses comprises** (pour que le client fusionne), sinon écriture `rev+1` → `{version:6, rev, updatedAt, count, expenses:true, client}` ; une écriture sans `expenses` conserve celles déjà publiées ; `client` (version de l'application qui a publié) est rangé avec le document et renvoyé en lecture, dans le `409` et dans la réponse d'écriture, ce qui révèle à distance un appareil resté sur une version antérieure à la 9.6.5 (absence de `client`) ou à la 9.6 (dépenses jamais reçues) ; autres méthodes→405. |
 | **wrangler.toml** | nom `liste-achats`, binding KV `LIST`, `workers_dev=true`. |
 | **setup.ps1** (261) | Script relançable en une exécution : `wrangler login` → création/réutilisation du namespace KV → génération/réutilisation d'une clé de 32 caractères → `secret put LIST_KEY` → `deploy` → vérification GET → écriture du lien dans `LIEN-PRIVE.txt` (git-ignoré) → instructions d'installation. |
 | **LIEN-PRIVE.txt** | Le lien secret lui-même (git-ignoré, jamais commité). |
