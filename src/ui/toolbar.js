@@ -25,21 +25,27 @@ export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
  * @param {boolean} options.dateFilter afficher le filtre de date
  * @param {string} options.startDate date de début
  * @param {string} options.endDate date de fin
+ * @param {string} options.onStartDateChange callback when start date changes
+ * @param {string} options.onEndDateChange callback when end date changes
  */
-export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, dateFilter = false, startDate = '', endDate = '' }) {
+export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, dateFilter = false, startDate = '', endDate = '', onStartDateChange, onEndDateChange }) {
   const dateHtml = dateFilter
     ? `
       <div class="date-filter" role="region" aria-label="Filtre par date">
-        <label class="sr-only" for="${esc(id)}-start">Date de début</label>
-        <input type="date" id="${esc(id)}-start" class="select list-date" data-action="${esc(prefix)}-start-date" value="${startDate || ''}">
-        <label class="sr-only" for="${esc(id)}-end">Date de fin</label>
-        <input type="date" id="${esc(id)}-end" class="select list-date" data-action="${esc(prefix)}-end-date" value="${endDate || ''}">
+        <span class="date-filter-label">${esc(startDate || 'Du')}</span>
+        <span class="date-filter-label">${esc(endDate || 'À')}</span>
+        <button type="button" class="date-filter-btn" data-action="${esc(prefix)}-start-date" aria-label="${esc(startDate ? 'Changer la date de début' : 'Définir une date de début')}">
+          ${icon('calendar', 14)}
+        </button>
+        <button type="button" class="date-filter-btn" data-action="${esc(prefix)}-end-date" aria-label="${esc(endDate ? 'Changer la date de fin' : 'Définir une date de fin')}">
+          ${icon('calendar', 14)}
+        </button>
       </div>`
     : ''
 
   return `
     <div class="list-toolbar" data-role="toolbar">
-      <span class="list-toolbar-label">Tri &amp; présentation</span>
+      <span class="list-toolbar-label">Tri & présentation</span>
       <label class="sr-only" for="${esc(id)}">Trier</label>
       <select id="${esc(id)}" class="select list-sort" data-action="${esc(prefix)}-sort">
         ${sortOptions
@@ -74,9 +80,9 @@ export function toolbarHtml({ id, prefix, sort, sortOptions, layout, layouts, da
  *
  * @param {HTMLElement|null} root conteneur de la barre
  * @param {string} prefix préfixe d'action de la barre
- * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDate?: (value:string)=>void, onEndDate?: (value:string)=>void}} handlers
+ * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDateChange?: (value:string)=>void, onEndDateChange?: (value:string)=>void}} handlers
  */
-export function bindToolbar(root, prefix, { onSort, onLayout, onStartDate, onEndDate } = {}) {
+export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange, onEndDateChange }) {
   const select = root?.querySelector(`[data-action="${prefix}-sort"]`)
   select?.addEventListener('change', () => {
     const value = select.value
@@ -89,11 +95,15 @@ export function bindToolbar(root, prefix, { onSort, onLayout, onStartDate, onEnd
       onLayout?.(button.dataset.value)
     })
   })
-  // Handle date filtering
-  root?.querySelector(`[data-action="${prefix}-start-date"]`)?.addEventListener('change', (event) => {
-    onStartDate?.(event.target.value)
-  })
-  root?.querySelector(`[data-action="${prefix}-end-date"]`)?.addEventListener('change', (event) => {
-    onEndDate?.(event.target.value)
+  // Handle date filtering buttons
+  root?.querySelectorAll(`[data-action="${prefix}-start-date"], [data-action="${prefix}-end-date"]`).forEach((button) => {
+    button.addEventListener('click', () => {
+      button.blur()
+      // Toggle date picker or navigate to date selection
+      const isStart = button.dataset.action.includes('start')
+      if (onStartDateChange) {
+        onStartDateChange(isStart)
+      }
+    })
   })
 }

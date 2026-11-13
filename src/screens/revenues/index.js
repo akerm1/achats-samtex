@@ -217,12 +217,14 @@ function paint() {
       layout = value === 'list' ? 'list' : 'days'
       paint()
     },
-    onStartDate: (value) => {
-      startDate = value
+    onStartDateChange: (isStart) => {
+      // Open date picker or handle start date change
+      startDate = isStart ? new Date().toISOString().slice(0, 10) : startDate
       paint()
     },
-    onEndDate: (value) => {
-      endDate = value
+    onEndDateChange: (isEnd) => {
+      // Open date picker or handle end date change
+      endDate = isEnd ? new Date().toISOString().slice(0, 10) : endDate
       paint()
     },
   })

@@ -140,12 +140,12 @@ function bindBody() {
         state.layout[tab] = value === 'list' ? 'list' : 'cards'
         refresh()
       },
-      onStartDate: (value) => {
-        state.startDate = value
+      onStartDateChange: (isStart) => {
+        state.startDate = isStart ? new Date().toISOString().slice(0, 10) : state.startDate
         refresh()
       },
-      onEndDate: (value) => {
-        state.endDate = value
+      onEndDateChange: (isEnd) => {
+        state.endDate = isEnd ? new Date().toISOString().slice(0, 10) : state.endDate
         refresh()
       },
     })
