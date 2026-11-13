@@ -70,7 +70,7 @@ function toolbar() {
     id: 'expenses-sort',
     prefix: 'set-expenses',
     sort: state.sort.expenses,
-    sortOptions: SORTS,
+    sortOptions: SORT_OPTIONS,
     layout: state.layout.expenses,
     layouts: LAYOUTS,
     dateFilter: true,
