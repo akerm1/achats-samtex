@@ -537,6 +537,7 @@
               <a class="tab is-active" href="#/liste"><span class="tab-icon">L</span><span class="tab-label">Liste</span></a>
               <a class="tab" href="#/factures"><span class="tab-icon">F</span><span class="tab-label">Factures</span></a>
               <a class="tab" href="#/depenses"><span class="tab-icon">D</span><span class="tab-label">Dépenses</span></a>
+              <button type="button" class="tab tab--add" data-action="fab-add" aria-label="Ajouter"><span class="tab-icon">+</span><span class="tab-label">Ajouter</span></button>
               <a class="tab" href="#/analyse"><span class="tab-icon">A</span><span class="tab-label">Analyse</span></a>
             </div></nav>
             <button type="button" class="fab" aria-label="Ajouter un produit">+</button>
@@ -580,22 +581,26 @@
         /* Dock : la navigation permanente, quatre entrées, à portée du pouce. */
         const tabs = [...shell.querySelectorAll('.tab')]
         check('dock : posé en bas', getComputedStyle(dock).position === 'fixed', getComputedStyle(dock).position)
-        check('dock : quatre entrées', tabs.length === 4, tabs.length)
+        check('dock : cinq entrées', tabs.length === 5, tabs.length)
         check('dock : masqué au bureau', shown(dock) === !desktop, getComputedStyle(dock).display)
         if (dockShown) {
           check('dock : cibles d’au moins 44 px', tabs.every((t) => t.getBoundingClientRect().height >= 44), tabs.map((t) => Math.round(t.getBoundingClientRect().height)).join('/'))
-          check('dock : aucun onglet d’ajout', tabs.every((t) => !t.classList.contains('tab--add')), tabs.map((t) => t.className).join(' | '))
+          const addTabs = tabs.filter((t) => t.classList.contains('tab--add'))
+          check('dock : une seule entrée d’ajout', addTabs.length === 1, addTabs.length)
+          /* L'ajout doit se distinguer sans crier : une pastille ronde sur
+             l'accent, plus large qu'une icône ordinaire. */
+          const disc = addTabs[0] && addTabs[0].querySelector('.tab-icon')
+          const discBox = disc ? disc.getBoundingClientRect() : { width: 0, height: 0 }
+          check(
+            'dock : l’ajout est une pastille ronde',
+            discBox.width >= 34 && near(discBox.width, discBox.height, 1),
+            `${Math.round(discBox.width)}x${Math.round(discBox.height)}`,
+          )
         }
 
-        /* FAB : détaché du dock, rond, et jamais posé dessus. */
-        if (!desktop) {
-          const fabBox = fab.getBoundingClientRect()
-          const dockBox = dock.getBoundingClientRect()
-          check('bouton flottant : rond et assez grand', near(fabBox.width, fabBox.height, 2) && fabBox.width >= 48, `${Math.round(fabBox.width)}x${Math.round(fabBox.height)}`)
-          check('bouton flottant : ne recouvre pas le dock', fabBox.bottom <= dockBox.top + 1, `${Math.round(fabBox.bottom)} / ${Math.round(dockBox.top)}`)
-        } else {
-          check('bouton flottant : masqué au bureau', !shown(fab))
-        }
+        /* FAB : le dock a repris l'ajout. Le bouton reste dans le document
+           pour les raccourcis clavier, mais ne doit plus rien recouvrir. */
+        check('bouton flottant : retiré, le dock porte l’ajout', !shown(fab), getComputedStyle(fab).display)
 
         /* Filtres : trois questions distinctes, trois lignes. La barre n'est
            plus collante — c'est l'en-tête qui porte le contexte. */

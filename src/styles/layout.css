@@ -677,9 +677,11 @@
 }
 
 @media (min-width: 721px) {
+  /* Sur tablette la barre est plus basse : la pastille suit, sans jamais
+     tomber sous la taille d'une icône qu'on vise au doigt. */
   .tab--add .tab-icon {
-    width: 28px;
-    height: 28px;
+    width: 34px;
+    height: 34px;
     margin-top: 0;
   }
 }
