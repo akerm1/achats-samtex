@@ -23,6 +23,8 @@ export const state = {
   categoryFilter: 'all',
   typeFilter: 'all',
   query: '',
+  startDate: '',
+  endDate: '',
   reorderMode: false,
   sort: { ...SORTS },
   layout: { ...LAYOUTS },
@@ -36,6 +38,8 @@ export function resetState(host) {
   state.categoryFilter = 'all'
   state.typeFilter = 'all'
   state.query = ''
+  state.startDate = ''
+  state.endDate = ''
   state.reorderMode = false
   state.sort = { ...SORTS }
   state.layout = { ...LAYOUTS }
@@ -45,4 +49,6 @@ export function resetFilters() {
   state.categoryFilter = 'all'
   state.typeFilter = 'all'
   state.query = ''
+  state.startDate = ''
+  state.endDate = ''
 }

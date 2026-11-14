@@ -1,0 +1,929 @@
+/* ------------------------------------------------------------------ */
+/* ATELIER 10 — finitions d'écrans                                     */
+/*                                                                     */
+/* Cette couche arrive après `views.css` (et après `components.css`) :  */
+/* elle ouvre les formes, allège les filets et rend chaque commande     */
+/* confortable au pouce. Aucun nom de classe n'est inventé ici :        */
+/* uniquement ceux que le JavaScript interroge déjà.                   */
+/*                                                                     */
+/* Deux objectifs, dans cet ordre :                                    */
+/*   1. une écriture plus contemporaine (pilules, verre, hiérarchie) ; */
+/*   2. un téléphone qui se tient d'une main, sans jamais viser 32 px. */
+/* ------------------------------------------------------------------ */
+
+/* ================================================================== */
+/* 1. Liste : recherche, filtres, groupes                              */
+/* ================================================================== */
+
+/* Les bandeaux sont repeints à chaque changement d'état : une animation
+   d'entrée les ferait clignoter. Ils apparaissent, simplement. */
+.banner {
+  animation: none;
+}
+
+.filterbar {
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.filterbar-search .input-wrap {
+  min-height: 48px;
+  padding-right: 52px;
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+.filterbar-search .input-wrap:focus-within {
+  background: var(--surface);
+}
+
+.filterbar-clear {
+  right: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+}
+
+/* Les statuts forment un segmented control : un seul bloc, un curseur. */
+.filterbar-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.filterbar-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Trois statuts se partagent la largeur ; une longue liste de
+   catégories garde sa largeur naturelle et défile. */
+.tabchip {
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  scroll-snap-align: start;
+}
+
+.tabchip:hover {
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.tabchip.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+}
+
+.tabchip-count {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink-3);
+}
+
+.tabchip.is-active .tabchip-count {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.filterbar-tabs[data-role='status-tabs'] .tabchip {
+  flex: 1 1 0;
+}
+
+.filterbar-chips {
+  padding-top: 0;
+  padding-bottom: 2px;
+}
+
+/* Groupes : un libellé éditorial, pas un bandeau. */
+.group {
+  gap: 10px;
+}
+
+.group-head {
+  gap: 8px;
+  padding: 0 2px 9px;
+  border-bottom: 1px solid var(--line);
+}
+
+.group-head h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.group-count {
+  min-width: 20px;
+  height: 19px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.group-total {
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.grid {
+  gap: 12px;
+}
+
+.grid--row {
+  gap: 7px;
+}
+
+/* ================================================================== */
+/* 2. Carte produit                                                    */
+/* ================================================================== */
+
+.product {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+@media (hover: hover) {
+  .product:hover {
+    box-shadow: var(--shadow-2);
+    transform: translateY(-2px);
+  }
+}
+
+.product--p1 {
+  border-left-width: 0;
+  box-shadow: inset 3px 0 0 var(--danger), var(--shadow-card);
+}
+
+.product--p3 {
+  border-left-width: 0;
+  box-shadow: inset 3px 0 0 var(--info), var(--shadow-card);
+}
+
+.hero {
+  aspect-ratio: 16 / 10;
+}
+
+.hero-top {
+  top: 8px;
+  left: 8px;
+  right: 8px;
+}
+
+.hero-color {
+  left: 8px;
+  bottom: 8px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  background: rgba(17, 14, 10, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.zoom-mark {
+  right: 8px;
+  bottom: 8px;
+  border-radius: var(--radius-pill);
+}
+
+.tag {
+  padding: 5px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 3px rgba(17, 14, 10, 0.14);
+}
+
+.product-body {
+  gap: 5px;
+  padding: 14px 14px 12px;
+  transition: background-color var(--dur) var(--ease);
+}
+
+.product-body:active {
+  background: var(--surface-2);
+}
+
+.product-name {
+  font-size: var(--text-md);
+  line-height: 1.15;
+}
+
+.price {
+  margin-top: 1px;
+  font-size: clamp(22px, 5.4vw, 27px);
+  letter-spacing: -0.05em;
+}
+
+.price-unit {
+  font-size: 12px;
+}
+
+/* « Prix à préciser » n'est pas un montant : il reste une ligne de texte. */
+.price--none {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+
+.meta {
+  gap: 6px;
+  font-size: 12px;
+}
+
+.product-actions {
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.product-actions .btn {
+  min-height: 42px;
+  border-radius: var(--radius-xs);
+}
+
+.product-actions .icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-xs);
+}
+
+/* Mosaïque : la case est le visuel, la barre reste une ligne. */
+.tile {
+  border-radius: var(--radius);
+}
+
+.tile-bar {
+  padding: 26px 10px 9px;
+}
+
+.tile-name {
+  font-size: 12.5px;
+}
+
+.tile-price {
+  font-size: 10.5px;
+}
+
+.tile-tag {
+  border-radius: 0;
+  font-size: 9.5px;
+  padding: 6px 9px;
+}
+
+.tile-check {
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-2);
+}
+
+/* Ligne : une vignette, deux textes, une coche. */
+.product--row {
+  border-radius: var(--radius);
+  min-height: 64px;
+}
+
+.row-visual {
+  border-radius: var(--radius-xs);
+}
+
+.row-name {
+  font-size: var(--text-sm);
+}
+
+.row-meta {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.row-price {
+  font-size: var(--text-sm);
+}
+
+.row-check {
+  border-radius: var(--radius-pill);
+}
+
+.tag--urgent {
+  background: var(--danger);
+  color: var(--ink-on-accent);
+}
+
+.tag--bought {
+  background: var(--success);
+  color: var(--ink-on-accent);
+}
+
+/* ================================================================== */
+/* 3. Cartes communes (factures, dépenses, recettes)                   */
+/* ================================================================== */
+
+.card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.card-body {
+  gap: 6px;
+  padding: 13px 14px;
+}
+
+.card-name {
+  font-size: var(--text-base);
+  letter-spacing: -0.015em;
+}
+
+.card-amount {
+  font-size: var(--text-lg);
+}
+
+.card-meta {
+  font-size: 10.5px;
+}
+
+.card-actions {
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.card-actions .icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xs);
+}
+
+.card-media,
+.card-color {
+  min-height: 92px;
+}
+
+/* ================================================================== */
+/* 4. Dépenses : onglets, ajout direct                                 */
+/* ================================================================== */
+
+.expense-tab {
+  gap: 5px;
+  min-height: 58px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border-color: transparent;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+}
+
+.expense-tab svg {
+  color: var(--ink-3);
+}
+
+.expense-tab.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-dark);
+  box-shadow: none;
+}
+
+.expense-tab.is-active svg {
+  color: var(--accent);
+}
+
+.kpi-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.quick-add {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.quick-cat {
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.quick-cat-copy {
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+.quick-cat-label {
+  font-weight: 800;
+  text-transform: none;
+  font-size: var(--text-xs);
+}
+
+.quick-cat-total {
+  font-family: var(--font-mono);
+  color: var(--ink-3);
+}
+
+/* ================================================================== */
+/* 5. Barre « tri / date / recherche »                                 */
+/* ================================================================== */
+
+.list-sort {
+  min-height: 40px;
+  border-radius: var(--radius-pill);
+  border-color: var(--line);
+  font-size: var(--text-xs);
+  padding: 0 36px 0 14px;
+}
+
+.layout-switch {
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+
+.layout-switch button {
+  width: 38px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+}
+
+.date-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.date-filter-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+
+.date-filter-col label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Les libellés « Du » et « Au » suffisent : le « à » entre les deux
+   champs ne disait rien de plus. */
+.date-filter-separator {
+  display: none;
+}
+
+.date-input {
+  width: 100%;
+  min-width: 132px;
+  min-height: 40px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  appearance: none;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.date-input::placeholder {
+  color: var(--ink-3);
+}
+
+.search-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 240px;
+  margin-left: auto;
+}
+
+.search-filter-row .search-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 13px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid transparent;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--text-xs);
+}
+
+.search-filter-row .search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.search-filter-row .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border-color: transparent;
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+.search-filter-row .icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+/* ================================================================== */
+/* 6. Réglages                                                         */
+/* ================================================================== */
+
+.setting-control .select,
+.setting-control .input {
+  min-height: 44px;
+}
+
+/* Dans une phrase, un `<strong>` reste un mot : il ne doit pas ouvrir un
+   bloc, sinon la ligne suivante commence par « : ». */
+.setting-copy p strong {
+  display: inline;
+  align-items: baseline;
+  gap: 0;
+  font-size: inherit;
+  font-weight: 800;
+  line-height: inherit;
+  color: var(--ink);
+}
+
+.setting-copy p strong svg {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+/* Le texte des réglages se lit : il ne descend pas sous 13,5 px. */
+.setting-copy p {
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+/* Tablette : la barre « tri » n'a pas la place de tenir sur une ligne
+   avec ses dates. Les mêmes règles qu'au téléphone, plus tôt. */
+@media (max-width: 900px) {
+  .list-toolbar-label {
+    display: none;
+  }
+
+  .list-sort {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .date-filter-row {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .date-filter-col {
+    flex: 1 1 0;
+  }
+
+  .search-filter-row {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
+/* ================================================================== */
+/* 7. Téléphone : tout au pouce                                        */
+/* ================================================================== */
+
+@media (max-width: 720px) {
+  .view {
+    gap: 16px;
+  }
+
+  .screen-head {
+    gap: 14px;
+  }
+
+  .screen-title {
+    font-size: clamp(28px, 8.4vw, 34px);
+  }
+
+  .screen-sub {
+    font-size: 14.5px;
+  }
+
+  .stat {
+    padding: 10px 12px;
+    border-radius: var(--radius);
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .filterbar {
+    padding: 9px;
+    border-radius: var(--radius);
+  }
+
+  .filterbar-chips {
+    margin-inline: -9px;
+    padding-inline: 9px;
+  }
+
+  .tabchip {
+    min-height: 42px;
+    padding: 0 14px;
+  }
+
+  /* Une seule ligne : le tri prend la place, la présentation reste à droite. */
+  .list-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .list-toolbar-label {
+    display: none;
+  }
+
+  .list-sort {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-height: 46px;
+    font-size: var(--text-sm);
+  }
+
+  .layout-switch {
+    flex: 0 0 auto;
+  }
+
+  .layout-switch button {
+    width: 44px;
+    height: 40px;
+  }
+
+  .date-filter-row {
+    flex: 1 1 100%;
+    order: 3;
+    margin-left: 0;
+  }
+
+  .date-filter-col {
+    flex: 1 1 0;
+  }
+
+  .date-input {
+    min-height: 46px;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .search-filter-row {
+    flex: 1 1 100%;
+    order: 4;
+    margin-left: 0;
+  }
+
+  .search-filter-row .search-input {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .search-filter-row .icon-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  /* Cartes produit : visuel plus court, actions franches. */
+  .hero {
+    aspect-ratio: 16 / 9;
+  }
+
+  .product-body {
+    padding: 13px 13px 11px;
+  }
+
+  .product-actions {
+    padding: 9px 10px 10px;
+  }
+
+  .product-actions .btn {
+    min-height: 46px;
+    flex: 1;
+  }
+
+  .product-actions .icon-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .product--row {
+    grid-template-columns: 52px minmax(0, 1fr) auto 44px;
+    gap: 10px;
+    padding: 8px 10px;
+    min-height: 68px;
+  }
+
+  .row-visual {
+    width: 52px;
+    height: 52px;
+  }
+
+  .row-check {
+    width: 44px;
+    height: 44px;
+    /* La règle historique du téléphone renvoyait la coche sur une
+       deuxième ligne ; elle tient maintenant dans la ligne. */
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: auto;
+    margin-top: 0;
+  }
+
+  .card-body {
+    padding: 13px;
+  }
+
+  .card-actions .icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  /* Dépenses : les onglets suivent le défilement, on ne les reperd plus. */
+  .expenses-tabs {
+    position: sticky;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top));
+    z-index: 25;
+    margin-inline: calc(var(--content-pad) * -1);
+    padding: 8px var(--content-pad);
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+  }
+
+  .expense-tab {
+    min-height: 56px;
+    border-radius: var(--radius);
+  }
+
+  /* Formulaires : une seule colonne, Photo au-dessus des champs. */
+  .picker {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .photo-picker {
+    min-height: 150px;
+  }
+
+  .form-grid {
+    gap: 12px;
+  }
+
+  /* Deux colonnes de 150 px écrasaient le contrôle de priorité : sur
+     téléphone, les paires passent l'une sous l'autre. */
+  .range-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .segmented button,
+  .segmented > label {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .color-line {
+    flex-wrap: wrap;
+  }
+
+  /* Bandeaux : une grille courte. Le texte prend la largeur, l'action
+     passe dessous, la croix reste en haut à droite. */
+  .banner {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius);
+  }
+
+  .banner-mark {
+    grid-column: 1;
+    grid-row: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .banner-text {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .banner .btn {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .banner .icon-btn {
+    grid-column: 3;
+    grid-row: 1;
+    width: 34px;
+    height: 34px;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .empty {
+    padding: 34px 14px;
+    gap: 14px;
+  }
+
+  .empty-mark {
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+  }
+
+  .empty-copy strong {
+    font-size: clamp(28px, 9vw, 38px);
+  }
+
+  .btn--lg {
+    width: 100%;
+  }
+
+  .section-actions {
+    gap: 8px;
+  }
+
+  .section-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .group-head {
+    padding-bottom: 8px;
+  }
+}
+
+/* Très petits écrans : on serre encore, sans jamais descendre sous 44 px. */
+@media (max-width: 380px) {
+  .stat-value {
+    font-size: 16px;
+  }
+
+  .product--row {
+    grid-template-columns: 46px minmax(0, 1fr) auto 44px;
+  }
+
+  .row-visual {
+    width: 46px;
+    height: 46px;
+  }
+
+  .section-actions .btn {
+    font-size: var(--text-xs);
+    padding: 0 12px;
+  }
+}

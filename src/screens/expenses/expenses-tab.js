@@ -106,6 +106,9 @@ export function results() {
   if (state.categoryFilter !== 'all') filtered = filtered.filter((e) => e.categoryId === state.categoryFilter)
   if (state.typeFilter === 'transfer') filtered = filtered.filter((e) => e.isTransfer)
   if (state.typeFilter === 'regular') filtered = filtered.filter((e) => !e.isTransfer)
+  /* « Du » et « Au » : la période se cumule avec les autres filtres. */
+  if (state.startDate) filtered = filtered.filter((item) => item.date >= state.startDate)
+  if (state.endDate) filtered = filtered.filter((item) => item.date <= state.endDate)
   if (state.query) {
     const needle = state.query.toLowerCase()
     filtered = filtered.filter(

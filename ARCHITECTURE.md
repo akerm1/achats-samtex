@@ -66,7 +66,7 @@ src/ui/               ce qui n'appartient à aucun écran
   preview.js            aperçu agrandi couleur / photo
   icons.js              toutes les icônes SVG
 
-src/styles/           tokens.css, base.css, layout.css, components.css, views.css
+src/styles/           tokens.css, base.css, layout.css, components.css, views.css, atelier10.css
 tools/                bancs de vérification (voir « Vérifier » ci-dessous)
 icons/                icônes PWA et favicon (servies telles quelles)
 worker/               worker Cloudflare (synchro privée)

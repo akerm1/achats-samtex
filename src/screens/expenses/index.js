@@ -140,13 +140,17 @@ function bindBody() {
         state.layout[tab] = value === 'list' ? 'list' : 'cards'
         refresh()
       },
-      onStartDateChange: (isStart) => {
-        state.startDate = isStart ? new Date().toISOString().slice(0, 10) : state.startDate
-        refresh()
+      onStartDateChange: (value) => {
+        state.startDate = value || ''
+        /* Une période inversée n'afficherait rien : on remet l'autre
+           borne dans l'ordre plutôt que de laisser un écran vide. */
+        if (state.startDate && state.endDate && state.endDate < state.startDate) state.endDate = state.startDate
+        paint()
       },
-      onEndDateChange: (isEnd) => {
-        state.endDate = isEnd ? new Date().toISOString().slice(0, 10) : state.endDate
-        refresh()
+      onEndDateChange: (value) => {
+        state.endDate = value || ''
+        if (state.startDate && state.endDate && state.endDate < state.startDate) state.startDate = state.endDate
+        paint()
       },
     })
   }

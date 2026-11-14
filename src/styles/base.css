@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/* ATELIER — base : réinitialisation, typographie, utilitaires         */
+/* ATELIER 10 — base : réinitialisation, typographie, utilitaires      */
 /* ------------------------------------------------------------------ */
 
 *,
@@ -10,10 +10,11 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
   scroll-padding-top: calc(var(--topbar-h) + env(safe-area-inset-top) + 20px);
-  scroll-padding-bottom: calc(var(--dock-h) + 40px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(var(--dock-h) + 48px + env(safe-area-inset-bottom));
 }
 
 body {
@@ -22,13 +23,21 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   font-size: var(--text-base);
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
   transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+
+/* La sélection ne doit jamais surgir en bleu système par accident. */
+::selection {
+  background: var(--accent);
+  color: var(--ink-on-accent);
 }
 
 h1,
@@ -38,20 +47,20 @@ h4 {
   margin: 0;
   font-family: var(--font-head);
   font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
 h1 {
   font-size: var(--text-2xl);
   font-weight: 800;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.05em;
 }
 
 h2 {
   font-size: var(--text-xl);
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
 }
 
 h3 {
@@ -63,7 +72,7 @@ h4 {
   font-family: var(--font-body);
   font-size: var(--text-base);
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 p {
@@ -73,6 +82,7 @@ p {
 a {
   color: var(--accent);
   text-decoration: none;
+  touch-action: manipulation;
 }
 
 img {
@@ -90,10 +100,11 @@ strong {
 
 code {
   font-family: var(--font-mono);
-  font-size: 0.88em;
+  font-size: 0.86em;
   background: var(--surface-3);
   border-radius: var(--radius-xs);
   padding: 2px 6px;
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -110,11 +121,20 @@ button {
   border: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+/* Un champ de saisie ne doit jamais faire zoomer iOS (16 px mini). */
+input,
+select,
+textarea {
+  font-size: 16px;
 }
 
 /* Lien d'évitement ------------------------------------------------- */
@@ -143,16 +163,16 @@ button:disabled {
   color: var(--ink);
 }
 
-/* Focus : un anneau net, carré, qui ne dépend pas de la couleur seule. */
+/* Focus : un anneau net, qui ne dépend pas de la couleur seule. */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
 
-::selection {
-  background: var(--accent);
-  color: var(--ink-on-accent);
+button:focus-visible,
+a:focus-visible {
+  outline-offset: 3px;
 }
 
 ::placeholder {
@@ -167,13 +187,15 @@ button:disabled {
 }
 
 *::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
 }
 
 *::-webkit-scrollbar-thumb {
   background: var(--line-strong);
   border-radius: var(--radius-pill);
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-track {
@@ -247,7 +269,7 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
 }

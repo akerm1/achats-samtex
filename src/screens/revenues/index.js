@@ -195,7 +195,21 @@ function emptyState() {
 function results() {
   const { revenues, settings } = expStore.getExpenses()
   if (!revenues.length) return emptyState()
-  const sorted = sortedRevenues(revenues)
+  /* « Du » et « Au » filtrent la liste ; vides, ils ne retirent rien. */
+  const period = revenues.filter(
+    (revenue) => (!startDate || revenue.date >= startDate) && (!endDate || revenue.date <= endDate),
+  )
+  if (!period.length) {
+    return `
+      <div class="empty">
+        <span class="empty-mark">${icon('calendar', 30)}</span>
+        <div class="empty-copy">
+          <strong>Aucune recette sur cette période</strong>
+          <p>Élargissez les dates ou effacez les deux champs « Du » et « Au ».</p>
+        </div>
+      </div>`
+  }
+  const sorted = sortedRevenues(period)
   return layout === 'list' ? listHtml(sorted, settings) : daysHtml(sorted, settings)
 }
 
@@ -217,14 +231,16 @@ function paint() {
       layout = value === 'list' ? 'list' : 'days'
       paint()
     },
-    onStartDateChange: (isStart) => {
-      // Open date picker or handle start date change
-      startDate = isStart ? new Date().toISOString().slice(0, 10) : startDate
+    onStartDateChange: (value) => {
+      startDate = value || ''
+      /* Une période inversée n'afficherait rien : on remet l'autre
+         borne dans l'ordre plutôt que de laisser un écran vide. */
+      if (startDate && endDate && endDate < startDate) endDate = startDate
       paint()
     },
-    onEndDateChange: (isEnd) => {
-      // Open date picker or handle end date change
-      endDate = isEnd ? new Date().toISOString().slice(0, 10) : endDate
+    onEndDateChange: (value) => {
+      endDate = value || ''
+      if (startDate && endDate && endDate < startDate) startDate = endDate
       paint()
     },
   })

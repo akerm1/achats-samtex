@@ -84,7 +84,7 @@ function filterbar() {
         <label class="input-wrap" for="list-search">
           ${icon('search', 16)}
           <input id="list-search" type="search" autocomplete="off" enterkeyhint="search"
-                 placeholder="Rechercher un produit, une couleur, un fournisseur…"
+                 placeholder="Produit, couleur, fournisseur…"
                  value="${esc(query)}" aria-label="Rechercher dans la liste">
         </label>
         <!-- Le bouton d'effacement est VOLONTAIREMENT hors du <label> :

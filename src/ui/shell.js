@@ -80,6 +80,18 @@ function dockTab(item) {
     </a>`
 }
 
+/**
+ * L'ajout vit désormais dans le dock : le pouce y arrive sans lâcher le
+ * téléphone, et plus aucun bouton ne flotte par-dessus les filtres.
+ */
+function dockAddTab() {
+  return `
+    <button type="button" class="tab tab--add" data-action="fab-add" aria-label="Ajouter">
+      <span class="tab-icon">${icon('plus', 22)}</span>
+      <span class="tab-label">Ajouter</span>
+    </button>`
+}
+
 function renderNav() {
   const current = activeItem()
 
@@ -99,7 +111,11 @@ function renderNav() {
   })
 
   const dock = $('#dock-inner')
-  if (dock) dock.innerHTML = NAV_ITEMS.map(dockTab).join('')
+  if (dock) {
+    const tabs = NAV_ITEMS.map(dockTab)
+    tabs.splice(2, 0, dockAddTab())
+    dock.innerHTML = tabs.join('')
+  }
 
   renderFab()
 }
@@ -135,6 +151,16 @@ function renderFab() {
       if (kbd) kbd.hidden = shell.activeRoute !== 'liste'
     }
   }
+
+  /* Le dock porte la même action : on la masque sur les Réglages, où il
+     n'y a rien à ajouter. */
+  document.querySelectorAll('.tab--add').forEach((tab) => {
+    tab.hidden = !config
+    if (config) {
+      tab.setAttribute('aria-label', label)
+      tab.title = label
+    }
+  })
 }
 
 /* Pastilles de synchronisation ------------------------------------- */

@@ -1,79 +1,81 @@
 /* ------------------------------------------------------------------ */
-/* ATELIER — design tokens                                             */
+/* ATELIER 10 — jetons de design                                       */
 /*                                                                      */
-/* Refonte 9.0 : la page quitte l'« application de gestion » pour un    */
-/* carnet d'atelier contemporain. Trois matières, trois rôles :        */
+/* Une seule matière, quatre rôles :                                   */
 /*                                                                      */
-/*   papier chaud  → le fond, jamais blanc pur ;                       */
+/*   papier tiède  → le fond, jamais blanc pur ;                       */
 /*   encre         → le texte, un brun-noir, jamais un gris bleuté ;   */
-/*   outremer      → l'accent unique, franc, réservé à l'action.       */
+/*   indigo        → l'accent unique, réservé à l'action ;             */
+/*   voile         → les surfaces translucides (barre, dock, feuilles).*/
 /*                                                                      */
-/* Les formes sont volontairement plus carrées qu'avant : boutons et   */
-/* champs à 10 px, panneaux à 16 px, et une seule forme ronde (la      */
-/* pastille de statut). Un rayon unique et contenu fait lire une       */
-/* grille, pas un kit.                                                 */
+/* Les formes ont été ouvertes : 12 px pour les commandes, 20 px pour  */
+/* les cartes, 28 px pour les feuilles. Les ombres sont larges et      */
+/* basses — elles posent la carte, elles ne la décorent pas.           */
 /* ------------------------------------------------------------------ */
 
 :root {
   color-scheme: light;
 
   /* Papier ---------------------------------------------------------- */
-  --bg: #f2eee4;
-  --bg-tint: #eae4d6;
-  --bg-accent-1: rgba(47, 39, 206, 0.08);
+  --bg: #f5f3ed;
+  --bg-tint: #ece9e1;
+  --bg-accent-1: rgba(79, 57, 246, 0.1);
   --bg-accent-2: rgba(232, 91, 58, 0.07);
-  --surface: #fffdf8;
-  --surface-2: #f7f2e8;
-  --surface-3: #ece5d6;
-  --surface-inverse: #1b1814;
+  --surface: #fffefa;
+  --surface-2: #f3f0e9;
+  --surface-3: #e8e4da;
+  --surface-inverse: #17150f;
 
   /* Encre ----------------------------------------------------------- */
-  --ink: #1b1814;
-  --ink-2: #4c453b;
-  --ink-3: #746b5e;
-  --muted: #746b5e;
+  --ink: #17150f;
+  --ink-2: #4a453c;
+  --ink-3: #746d61;
+  --muted: #746d61;
   --ink-on-accent: #ffffff;
 
-  /* Filets ---------------------------------------------------------- */
-  --line: #e2dacb;
-  --line-strong: #cec4b1;
+  /* Filets — des cheveux, pas des cadres. --------------------------- */
+  --line: rgba(23, 21, 15, 0.09);
+  --line-strong: rgba(23, 21, 15, 0.16);
+  --hairline: 1px solid var(--line);
 
   /* Accents --------------------------------------------------------- */
-  --accent: #2f27ce;
-  --accent-dark: #211a9c;
-  --accent-soft: #e8e5ff;
-  --accent-line: #bdb6ff;
+  --accent: #4f39f6;
+  --accent-dark: #3a26d9;
+  --accent-soft: #ece9fe;
+  --accent-line: #c6bcff;
+  --accent-grad: linear-gradient(135deg, #6b5bff 0%, #4f39f6 60%, #4331e0 100%);
 
-  --coral: #d84a24;
-  --coral-soft: #fde7df;
-  --success: #0c7a4d;
-  --success-soft: #dcf3e7;
+  --coral: #e0512a;
+  --coral-soft: #fdeae2;
+  --success: #0a7a4e;
+  --success-soft: #dcf4e7;
   --warning: #9a5b06;
   --warning-soft: #fbefd8;
-  --danger: #bf2c1c;
-  --danger-soft: #fce4df;
+  --danger: #c22b1b;
+  --danger-soft: #fce5e0;
   --info: #0b5aa8;
   --info-soft: #e2eefc;
   --gold: #7d5a03;
   --gold-soft: #f7edcd;
 
   /* Rayons ---------------------------------------------------------- */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 34px;
   --radius-pill: 999px;
 
   /* Texte ----------------------------------------------------------- */
-  --text-xs: 11.5px;
-  --text-sm: 13px;
-  --text-base: 15.5px;
-  --text-md: 17px;
+  --text-xs: 12px;
+  --text-sm: 13.5px;
+  --text-base: 16px;
+  --text-md: 17.5px;
   --text-lg: 21px;
-  --text-xl: clamp(23px, 2.8vw, 30px);
-  --text-2xl: clamp(30px, 4.6vw, 46px);
-  --text-display: clamp(38px, 7vw, 68px);
+  --text-xl: clamp(23px, 2.6vw, 29px);
+  --text-2xl: clamp(30px, 4.6vw, 44px);
+  --text-display: clamp(36px, 6.6vw, 62px);
 
   /* Espaces --------------------------------------------------------- */
   --space-1: 4px;
@@ -83,13 +85,19 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  /* Ombres — presque absentes. C'est le filet qui dessine, l'ombre ne   */
-  /* fait que poser la carte à un millimètre du papier.                 */
-  --shadow-1: 0 1px 1px rgba(27, 24, 20, 0.04);
-  --shadow-2: 0 2px 4px rgba(27, 24, 20, 0.05), 0 10px 24px -18px rgba(27, 24, 20, 0.35);
-  --shadow-3: 0 30px 70px -34px rgba(27, 24, 20, 0.5), 0 3px 8px rgba(27, 24, 20, 0.06);
-  --shadow-accent: 0 6px 16px -8px rgba(47, 39, 206, 0.55);
-  --shadow-accent-lg: 0 14px 30px -12px rgba(47, 39, 206, 0.6);
+  /* Ombres — larges, basses, teintées de l'encre. ------------------- */
+  --shadow-1: 0 1px 2px rgba(23, 21, 15, 0.05);
+  --shadow-2: 0 1px 2px rgba(23, 21, 15, 0.05), 0 10px 26px -14px rgba(23, 21, 15, 0.22);
+  --shadow-3: 0 2px 6px rgba(23, 21, 15, 0.07), 0 28px 60px -28px rgba(23, 21, 15, 0.42);
+  --shadow-card: 0 1px 2px rgba(23, 21, 15, 0.04), 0 6px 18px -14px rgba(23, 21, 15, 0.2);
+  --shadow-accent: 0 2px 6px -2px rgba(79, 57, 246, 0.32), 0 10px 22px -12px rgba(79, 57, 246, 0.5);
+  --shadow-accent-lg: 0 4px 10px -2px rgba(79, 57, 246, 0.3), 0 18px 36px -14px rgba(79, 57, 246, 0.55);
+
+  /* Voiles & verre -------------------------------------------------- */
+  --glass: color-mix(in srgb, var(--bg) 76%, transparent);
+  --glass-strong: color-mix(in srgb, var(--surface) 82%, transparent);
+  --glass-border: color-mix(in srgb, var(--ink) 10%, transparent);
+  --blur: saturate(1.7) blur(22px);
 
   /* Typographie ----------------------------------------------------- */
   --font-head: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
@@ -97,11 +105,12 @@
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 
   /* Gabarit --------------------------------------------------------- */
-  --rail-w: 252px;
-  --topbar-h: 58px;
-  --dock-h: 64px;
+  --rail-w: 258px;
+  --topbar-h: 56px;
+  --dock-h: 62px;
   --page-max: 1080px;
   --content-pad: clamp(16px, 3.4vw, 40px);
+  --tap: 46px;
 
   /* Mouvement ------------------------------------------------------- */
   --ease: cubic-bezier(0.22, 0.68, 0.32, 1);
@@ -110,34 +119,50 @@
   --dur-fast: 0.12s;
   --dur: 0.2s;
   --dur-slow: 0.32s;
+
+  /* Alias hérités — des écrans plus anciens les nomment encore. ----- */
+  --font-title: var(--font-head);
+  --font-base: var(--font-body);
+  --text-size: var(--text-sm);
+  --border: var(--line);
+  --background: var(--surface);
+  --shadow: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --accent-1: var(--accent-soft);
+  --accent-5: var(--accent);
+  --red-1: var(--danger-soft);
+  --red-5: var(--danger);
+  --red-9: var(--danger);
+  --cat-color: var(--accent);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
   /* Le nocturne garde la même matière : de l'encre chaude, pas du bleu. */
-  --bg: #100e0b;
-  --bg-tint: #17140f;
-  --bg-accent-1: rgba(155, 147, 255, 0.08);
+  --bg: #0f0e0c;
+  --bg-tint: #16140f;
+  --bg-accent-1: rgba(167, 155, 255, 0.1);
   --bg-accent-2: rgba(255, 122, 92, 0.06);
-  --surface: #191612;
-  --surface-2: #211d17;
-  --surface-3: #2b261e;
+  --surface: #181613;
+  --surface-2: #201d18;
+  --surface-3: #2a2620;
   --surface-inverse: #f7f2e7;
 
   --ink: #f7f2e7;
-  --ink-2: #cdc4b5;
-  --ink-3: #9e9485;
-  --muted: #9e9485;
+  --ink-2: #cec6b7;
+  --ink-3: #9d9484;
+  --muted: #9d9484;
   --ink-on-accent: #14110e;
 
-  --line: #312b23;
-  --line-strong: #463f34;
+  --line: rgba(247, 242, 231, 0.1);
+  --line-strong: rgba(247, 242, 231, 0.2);
 
-  --accent: #9b93ff;
-  --accent-dark: #b8b1ff;
-  --accent-soft: rgba(155, 147, 255, 0.16);
-  --accent-line: #524aa6;
+  --accent: #a79bff;
+  --accent-dark: #c2b9ff;
+  --accent-soft: rgba(167, 155, 255, 0.16);
+  --accent-line: #4f469e;
+  --accent-grad: linear-gradient(135deg, #b3a8ff 0%, #a79bff 55%, #8f81ff 100%);
 
   --coral: #ff8a6b;
   --coral-soft: rgba(255, 138, 107, 0.16);
@@ -152,9 +177,25 @@
   --gold: #e2c471;
   --gold-soft: rgba(226, 196, 113, 0.14);
 
-  --shadow-1: 0 1px 1px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 12px 26px -18px rgba(0, 0, 0, 0.9);
-  --shadow-3: 0 34px 80px -30px rgba(0, 0, 0, 0.95), 0 3px 10px rgba(0, 0, 0, 0.5);
-  --shadow-accent: 0 8px 22px -10px rgba(155, 147, 255, 0.5);
-  --shadow-accent-lg: 0 16px 34px -14px rgba(155, 147, 255, 0.6);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.5), 0 12px 28px -16px rgba(0, 0, 0, 0.9);
+  --shadow-3: 0 2px 8px rgba(0, 0, 0, 0.55), 0 32px 70px -26px rgba(0, 0, 0, 0.95);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -16px rgba(0, 0, 0, 0.85);
+  --shadow-accent: 0 4px 14px -6px rgba(167, 155, 255, 0.45);
+  --shadow-accent-lg: 0 10px 30px -10px rgba(167, 155, 255, 0.55);
+
+  --glass: color-mix(in srgb, var(--bg) 74%, transparent);
+  --glass-strong: color-mix(in srgb, var(--surface) 84%, transparent);
+  --glass-border: rgba(247, 242, 231, 0.1);
+}
+
+/* Sur téléphone, tout se lit d'un peu plus loin et se touche au pouce. */
+@media (max-width: 720px) {
+  :root {
+    --text-base: 16px;
+    --text-sm: 14px;
+    --text-xs: 12.5px;
+    --topbar-h: 54px;
+    --tap: 48px;
+  }
 }

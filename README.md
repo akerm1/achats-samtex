@@ -972,6 +972,7 @@ src/
     layout.css              barre du haut, navigation, toasts, responsive
     components.css          boutons, champs, cartes, pastilles de couleur, dialogues
     views.css               styles des vues (liste, factures, recettes, dépenses, réglages)
+    atelier10.css           finitions : pilules, cartes, dock et confort au pouce
 icons/                      icônes de l'application (PWA)
 tools/
   check.mjs                 vérifications (syntaxe, version, rendu réel) — un clic

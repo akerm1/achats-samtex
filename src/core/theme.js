@@ -34,7 +34,7 @@ export function getThemePreference() {
    fois le thème résolu, on retire cet attribut `media` de la
    declaration retenue et on fixe sa couleur — sinon la déclaration vide
    resterait prioritaire et la barre garderait la couleur du système. */
-const CHROME = { light: '#f2eee4', dark: '#100e0b' }
+const CHROME = { light: '#f5f3ed', dark: '#0f0e0c' }
 
 export function applyTheme() {
   const resolved = resolveTheme()

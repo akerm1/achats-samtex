@@ -210,6 +210,9 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
   range, puces/labels, pastilles de couleur, dialogue d'aperçu, cartes/panneaux/progression,
   bandeaux, toasts, dialogues (feuilles en bas sur téléphone), états vides ; mobile force des
   champs à 16 px (pas de zoom iOS) et des cibles ≥ 44 px.
+- **atelier10.css** — couche de finition chargée après `views.css` : formes ouvertes
+  (pilules, cartes à 20 px), bandeaux en grille sur téléphone, onglets Dépenses collants,
+  barre « tri / date / recherche » qui se replie, formulaires en une colonne.
 - **views.css** — en-tête d'écran, barre de filtres en trois couches, barre d'outils tri +
   présentation, groupes, trois grilles (`grid--card` auto-fill 320 px, `grid--mosaic`
   2 → 3 → 4 colonnes, `grid--row` liste réglée), intérieurs carte/mosaïque/ligne, tuiles de
