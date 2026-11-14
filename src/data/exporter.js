@@ -14,6 +14,7 @@ import { buildXlsx } from './xlsx.js'
 import { buildSheets, scopeShort } from './export-tables.js'
 import { getProducts, getBills } from './store.js'
 import { getExpenses } from './expenses-store.js'
+import { getAnalysis } from './analysis-store.js'
 import { downloadBlob } from '../core/utils.js'
 
 export const EXPORT_FORMATS = [
@@ -23,18 +24,22 @@ export const EXPORT_FORMATS = [
 
 export const formatOf = (value) => EXPORT_FORMATS.find((item) => item.value === value) || EXPORT_FORMATS[0]
 
-/** Photo des quatre collections au moment de l'export. */
+/** Photo de toutes les collections au moment de l'export. */
 export function exportSnapshot() {
   return {
     products: getProducts(),
     bills: getBills(),
     expenses: getExpenses(),
+    analysis: getAnalysis(),
   }
 }
 
 /* --- CSV ---------------------------------------------------------- */
 
-const csvText = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+/* Retours à la ligne et tabulations deviennent une espace : dans un CSV,
+   un vrai saut de ligne coupe la ligne en deux et décale toutes les
+   colonnes qui suivent. Le tableur doit pouvoir compter les lignes. */
+const csvText = (value) => `"${String(value ?? '').replace(/"/g, '""').replace(/[\r\n\t]+/g, ' ').trim()}"`
 /* Excel en français attend la virgule décimale et accepte le point-virgule
    comme séparateur de colonnes. Le classeur .xlsx, lui, ne dépend d'aucune
    convention locale : c'est le format à préférer. */

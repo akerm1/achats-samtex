@@ -155,8 +155,8 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **worker-api.js** (281) | `normalizeConfig` (nettoie le lien collé, valide `https://hôte/chemin`, rejette le gabarit), `canWrite` (lien présent), `fetchRemoteList` (`GET`, `empty:true` → « publiez la vôtre » ; rend liste, factures, analyse, dépenses et `docVersion`), `putRemoteList(config,list,sha,settings,bills,analysis,expenses)` (`PUT` avec `X-Rev` ; **409 → fusion produits, factures, analyse et dépenses, un nouvel essai**), `testConnection` (rapporte nombre + révision), `LINK_PLACEHOLDER`. |
 | **sync.js** (70) | Bascule de fournisseur : `PROVIDER_GITHUB/PROVIDER_WORKER`, `providerOf`, `normalizeConfig`, `canWrite`, `fetchRemoteList`, `putRemoteList` (**sept arguments transmis aux deux fournisseurs** : liste, réglages, factures, analyse, dépenses), `testConnection`, `fetchDefaultConfig`. |
 | **backup.js** (137) | `BACKUP_VERSION=4`, `buildBackup(products,bills,analysis,expenses)`, `toJSON`, `backupFilename`, `toCSV` (`;`+BOM+CRLF, 13 colonnes, sans photos), `parseBackup` (accepte les tableaux nus v1), `mergeProducts`/`mergeBills`/`mergeAnalysis`/`mergeExpenses` (par `id`, **l'entrant gagne**, `updatedAt=now`), `exportJSON` (quatre arguments — un appel à trois perdait les dépenses), `exportCSV`. |
-| **export-tables.js** (235) | Une table par collection (`Résumé`, `Produits`, `Dépenses`, `Recettes`, `Investissements`, `Catégories`, `Factures`) : `EXPORT_SCOPES`, `scopeLabel/scopeShort`, `buildSheets(snapshot, scope)`. Les montants restent des nombres, les dates en AAAA-MM-JJ. |
-| **exporter.js** (110) | `EXPORT_FORMATS` (xlsx/csv), `exportSnapshot()` (produits + factures + dépenses), `exportFilename`, `buildExportFile(scope, format)` → `{filename, blob}`, `toCsvText` (`;` + BOM + CRLF + virgule décimale), `downloadExport`, `writeExportToHandle` (File System Access, écriture silencieuse). |
+| **export-tables.js** (508) | Une table par collection — **treize feuilles** quand le contenu est « toutes les données » : `Résumé`, `Produits`, `Dépenses`, `Recettes`, `Investissements (dépenses)`, `Catégories`, `Factures`, puis les six de l'Analyse (`Ventes`, `Achats`, `Investissements`, `Possessions`, `Lieux`, `Paramètres`). `EXPORT_SCOPES`, `scopeLabel/scopeShort`, `buildSheets(snapshot, scope)`, `sumColumn(rows, key)` (le banc s'en sert pour recouper les totaux). Chaque ligne porte son `id` et ses dates (`stamp()` → `AAAA-MM-JJ HH:MM`) ; `money()` arrondit les montants au centime, `day()` écrit les dates en AAAA-MM-JJ. Le `Résumé` recalcule ses totaux **à partir des lignes exportées**, jamais depuis les modèles. |
+| **exporter.js** (112) | `EXPORT_FORMATS` (xlsx/csv), `exportSnapshot()` (**produits + factures + dépenses + analyse** — l'Analyse n'avait aucun chemin d'export), `exportFilename`, `buildExportFile(scope, format)` → `{filename, blob}`, `toCsvText` (`;` + BOM + CRLF + virgule décimale ; `csvText` aplatit CR/LF/tabulation pour qu'une note multiligne ne décale jamais les colonnes), `downloadExport`, `writeExportToHandle` (File System Access, écriture silencieuse). |
 | **xlsx.js** (263) | Classeur Excel sans dépendance : ZIP « stored » écrit à la main (CRC32, en-têtes locaux et répertoire central) + `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`, `xl/_rels/workbook.xml.rels`, `xl/worksheets/sheetN.xml`. `buildXlsx(sheets)`, `sheetXml` (en-tête gelé, largeurs de colonnes, chaînes en `inlineStr`, nombres en `<v>`). |
 | **export-handle.js** (94) | IndexedDB `purchase-gros-export` / store `handles` : `loadHandle`, `saveHandle`, `clearHandle`. Un `FileSystemFileHandle` ne se sérialise pas en JSON ; il se clone, d'où IndexedDB. |
 | **photo-store.js** (236) | IndexedDB `purchase-gros-photos` / store `photos` / keyPath `id`, enregistrements `{id, photo, receipt}`. `failureReason`, `isAvailable`, `ensureReady`, `put(id,dataUrl,type)` (une valeur vide **supprime ce champ**, évite la résurrection d'une photo), `get`, `getAllWithReceipts` (une lecture → deux Maps), `remove`, `prune(validIds)` (nettoyage des orphelins), `clear`. |
@@ -193,6 +193,7 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **`--e2e`** | lance la vraie application dans une iframe : seed 3 produits, rend chaque présentation, clique sur Réglages → change la présentation → vérifie que la liste **se repeint** (prouve que le réglage arrive à l'écran). |
 | **`--only bills`** | profil séparé : pilote le module Worker sur un KV en mémoire (contrat de fusion 409, **et le transport des dépenses** : aller-retour, écriture sans dépenses qui les conserve, suppression, version 6 annoncée, `client` conservé), **puis le même transport par l'aiguillage `sync.js`** — le chemin réel du store, où le septième argument `expenses` était perdu —, **enfin GitHub sur une API simulée** (base64 + SHA) : un fichier v3 est promu en v6, liste/factures/analyse/dépenses sont écrites et relues, `client` est nommé, et un conflit 409 fusionne les deux appareils au lieu d'écraser ; aller-retour backup, écran factures, et les deux régressions photo (prune ne doit pas supprimer les tickets ; vider une photo ne doit pas la faire réapparaître). |
 | **`--only expenses`** | profil séparé : l'écran ouvre sur sa **première section**, sans section privilégiée (les autres sont à un appui), la phrase de synchronisation est vérifiée dans ses cas (serveur d'accord, écart en orange, Worker v5, aucun partage, **dépôt GitHub à jour, dépôt GitHub sans jeton en lecture seule**), **un serveur vide ne peut pas effacer un appareil qui a des données** (fusion puis republication, vrai store contre vrai Worker), les catégories sont des cases **sur l'écran** (6 cases, total par catégorie), toucher une case ouvre la dépense déjà catégorisée (rappel + grille repliée), « Changer » rouvre la grille, les cases s'effacent pendant une recherche, une dépense ordinaire ne touche pas l'investissement (restant = 1000), le transfert ne s'ouvre que depuis un investissement, à 430 px la grille tient deux colonnes avec des cibles ≥ 44 px, un hash vide ouvre les Dépenses, et tous les montants s'écrivent en « DA » (stockage `DZD`, aucun « € » ni « MAD »). |
+| **`--only export`** | profil séparé : sème produits, dépenses (dont une sans montant), recettes, factures, catégories et les six collections de l'Analyse, puis vérifie le **contenu** (13 feuilles nommées, autant de lignes que la collection, `id` et dates présents), l'**exactitude** (chaque total du fichier égale celui du modèle ; un transfert de 5 000 remonte sur son investissement ; la dépense sans montant est signalée, pas inventée ; le Résumé dérive des lignes exportées, solde = recettes − dépenses), les **formats** (signature ZIP du xlsx, BOM 0xEF 0xBB 0xBF et `;` du CSV, accents, virgule décimale, note multiligne qui ne coupe pas la ligne), la tuile de réglages (5 contenus, 4 rythmes, préférences enregistrées), le bandeau d'échéance après rechargement, et la mise en page à 1 200 px comme à 390 px.
 | Options | `--width 430`, `--theme dark`, `--shot x.png`, `--keep`, `BROWSER=…`. **Code de sortie 0 = tout passe, 1 = au moins un échec.** |
 
 `tools/preview.html?layout=card|mosaic|row&theme=dark&diag=1` rend une présentation à la main
@@ -254,7 +255,7 @@ et le drapeau d'installation restent locaux, jamais synchronisés.
 |---|---|
 | **Liste** `#/liste` | compteur + total estimé, recherche, onglets statut (À acheter/Achetés/Tous), puces catégorie, grille groupée dans la présentation choisie (Fiche/Mosaïque/Liste), cocher/modifier/supprimer/annuler, clic couleur/photo → zoom, clic corps → formulaire |
 | **Factures** `#/factures` | recherche, onglets statut (Toutes/En attente/Payées), cartes avec photo du ticket, montant, bascule payée, modifier/supprimer ; note en mode GitHub (factures non synchronisées) |
-| **Réglages** `#/reglages` | thème, présentation de la liste, onglets de partage GitHub ↔ lien privé, tester/enregistrer/synchroniser/déconnecter/importer depuis GitHub, export JSON/CSV, import fusion/remplacement, tout vider, installation PWA, vérification→installation, stockage, raccourcis |
+| **Réglages** `#/reglages` | thème, présentation de la liste, onglets de partage GitHub ↔ lien privé, tester/enregistrer/synchroniser/déconnecter/importer depuis GitHub, **export Excel/CSV** (contenu, format, rythme, fichier désigné), export JSON/CSV, import fusion/remplacement, tout vider, installation PWA, vérification→installation, stockage, raccourcis |
 | **Formulaire produit** | photo (JPEG ≤ 900 px), nom, catégorie (l'unité suit), couleur (texte + palette ~160 noms + roue HSL), fournisseur (autocomplétion), quantité (stepper), unité, prix, priorité, détails |
 | **Raccourcis clavier** | `N` nouveau · `/` recherche · `S` sync · `1 2 3` vues · `Échap` fermer |
 
@@ -267,11 +268,42 @@ Réglages → *Export Excel & CSV*. Trois choix (contenu, format, rythme) et deu
 | Élément | Comportement |
 |---|---|
 | Contenu | Toutes les données, Produits, Dépenses, Recettes ou Factures. |
-| Format | `.xlsx` (une feuille par table + un résumé) ou `.csv` (une section par table, `;`, virgule décimale, BOM UTF-8). |
+| Format | `.xlsx` ou `.csv` — **le même contenu**, deux mises en forme. |
 | Rythme | Jamais, chaque jour, chaque semaine, chaque mois (30 jours). |
 | Télécharger maintenant | Toujours disponible : c'est un simple téléchargement. |
 | Choisir un fichier | File System Access : l'application réécrit **ce** fichier à chaque échéance, sans rien demander. |
 | Échéance dépassée | Bandeau « Export automatique en attente » + bouton ; masquable pour la session. |
+
+**Ce que le fichier contient** (contenu « Toutes les données ») — treize feuilles, une par
+collection, aucune ligne inventée ni omise :
+
+| Feuille | Ce qu'elle porte |
+|---|---|
+| Résumé | totaux recalculés **à partir des lignes exportées** : nombre et valeur des produits, total des dépenses (et lignes sans montant), total des recettes, solde, investissements et reste à récupérer, catégories, factures, puis les compteurs de l'Analyse — plus une note rappelant que les photos ne sont pas dans le fichier. |
+| Produits | une ligne par produit : id, nom, catégorie, couleur, quantité, unité, prix, priorité, statut, acheté le, fournisseur, détails, créé/modifié. |
+| Dépenses | une ligne par dépense : id, date, catégorie (nom + clé), montant, type (Dépense / Transfert), investissement lié, note, saisi/modifié. Un transfert apparaît **aussi** comme montant remboursé sur la ligne de son investissement. |
+| Recettes | une ligne par recette : id, date, montant, note, saisi/modifié. |
+| Investissements (dépenses) | id, nom, montant investi, montant remboursé (somme des transferts), reste à récupérer. |
+| Catégories | id, nom, nature (dépense/recette), couleur, ordre. |
+| Factures | id, fournisseur, montant, statut, payée le, note, créé/modifié (la photo du ticket n'est pas incluse). |
+| Analyse · Ventes | id, date, type (Recette / Férié / Fermé), montant. |
+| Analyse · Achats | id, date, montant, note. |
+| Analyse · Investissements | id, nom, montant. |
+| Analyse · Possessions | id, détenteur, montant, note. |
+| Analyse · Lieux | id, lieu, montant. |
+| Analyse · Paramètres | diviseurs, déduction, reports d'ouverture. |
+
+Chaque ligne porte son `id` et ses dates : le fichier se recoupe ligne à ligne avec
+l'application. Les montants sortent comme **nombres** (sommables et triables dans Excel) et
+les dates en AAAA-MM-JJ. Dans le CSV — pensé pour un Excel français — le séparateur est `;`,
+la décimale est la virgule, le BOM UTF-8 protège les accents, et une note multiligne est
+aplatie : elle ne peut pas décaler les colonnes suivantes.
+
+Le contrôle automatique sème un jeu de données réel dans un navigateur, construit les deux
+fichiers et **compare chaque total du fichier aux fonctions du modèle**
+(`totalExpenses`, `totalRevenues`, `totalInvestments`, `remainingInvestments`,
+`sumBills`, valeur des produits) : une ligne oubliée, un montant mal typé ou une colonne
+décalée font échouer la vérification (`node tools/check.mjs --only export`).
 
 **Ce qu'un navigateur ne permet pas**, et que l'écran dit franchement : une page ne
 peut pas déposer un fichier dans « Téléchargements » sans geste, ni travailler

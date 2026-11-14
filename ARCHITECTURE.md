@@ -48,7 +48,7 @@ src/data/             l'état et la persistance
   github.js             client GitHub
   worker-api.js         client du worker Cloudflare
   backup.js             export / import JSON, CSV
-  export-tables.js      ce que contient le fichier : une table par collection
+  export-tables.js      ce que contient le fichier : treize feuilles, une par collection
   exporter.js           fichier .xlsx ou .csv, à la demande ou par écriture directe
   xlsx.js               classeur Excel (ZIP + XML), sans dépendance
   export-handle.js      souvenir du fichier choisi (File System Access, IndexedDB)

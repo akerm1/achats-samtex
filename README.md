@@ -953,7 +953,7 @@ src/
     store.js                état global, rafraîchissement, actions métier, préférences
     photo-store.js          photos en IndexedDB (hors localStorage)
     backup.js               export/import JSON et CSV, fusion
-    export-tables.js        tables du fichier tableur (une par collection)
+    export-tables.js        tables du fichier tableur (13 feuilles : ventes, achats, analyse…)
     exporter.js             fichier .xlsx / .csv et écriture dans un fichier choisi
     xlsx.js                 classeur Excel minimal (ZIP « stored » + XML)
     export-handle.js        fichier de destination mémorisé (IndexedDB)

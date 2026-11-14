@@ -8,19 +8,24 @@
 
   Ce qu'il défend :
 
-    1. Le fichier est vraiment un classeur : signature ZIP, feuilles
-       attendues, cellules typées, accents intacts. Un export « valide »
-       qui s'ouvre vide serait la panne la plus coûteuse — on ne s'en
-       aperçoit qu'au moment où on en a besoin.
+    1. RIEN NE MANQUE. Chaque collection a sa feuille, avec l'identifiant
+       et les dates de création/modification ; l'Analyse (ventes, achats,
+       investissements, possessions, lieux, paramètres) en a six. Un
+       export « complet » qui oublie une collection est un export faux.
 
-    2. Le CSV suit la convention française (BOM, point-virgule, virgule
-       décimale) : sans le BOM, Excel casse les accents.
+    2. LES CHIFFRES SONT JUSTES. Les totaux du fichier sont recalculés à
+       partir des lignes exportées, puis comparés aux calculs de
+       l'application elle-même (`totalExpenses`, `totalRevenues`,
+       `sumTotal`, `sumBills`…). Une ligne perdue se voit là.
 
-    3. L'écran des Réglages mène jusqu'au fichier : trois choix, un
-       bouton, et le rythme qui s'enregistre dans les préférences.
+    3. LE FICHIER EST VALIDE. Signature ZIP, feuilles attendues, cellules
+       typées ; CSV avec BOM, point-virgule et virgule décimale.
 
-    4. Une échéance dépassée se voit : le bandeau d'export dû apparaît
-       avec son bouton.
+    4. LE CSV NE SE DÉCALE PAS. Une note contenant un vrai saut de ligne
+       ne doit pas couper la ligne du tableur.
+
+    5. L'ÉCRAN MÈNE AU FICHIER. Trois choix, un bouton, un rythme qui
+       s'enregistre, et un bandeau quand l'échéance est passée.
 -->
 <style>
   body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
@@ -65,74 +70,258 @@
     return null
   }
 
-  /* Données de départ : deux produits, une dépense, une recette. */
+  const money = (value) => Math.round((Number(value) || 0) * 100) / 100
+
+  /* --- Données de départ : un peu de tout, y compris les cas tordus --- */
+  const NOTE_NEWLINE = 'Commande urgente\nà retirer samedi\tmatin'
+
   localStorage.setItem(
     'purchase-gros-list-v2',
     JSON.stringify([
-      { id: 'p1', name: 'Ceinture satin ivoire', type: 'ceinture', color: 'ivoire', supplier: 'Bab Ezzouar', qty: 25, unit: 'piece', price: 1.5, priority: 'haute', status: 'bought' },
+      {
+        id: 'p1',
+        name: 'Ceinture satin ivoire',
+        type: 'ceinture',
+        color: 'ivoire',
+        colorRgb: '#efe3d3',
+        supplier: 'Bab Ezzouar',
+        qty: 25,
+        unit: 'piece',
+        price: 1.5,
+        priority: 'haute',
+        status: 'bought',
+        boughtAt: '2026-11-10',
+        photo: 'data:image/jpeg;base64,AAAA',
+        note: NOTE_NEWLINE,
+        createdAt: '2026-11-01T09:00:00.000Z',
+        updatedAt: '2026-11-10T18:00:00.000Z',
+      },
       { id: 'p2', name: 'Tulle rose bébé', type: 'tulle', color: 'rose bébé', supplier: 'Tafna', qty: 4, unit: 'metre', price: 350, priority: 'normale' },
+      { id: 'p3', name: 'Fil noir', type: 'fil', qty: 2, unit: 'piece', price: null, priority: 'basse' },
     ]),
   )
+
+  localStorage.setItem(
+    'purchase-gros-bills-v1',
+    JSON.stringify([
+      { id: 'b1', supplier: 'Grossiste Tafna', amount: 12000, status: 'pending', createdAt: '2026-11-05T10:00:00.000Z' },
+      { id: 'b2', supplier: 'Ali Express', amount: 4500.5, status: 'paid', paidAt: '2026-11-08T12:00:00.000Z', createdAt: '2026-11-02T10:00:00.000Z' },
+    ]),
+  )
+
   localStorage.setItem(
     'purchase-gros-expenses-v1',
     JSON.stringify({
-      revenues: [{ id: 'r1', date: '2026-11-14', amount: 3000, note: 'Vente du jour' }],
-      expenses: [{ id: 'e1', date: '2026-11-13', categoryId: 'gas', amount: 1200.75, note: 'Plein' }],
-      investments: [{ id: 'i1', name: 'Machine', amount: 50000, remaining: 20000, note: '' }],
+      revenues: [
+        { id: 'r1', date: '2026-11-14', amount: 3000, note: 'Vente du jour' },
+        { id: 'r2', date: '2026-11-13', amount: 1250.25, note: 'Marché' },
+      ],
+      expenses: [
+        { id: 'e1', date: '2026-11-13', categoryId: 'gas', amount: 1200.75, note: 'Plein' },
+        { id: 'e2', date: '2026-11-12', categoryId: 'transfer', amount: 5000, note: NOTE_NEWLINE, isTransfer: true, linkedInvestmentId: 'i1' },
+        { id: 'e3', date: '2026-11-11', categoryId: 'tools', amount: null, note: 'montant inconnu' },
+      ],
+      investments: [{ id: 'i1', name: 'Machine', amount: 50000, remaining: 20000, note: 'Sur 3 mois' }],
     }),
   )
+
+  localStorage.setItem(
+    'purchase-gros-analysis-v1',
+    JSON.stringify({
+      sales: [
+        { id: '2026-11-13', date: '2026-11-13', kind: 'amount', amount: 4500 },
+        { id: '2026-11-14', date: '2026-11-14', kind: 'aid', amount: null },
+      ],
+      purchases: [{ id: 'ap1', date: '2026-11-04', amount: 9000, note: 'Tissu' }],
+      investments: [{ id: 'ai1', name: 'Surjeteuse', amount: 78000 }],
+      holdings: [{ id: 'ah1', holder: 'moh', amount: 15000, note: 'Avance' }],
+      places: [{ id: 'ap1', label: 'Atelier', amount: 22000 }],
+      settings: { divisorA: 3, divisorB: 4, deduction: 1500000, openingRevenue: 0, openingPurchases: 0 },
+      holderLabels: { moi: 'Moi', moh: 'Moh', hakima: 'Hakima', autre: 'Autre' },
+    }),
+  )
+
   localStorage.setItem('purchase-gros-github-optout-v1', 'true')
 
-  /* 1. Le fichier, construit avec les vraies données de l'application. */
-  const { buildExportFile } = await import('../src/data/exporter.js')
-  const { buildSheets } = await import('../src/data/export-tables.js')
-  log('modules d’export chargés')
+  /* --- Modules de l'application ------------------------------------- */
+  const { buildExportFile, exportSnapshot } = await import('../src/data/exporter.js')
+  const { buildSheets, sumColumn } = await import('../src/data/export-tables.js')
+  const productsModel = await import('../src/data/products-model.js')
+  const expModel = await import('../src/data/expenses-model.js')
+  const billsModel = await import('../src/data/bills-model.js')
+  log('modules chargés')
 
-  const xlsx = buildExportFile('all', 'xlsx')
-  const head = new Uint8Array(await xlsx.blob.slice(0, 4).arrayBuffer())
-  check('xlsx : nom de fichier daté', /^mes-achats-tout-\d{4}-\d{2}-\d{2}\.xlsx$/.test(xlsx.filename), xlsx.filename)
-  check('xlsx : signature ZIP (PK)', head[0] === 0x50 && head[1] === 0x4b, [...head].join(','))
-  check('xlsx : fichier non vide', xlsx.blob.size > 2000, `${xlsx.blob.size} octets`)
+  const snapshot = exportSnapshot()
+  const sheets = buildSheets(snapshot, 'all')
+  const byName = (name) => sheets.find((sheet) => sheet.name === name)
 
-  const sheets = buildSheets({ products: [], bills: [], expenses: {} }, 'all')
-  check('xlsx : sept feuilles, résumé compris', sheets.length === 7, sheets.map((sheet) => sheet.name).join(','))
+  /* --- 1. Complétude ------------------------------------------------ */
+  check('feuilles : treize, résumé compris', sheets.length === 13, sheets.map((sheet) => sheet.name).join(', '))
   check(
-    'xlsx : une feuille par table',
-    ['Produits', 'Dépenses', 'Recettes', 'Investissements', 'Catégories', 'Factures'].every((name) =>
-      sheets.some((sheet) => sheet.name === name),
-    ),
+    'feuilles : une par collection',
+    [
+      'Résumé',
+      'Produits',
+      'Dépenses',
+      'Recettes',
+      'Investissements (dépenses)',
+      'Catégories',
+      'Factures',
+      'Analyse · Ventes',
+      'Analyse · Achats',
+      'Analyse · Investissements',
+      'Analyse · Possessions',
+      'Analyse · Lieux',
+      'Analyse · Paramètres',
+    ].every((name) => Boolean(byName(name))),
     '',
   )
+
+  check(
+    'produits : toutes les lignes',
+    byName('Produits').rows.length === snapshot.products.length,
+    `${byName('Produits').rows.length} / ${snapshot.products.length}`,
+  )
+  check(
+    'produits : identifiant et dates exportés',
+    byName('Produits').columns.some((column) => column.key === 'id') &&
+      byName('Produits').columns.some((column) => column.key === 'updatedAt') &&
+      byName('Produits').rows.every((row) => row.id),
+    '',
+  )
+  check(
+    'dépenses : toutes les lignes',
+    byName('Dépenses').rows.length === snapshot.expenses.expenses.length,
+    `${byName('Dépenses').rows.length} / ${snapshot.expenses.expenses.length}`,
+  )
+  check(
+    'recettes : toutes les lignes',
+    byName('Recettes').rows.length === snapshot.expenses.revenues.length,
+    `${byName('Recettes').rows.length} / ${snapshot.expenses.revenues.length}`,
+  )
+  check(
+    'factures : toutes les lignes',
+    byName('Factures').rows.length === snapshot.bills.length,
+    `${byName('Factures').rows.length} / ${snapshot.bills.length}`,
+  )
+  check(
+    'catégories : toutes les lignes',
+    byName('Catégories').rows.length === snapshot.expenses.categories.length,
+    `${byName('Catégories').rows.length} / ${snapshot.expenses.categories.length}`,
+  )
+  check(
+    'analyse : ventes, achats, possessions, lieux',
+    byName('Analyse · Ventes').rows.length === snapshot.analysis.sales.length &&
+      byName('Analyse · Achats').rows.length === snapshot.analysis.purchases.length &&
+      byName('Analyse · Possessions').rows.length === snapshot.analysis.holdings.length &&
+      byName('Analyse · Lieux').rows.length === snapshot.analysis.places.length,
+    [
+      byName('Analyse · Ventes').rows.length,
+      byName('Analyse · Achats').rows.length,
+      byName('Analyse · Possessions').rows.length,
+      byName('Analyse · Lieux').rows.length,
+    ].join('/'),
+  )
+  check('analyse : paramètres exportés', byName('Analyse · Paramètres').rows.length >= 5, byName('Analyse · Paramètres').rows.length)
+
+  /* --- 2. Exactitude : les totaux du fichier et ceux de l'app ------- */
+  const expenseRows = byName('Dépenses').rows
+  const revenueRows = byName('Recettes').rows
+  const investmentRows = byName('Investissements (dépenses)').rows
+  const billRows = byName('Factures').rows
+  const productRows = byName('Produits').rows
+
+  check(
+    'total dépenses = celui de l’application',
+    money(sumColumn(expenseRows, 'amount')) === money(expModel.totalExpenses(snapshot.expenses.expenses)),
+    `${money(sumColumn(expenseRows, 'amount'))} / ${money(expModel.totalExpenses(snapshot.expenses.expenses))}`,
+  )
+  check(
+    'total recettes = celui de l’application',
+    money(sumColumn(revenueRows, 'amount')) === money(expModel.totalRevenues(snapshot.expenses.revenues)),
+    `${money(sumColumn(revenueRows, 'amount'))} / ${money(expModel.totalRevenues(snapshot.expenses.revenues))}`,
+  )
+  check(
+    'total investi = celui de l’application',
+    money(sumColumn(investmentRows, 'amount')) === money(expModel.totalInvestments(snapshot.expenses.investments)),
+    `${money(sumColumn(investmentRows, 'amount'))} / ${money(expModel.totalInvestments(snapshot.expenses.investments))}`,
+  )
+  check(
+    'reste à récupérer = celui de l’application',
+    money(sumColumn(investmentRows, 'remaining')) === money(expModel.remainingInvestments(snapshot.expenses.investments)),
+    `${money(sumColumn(investmentRows, 'remaining'))} / ${money(expModel.remainingInvestments(snapshot.expenses.investments))}`,
+  )
+  check(
+    'total factures = celui de l’application',
+    money(sumColumn(billRows, 'amount')) === money(billsModel.sumBills(snapshot.bills).total),
+    `${money(sumColumn(billRows, 'amount'))} / ${money(billsModel.sumBills(snapshot.bills).total)}`,
+  )
+  check(
+    'valeur des produits = celle de l’application',
+    money(sumColumn(productRows, 'total')) === money(productsModel.sumTotal(snapshot.products.map(productsModel.productView)).total),
+    `${money(sumColumn(productRows, 'total'))} / ${money(productsModel.sumTotal(snapshot.products.map(productsModel.productView)).total)}`,
+  )
+  check(
+    'transfert : le montant remonte dans la ligne d’investissement',
+    investmentRows[0].transferred === 5000,
+    investmentRows[0].transferred,
+  )
+  check(
+    'dépense sans montant : signalée, pas inventée',
+    byName('Résumé').rows.some((row) => row.label.startsWith('Dépenses — lignes sans montant') && row.value === 1),
+    '',
+  )
+
+  /* Le résumé doit refléter les lignes, pas les modèles. */
+  const summary = byName('Résumé').rows
+  const summaryValue = (label) => summary.find((row) => row.label === label)?.value
+  check(
+    'résumé : les totaux viennent des lignes exportées',
+    money(summaryValue('Dépenses — total')) === money(sumColumn(expenseRows, 'amount')) &&
+      money(summaryValue('Recettes — total')) === money(sumColumn(revenueRows, 'amount')),
+    `${summaryValue('Dépenses — total')} / ${summaryValue('Recettes — total')}`,
+  )
+  check(
+    'résumé : solde recettes − dépenses',
+    money(summaryValue('Solde (recettes − dépenses)')) === money(sumColumn(revenueRows, 'amount') - sumColumn(expenseRows, 'amount')),
+    summaryValue('Solde (recettes − dépenses)'),
+  )
+
+  /* --- 3. Les deux formats ------------------------------------------ */
+  const xlsx = buildExportFile('all', 'xlsx')
+  const head = new Uint8Array(await xlsx.blob.slice(0, 4).arrayBuffer())
+  check('xlsx : nom daté', /^mes-achats-tout-\d{4}-\d{2}-\d{2}\.xlsx$/.test(xlsx.filename), xlsx.filename)
+  check('xlsx : signature ZIP', head[0] === 0x50 && head[1] === 0x4b, [...head].join(','))
+  check('xlsx : fichier non vide', xlsx.blob.size > 3000, `${xlsx.blob.size} octets`)
 
   const csv = buildExportFile('all', 'csv')
   const csvHead = new Uint8Array(await csv.blob.slice(0, 3).arrayBuffer())
   const text = await csv.blob.text()
-  check('csv : nom de fichier', /^mes-achats-tout-\d{4}-\d{2}-\d{2}\.csv$/.test(csv.filename), csv.filename)
   check('csv : BOM UTF-8', csvHead[0] === 0xef && csvHead[1] === 0xbb && csvHead[2] === 0xbf, [...csvHead].join(','))
   check('csv : séparateur point-virgule', text.includes(';"'), '')
-  check('csv : accents intacts', text.includes('rose bébé') && text.includes('Détails'), '')
+  check('csv : accents intacts', text.includes('rose bébé'), '')
   check('csv : virgule décimale', text.includes('1200,75'), '')
-  check('csv : sections nommées', text.includes('"Produits"') && text.includes('"Recettes"'), '')
+  check('csv : identifiants exportés', text.includes('"Identifiant"'), '')
 
-  const productsOnly = buildSheets({ products: [], bills: [], expenses: {} }, 'products')
+  /* Un saut de ligne dans une note ne doit pas casser la ligne. */
+  const blocks = text.split('\r\n\r\n')
+  const expenseBlock = blocks.find((block) => block.startsWith('"Dépenses"')) || ''
+  const expenseLines = expenseBlock.split('\r\n')
   check(
-    'portée « produits » : une seule feuille',
-    productsOnly.length === 1 && productsOnly[0].name === 'Produits',
-    productsOnly.map((sheet) => sheet.name).join(','),
+    'csv : la note multiligne ne coupe pas la ligne',
+    expenseLines.length === expenseRows.length + 2,
+    `${expenseLines.length} lignes pour ${expenseRows.length} dépenses`,
   )
+  check('csv : la note multiligne reste lisible', expenseBlock.includes('Commande urgente à retirer samedi matin'), '')
 
-  /* 2. L'écran des Réglages propose les trois choix et les actions. */
+  /* --- 4. L'écran des Réglages -------------------------------------- */
   stage.src = '../index.html#/reglages'
   const scope = await until(() => stage.contentDocument?.querySelector('[data-action="set-export-scope"]'))
   if (!scope) {
     await fetch('/__check/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        theme: 'light',
-        fatal: { message: 'la tuile d’export n’est pas dans les Réglages' },
-        results: [],
-      }),
+      body: JSON.stringify({ theme: 'light', fatal: { message: 'la tuile d’export n’est pas dans les Réglages' }, results: [] }),
     })
     throw new Error('tuile absente')
   }
@@ -140,24 +329,27 @@
   const doc = stage.contentDocument
   check(
     'réglages : contenu, format et rythme',
-    Boolean(scope) && Boolean(doc.querySelector('[data-action="set-export-format"]')) && Boolean(doc.querySelector('[data-action="set-export-period"]')),
+    Boolean(doc.querySelector('[data-action="set-export-format"]')) && Boolean(doc.querySelector('[data-action="set-export-period"]')),
     '',
   )
   check('réglages : bouton de téléchargement', Boolean(doc.querySelector('[data-action="export-now"]')), '')
 
   const period = doc.querySelector('[data-action="set-export-period"]')
-  const choices = [...period.options].map((option) => option.value)
-  check('rythme : quatre choix', choices.join(',') === 'off,day,week,month', choices.join(','))
+  check('rythme : quatre choix', [...period.options].map((option) => option.value).join(',') === 'off,day,week,month', '')
+  check(
+    'contenu : cinq portées, dont « toutes les données »',
+    [...doc.querySelector('[data-action="set-export-scope"]').options].map((option) => option.value).join(',') === 'all,products,expenses,revenues,bills',
+    '',
+  )
 
-  /* 3. Changer le rythme écrit dans les préférences. */
   period.value = 'week'
   period.dispatchEvent(new Event('change', { bubbles: true }))
   await wait(700)
   const saved = JSON.parse(localStorage.getItem('purchase-gros-prefs-v1') || '{}').autoExport || {}
   check('rythme : enregistré dans les préférences', saved.period === 'week', JSON.stringify(saved))
-  check('rythme : premier export daté', Boolean(saved.lastAt), saved.lastAt || '')
+  check('rythme : échéance datée', Boolean(saved.lastAt), saved.lastAt || '')
 
-  /* 4. Une échéance dépassée se voit. */
+  /* --- 5. Échéance dépassée : le bandeau ---------------------------- */
   const prefs = JSON.parse(localStorage.getItem('purchase-gros-prefs-v1') || '{}')
   localStorage.setItem(
     'purchase-gros-prefs-v1',
@@ -166,32 +358,19 @@
   stage.contentWindow.location.reload()
   await wait(2500)
   const banner = await until(() => stage.contentDocument?.querySelector('.banner--export'))
-  check('bandeau : export dû visible', Boolean(banner), banner ? banner.textContent.replace(/\s+/g, ' ').trim().slice(0, 70) : '')
+  check('bandeau : export dû visible', Boolean(banner), banner ? banner.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : '')
   check('bandeau : bouton d’enregistrement', Boolean(banner?.querySelector('[data-action="export-due-now"]')), '')
 
-  /* 5. La tuile tient dans la page, au bureau comme au téléphone.
-     Le rechargement de l'étape 4 a remplacé le document : on le relit. */
+  /* --- 6. Mise en page de la tuile, au bureau et au téléphone ------- */
   const live = stage.contentDocument
   const panel = live.querySelector('.export-panel')
-  if (!panel) {
-    await fetch('/__check/report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: 'light', fatal: { message: 'la tuile d’export a disparu après rechargement' }, results: [] }),
-    })
-    throw new Error('tuile absente après rechargement')
-  }
   const fields = [...live.querySelectorAll('.export-field .select')]
   check(
     'mise en page : trois champs visibles',
     fields.length === 3 && fields.every((field) => field.getBoundingClientRect().width >= 90),
     fields.map((field) => Math.round(field.getBoundingClientRect().width)).join('/'),
   )
-  check(
-    'mise en page : rien ne déborde (bureau)',
-    panel.scrollWidth <= panel.clientWidth + 1,
-    `${panel.scrollWidth} / ${panel.clientWidth}`,
-  )
+  check('mise en page : rien ne déborde (bureau)', panel.scrollWidth <= panel.clientWidth + 1, `${panel.scrollWidth} / ${panel.clientWidth}`)
 
   stage.style.width = '390px'
   await wait(400)
@@ -209,7 +388,7 @@
   )
   stage.style.width = '1200px'
 
-  /* 6. L'application n'a rien signalé en console. */
+  /* --- 7. Aucune erreur -------------------------------------------- */
   const errors = []
   stage.contentWindow.addEventListener('error', (event) => errors.push(event.message))
   await wait(300)
