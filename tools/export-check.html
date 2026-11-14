@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc — export tableur</title>
+<!--
+  Banc de l'export Excel / CSV, dans une passe à part (`--only export`).
+
+  Ce qu'il défend :
+
+    1. Le fichier est vraiment un classeur : signature ZIP, feuilles
+       attendues, cellules typées, accents intacts. Un export « valide »
+       qui s'ouvre vide serait la panne la plus coûteuse — on ne s'en
+       aperçoit qu'au moment où on en a besoin.
+
+    2. Le CSV suit la convention française (BOM, point-virgule, virgule
+       décimale) : sans le BOM, Excel casse les accents.
+
+    3. L'écran des Réglages mène jusqu'au fichier : trois choix, un
+       bouton, et le rythme qui s'enregistre dans les préférences.
+
+    4. Une échéance dépassée se voit : le bandeau d'export dû apparaît
+       avec son bouton.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+  #stage { position: fixed; left: -20000px; top: 0; width: 1200px; height: 1400px; border: 0; }
+</style>
+</head>
+<body>
+<pre id="out">…</pre>
+<iframe id="stage" title="application"></iframe>
+
+<script>
+  /* Filet de sécurité : un module qui ne part pas ne peut rien signaler. */
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.__exportBenchDone) return
+      fetch('/__check/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: 'light',
+          fatal: { message: 'le banc de l’export n’a rien renvoyé' },
+          results: [],
+        }),
+      }).catch(() => undefined)
+    }, 80_000)
+  })
+</script>
+
+<script type="module">
+  const results = []
+  const check = (name, pass, detail = '') => results.push({ name, pass: Boolean(pass), detail: String(detail) })
+  const log = (text) => fetch('/__check/log', { method: 'POST', body: text }).catch(() => undefined)
+
+  const stage = document.getElementById('stage')
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  const until = async (fn, tries = 80) => {
+    for (let i = 0; i < tries; i += 1) {
+      const value = fn()
+      if (value) return value
+      await wait(250)
+    }
+    return null
+  }
+
+  /* Données de départ : deux produits, une dépense, une recette. */
+  localStorage.setItem(
+    'purchase-gros-list-v2',
+    JSON.stringify([
+      { id: 'p1', name: 'Ceinture satin ivoire', type: 'ceinture', color: 'ivoire', supplier: 'Bab Ezzouar', qty: 25, unit: 'piece', price: 1.5, priority: 'haute', status: 'bought' },
+      { id: 'p2', name: 'Tulle rose bébé', type: 'tulle', color: 'rose bébé', supplier: 'Tafna', qty: 4, unit: 'metre', price: 350, priority: 'normale' },
+    ]),
+  )
+  localStorage.setItem(
+    'purchase-gros-expenses-v1',
+    JSON.stringify({
+      revenues: [{ id: 'r1', date: '2026-11-14', amount: 3000, note: 'Vente du jour' }],
+      expenses: [{ id: 'e1', date: '2026-11-13', categoryId: 'gas', amount: 1200.75, note: 'Plein' }],
+      investments: [{ id: 'i1', name: 'Machine', amount: 50000, remaining: 20000, note: '' }],
+    }),
+  )
+  localStorage.setItem('purchase-gros-github-optout-v1', 'true')
+
+  /* 1. Le fichier, construit avec les vraies données de l'application. */
+  const { buildExportFile } = await import('../src/data/exporter.js')
+  const { buildSheets } = await import('../src/data/export-tables.js')
+  log('modules d’export chargés')
+
+  const xlsx = buildExportFile('all', 'xlsx')
+  const head = new Uint8Array(await xlsx.blob.slice(0, 4).arrayBuffer())
+  check('xlsx : nom de fichier daté', /^mes-achats-tout-\d{4}-\d{2}-\d{2}\.xlsx$/.test(xlsx.filename), xlsx.filename)
+  check('xlsx : signature ZIP (PK)', head[0] === 0x50 && head[1] === 0x4b, [...head].join(','))
+  check('xlsx : fichier non vide', xlsx.blob.size > 2000, `${xlsx.blob.size} octets`)
+
+  const sheets = buildSheets({ products: [], bills: [], expenses: {} }, 'all')
+  check('xlsx : sept feuilles, résumé compris', sheets.length === 7, sheets.map((sheet) => sheet.name).join(','))
+  check(
+    'xlsx : une feuille par table',
+    ['Produits', 'Dépenses', 'Recettes', 'Investissements', 'Catégories', 'Factures'].every((name) =>
+      sheets.some((sheet) => sheet.name === name),
+    ),
+    '',
+  )
+
+  const csv = buildExportFile('all', 'csv')
+  const csvHead = new Uint8Array(await csv.blob.slice(0, 3).arrayBuffer())
+  const text = await csv.blob.text()
+  check('csv : nom de fichier', /^mes-achats-tout-\d{4}-\d{2}-\d{2}\.csv$/.test(csv.filename), csv.filename)
+  check('csv : BOM UTF-8', csvHead[0] === 0xef && csvHead[1] === 0xbb && csvHead[2] === 0xbf, [...csvHead].join(','))
+  check('csv : séparateur point-virgule', text.includes(';"'), '')
+  check('csv : accents intacts', text.includes('rose bébé') && text.includes('Détails'), '')
+  check('csv : virgule décimale', text.includes('1200,75'), '')
+  check('csv : sections nommées', text.includes('"Produits"') && text.includes('"Recettes"'), '')
+
+  const productsOnly = buildSheets({ products: [], bills: [], expenses: {} }, 'products')
+  check(
+    'portée « produits » : une seule feuille',
+    productsOnly.length === 1 && productsOnly[0].name === 'Produits',
+    productsOnly.map((sheet) => sheet.name).join(','),
+  )
+
+  /* 2. L'écran des Réglages propose les trois choix et les actions. */
+  stage.src = '../index.html#/reglages'
+  const scope = await until(() => stage.contentDocument?.querySelector('[data-action="set-export-scope"]'))
+  if (!scope) {
+    await fetch('/__check/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        theme: 'light',
+        fatal: { message: 'la tuile d’export n’est pas dans les Réglages' },
+        results: [],
+      }),
+    })
+    throw new Error('tuile absente')
+  }
+
+  const doc = stage.contentDocument
+  check(
+    'réglages : contenu, format et rythme',
+    Boolean(scope) && Boolean(doc.querySelector('[data-action="set-export-format"]')) && Boolean(doc.querySelector('[data-action="set-export-period"]')),
+    '',
+  )
+  check('réglages : bouton de téléchargement', Boolean(doc.querySelector('[data-action="export-now"]')), '')
+
+  const period = doc.querySelector('[data-action="set-export-period"]')
+  const choices = [...period.options].map((option) => option.value)
+  check('rythme : quatre choix', choices.join(',') === 'off,day,week,month', choices.join(','))
+
+  /* 3. Changer le rythme écrit dans les préférences. */
+  period.value = 'week'
+  period.dispatchEvent(new Event('change', { bubbles: true }))
+  await wait(700)
+  const saved = JSON.parse(localStorage.getItem('purchase-gros-prefs-v1') || '{}').autoExport || {}
+  check('rythme : enregistré dans les préférences', saved.period === 'week', JSON.stringify(saved))
+  check('rythme : premier export daté', Boolean(saved.lastAt), saved.lastAt || '')
+
+  /* 4. Une échéance dépassée se voit. */
+  const prefs = JSON.parse(localStorage.getItem('purchase-gros-prefs-v1') || '{}')
+  localStorage.setItem(
+    'purchase-gros-prefs-v1',
+    JSON.stringify({ ...prefs, autoExport: { ...saved, period: 'day', lastAt: '2026-01-01T00:00:00.000Z', name: '' } }),
+  )
+  stage.contentWindow.location.reload()
+  await wait(2500)
+  const banner = await until(() => stage.contentDocument?.querySelector('.banner--export'))
+  check('bandeau : export dû visible', Boolean(banner), banner ? banner.textContent.replace(/\s+/g, ' ').trim().slice(0, 70) : '')
+  check('bandeau : bouton d’enregistrement', Boolean(banner?.querySelector('[data-action="export-due-now"]')), '')
+
+  /* 5. La tuile tient dans la page, au bureau comme au téléphone.
+     Le rechargement de l'étape 4 a remplacé le document : on le relit. */
+  const live = stage.contentDocument
+  const panel = live.querySelector('.export-panel')
+  if (!panel) {
+    await fetch('/__check/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: 'light', fatal: { message: 'la tuile d’export a disparu après rechargement' }, results: [] }),
+    })
+    throw new Error('tuile absente après rechargement')
+  }
+  const fields = [...live.querySelectorAll('.export-field .select')]
+  check(
+    'mise en page : trois champs visibles',
+    fields.length === 3 && fields.every((field) => field.getBoundingClientRect().width >= 90),
+    fields.map((field) => Math.round(field.getBoundingClientRect().width)).join('/'),
+  )
+  check(
+    'mise en page : rien ne déborde (bureau)',
+    panel.scrollWidth <= panel.clientWidth + 1,
+    `${panel.scrollWidth} / ${panel.clientWidth}`,
+  )
+
+  stage.style.width = '390px'
+  await wait(400)
+  const narrow = live.querySelector('.export-panel')
+  const narrowFields = [...live.querySelectorAll('.export-field .select')]
+  check(
+    'téléphone : les champs passent à la ligne sans déborder',
+    narrow.scrollWidth <= narrow.clientWidth + 1 && narrowFields.every((field) => field.getBoundingClientRect().width >= 100),
+    `${narrow.scrollWidth} / ${narrow.clientWidth} · ${narrowFields.map((field) => Math.round(field.getBoundingClientRect().width)).join('/')}`,
+  )
+  check(
+    'téléphone : cibles tactiles',
+    narrowFields.every((field) => field.getBoundingClientRect().height >= 44),
+    narrowFields.map((field) => Math.round(field.getBoundingClientRect().height)).join('/'),
+  )
+  stage.style.width = '1200px'
+
+  /* 6. L'application n'a rien signalé en console. */
+  const errors = []
+  stage.contentWindow.addEventListener('error', (event) => errors.push(event.message))
+  await wait(300)
+  check('aucune erreur JavaScript', errors.length === 0, errors.join(' | '))
+
+  window.__exportBenchDone = true
+  document.getElementById('out').textContent = `RESULT ${results.filter((item) => !item.pass).length ? 'KO' : 'OK'}`
+  await fetch('/__check/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: 'light', results }),
+  })
+</script>
+</body>
+</html>

@@ -103,3 +103,31 @@ export const storage = {
   },
 }
 
+/**
+ * Demande au navigateur de ne pas évincer nos données.
+ *
+ * Sans cela, une origine jugée peu utilisée peut être vidée : Safari au bout
+ * de sept jours sans visite, Chrome quand le disque se remplit. La demande
+ * n'est pas toujours accordée — l'installation de l'application pèse dans la
+ * balance — et elle ne coûte rien quand elle est refusée.
+ * @returns {Promise<boolean>} l'état final, `false` si l'API manque.
+ */
+export async function requestPersistence() {
+  try {
+    if (!navigator.storage?.persist) return false
+    if (await navigator.storage.persisted()) return true
+    return await navigator.storage.persist()
+  } catch {
+    return false
+  }
+}
+
+/** Vrai quand le navigateur s'est engagé à garder les données. */
+export async function isPersisted() {
+  try {
+    return Boolean(navigator.storage?.persisted && (await navigator.storage.persisted()))
+  } catch {
+    return false
+  }
+}
+

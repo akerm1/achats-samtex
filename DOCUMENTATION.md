@@ -102,7 +102,7 @@ icons/   icônes PWA (64/192/512, maskable, apple-touch, favicon, svg)
 
 ## 4. Chaque fichier, chaque fonction
 
-### `src/main.js` + `src/app/*` (démarrage, 5 modules)
+### `src/main.js` + `src/app/*` (démarrage, 6 modules)
 | Fonction | Rôle |
 |---|---|
 | `showRoute(route)` | résout redirection/inconnu → `depenses` (écran d'ouverture), scroll haut, monte la vue dans `#view` |
@@ -155,6 +155,10 @@ export-csv, install-update, install-app, hide-install, hide-offline, hide-sync-e
 | **worker-api.js** (281) | `normalizeConfig` (nettoie le lien collé, valide `https://hôte/chemin`, rejette le gabarit), `canWrite` (lien présent), `fetchRemoteList` (`GET`, `empty:true` → « publiez la vôtre » ; rend liste, factures, analyse, dépenses et `docVersion`), `putRemoteList(config,list,sha,settings,bills,analysis,expenses)` (`PUT` avec `X-Rev` ; **409 → fusion produits, factures, analyse et dépenses, un nouvel essai**), `testConnection` (rapporte nombre + révision), `LINK_PLACEHOLDER`. |
 | **sync.js** (70) | Bascule de fournisseur : `PROVIDER_GITHUB/PROVIDER_WORKER`, `providerOf`, `normalizeConfig`, `canWrite`, `fetchRemoteList`, `putRemoteList` (**sept arguments transmis aux deux fournisseurs** : liste, réglages, factures, analyse, dépenses), `testConnection`, `fetchDefaultConfig`. |
 | **backup.js** (137) | `BACKUP_VERSION=4`, `buildBackup(products,bills,analysis,expenses)`, `toJSON`, `backupFilename`, `toCSV` (`;`+BOM+CRLF, 13 colonnes, sans photos), `parseBackup` (accepte les tableaux nus v1), `mergeProducts`/`mergeBills`/`mergeAnalysis`/`mergeExpenses` (par `id`, **l'entrant gagne**, `updatedAt=now`), `exportJSON` (quatre arguments — un appel à trois perdait les dépenses), `exportCSV`. |
+| **export-tables.js** (235) | Une table par collection (`Résumé`, `Produits`, `Dépenses`, `Recettes`, `Investissements`, `Catégories`, `Factures`) : `EXPORT_SCOPES`, `scopeLabel/scopeShort`, `buildSheets(snapshot, scope)`. Les montants restent des nombres, les dates en AAAA-MM-JJ. |
+| **exporter.js** (110) | `EXPORT_FORMATS` (xlsx/csv), `exportSnapshot()` (produits + factures + dépenses), `exportFilename`, `buildExportFile(scope, format)` → `{filename, blob}`, `toCsvText` (`;` + BOM + CRLF + virgule décimale), `downloadExport`, `writeExportToHandle` (File System Access, écriture silencieuse). |
+| **xlsx.js** (263) | Classeur Excel sans dépendance : ZIP « stored » écrit à la main (CRC32, en-têtes locaux et répertoire central) + `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`, `xl/_rels/workbook.xml.rels`, `xl/worksheets/sheetN.xml`. `buildXlsx(sheets)`, `sheetXml` (en-tête gelé, largeurs de colonnes, chaînes en `inlineStr`, nombres en `<v>`). |
+| **export-handle.js** (94) | IndexedDB `purchase-gros-export` / store `handles` : `loadHandle`, `saveHandle`, `clearHandle`. Un `FileSystemFileHandle` ne se sérialise pas en JSON ; il se clone, d'où IndexedDB. |
 | **photo-store.js** (236) | IndexedDB `purchase-gros-photos` / store `photos` / keyPath `id`, enregistrements `{id, photo, receipt}`. `failureReason`, `isAvailable`, `ensureReady`, `put(id,dataUrl,type)` (une valeur vide **supprime ce champ**, évite la résurrection d'une photo), `get`, `getAllWithReceipts` (une lecture → deux Maps), `remove`, `prune(validIds)` (nettoyage des orphelins), `clear`. |
 | **products.json** | Document v6 publié : liste, factures, analyse et dépenses, plus `client` (version qui a écrit) ; les documents v1/v2/v3 restent lisibles et sont promus en v6 à la première écriture. |
 
@@ -255,6 +259,25 @@ et le drapeau d'installation restent locaux, jamais synchronisés.
 | **Raccourcis clavier** | `N` nouveau · `/` recherche · `S` sync · `1 2 3` vues · `Échap` fermer |
 
 ---
+
+### Export tableur (Excel / CSV)
+
+Réglages → *Export Excel & CSV*. Trois choix (contenu, format, rythme) et deux actions.
+
+| Élément | Comportement |
+|---|---|
+| Contenu | Toutes les données, Produits, Dépenses, Recettes ou Factures. |
+| Format | `.xlsx` (une feuille par table + un résumé) ou `.csv` (une section par table, `;`, virgule décimale, BOM UTF-8). |
+| Rythme | Jamais, chaque jour, chaque semaine, chaque mois (30 jours). |
+| Télécharger maintenant | Toujours disponible : c'est un simple téléchargement. |
+| Choisir un fichier | File System Access : l'application réécrit **ce** fichier à chaque échéance, sans rien demander. |
+| Échéance dépassée | Bandeau « Export automatique en attente » + bouton ; masquable pour la session. |
+
+**Ce qu'un navigateur ne permet pas**, et que l'écran dit franchement : une page ne
+peut pas déposer un fichier dans « Téléchargements » sans geste, ni travailler
+onglet fermé. D'où les deux modes — fichier désigné (vraiment automatique tant que
+l'application est ouverte) ou rappel + un appui. Le contrôle se fait par
+`node tools/check.mjs --only export`.
 
 ## 7. Réserve connues (constatées lors de l'analyse)
 

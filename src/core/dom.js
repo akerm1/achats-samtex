@@ -35,9 +35,8 @@ export function debounce(fn, delay = 200) {
   }
 }
 
-/** Télécharge un contenu texte depuis le navigateur. */
-export function downloadText(filename, text, mime = 'application/json') {
-  const blob = new Blob([text], { type: `${mime};charset=utf-8` })
+/** Déclenche l'enregistrement d'un fichier déjà emballé (texte ou binaire). */
+export function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -46,6 +45,11 @@ export function downloadText(filename, text, mime = 'application/json') {
   link.click()
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/** Télécharge un contenu texte depuis le navigateur. */
+export function downloadText(filename, text, mime = 'application/json') {
+  downloadBlob(filename, new Blob([text], { type: `${mime};charset=utf-8` }))
 }
 
 export async function copyText(text) {

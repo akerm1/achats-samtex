@@ -841,6 +841,17 @@
   background: var(--accent-soft);
 }
 
+/* Rappel d'un export automatique en retard : même famille que l'invite
+   d'installation, mais c'est une action attendue, pas une découverte. */
+.banner--export {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.banner--export .banner-mark {
+  color: var(--accent);
+}
+
 .banner--warn {
   border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
   background: var(--warning-soft);

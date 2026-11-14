@@ -33,6 +33,7 @@ src/core/             briques sans métier, réutilisables partout
   theme.js              clair / sombre
   photo.js              compression des photos avant stockage
   update.js             comparaison avec version.json
+  autoexport.js         échéances d'export (jour / semaine / mois)
   app.js                APP_VERSION / APP_RELEASE
 
 src/data/             l'état et la persistance
@@ -47,6 +48,10 @@ src/data/             l'état et la persistance
   github.js             client GitHub
   worker-api.js         client du worker Cloudflare
   backup.js             export / import JSON, CSV
+  export-tables.js      ce que contient le fichier : une table par collection
+  exporter.js           fichier .xlsx ou .csv, à la demande ou par écriture directe
+  xlsx.js               classeur Excel (ZIP + XML), sans dépendance
+  export-handle.js      souvenir du fichier choisi (File System Access, IndexedDB)
   photo-store.js        photos en IndexedDB
   colors.js             nom de couleur → teinte
 

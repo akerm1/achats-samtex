@@ -13,11 +13,14 @@
 /*       .setting-control  le contrôle                                */
 /* ------------------------------------------------------------------ */
 
-import { $, esc, formatRelative, readableBytes } from '../../core/utils.js'
+import { $, esc, formatDate, formatRelative, readableBytes } from '../../core/utils.js'
 import { THEMES, getThemePreference } from '../../core/theme.js'
-import { storage } from '../../core/storage.js'
+import { isPersisted, storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
 import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
+import { EXPORT_FORMATS, formatOf } from '../../data/exporter.js'
+import { EXPORT_SCOPES } from '../../data/export-tables.js'
+import { EXPORT_PERIODS, getAutoExport, isDue, nextRunAt, supportsDestination } from '../../app/autoexport.js'
 import { importAnalysis } from '../../data/analysis-store.js'
 import { getExpenses, importExpenses } from '../../data/expenses-store.js'
 import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, testConnection } from '../../data/sync.js'
@@ -301,6 +304,99 @@ function dataTile() {
   )
 }
 
+/**
+ * Export Excel / CSV, à la demande ou au rythme choisi.
+ *
+ * Une page web ne peut pas déposer un fichier dans « Téléchargements »
+ * sans un geste. Le seul moyens de faire vraiment « tout seul » est de
+ * désigner UN fichier une fois (File System Access) : l'application le
+ * réécrit ensuite à chaque échéance. Sans fichier désigné, elle le
+ * signale et enregistre au premier appui.
+ */
+function exportTile() {
+  const config = getAutoExport()
+  const due = isDue(config)
+  const next = nextRunAt(config)
+  const supported = supportsDestination()
+  const options = (list, current) =>
+    list
+      .map((item) => `<option value="${item.value}"${item.value === current ? ' selected' : ''}>${esc(item.label)}</option>`)
+      .join('')
+
+  const state = config.lastAt
+    ? `Dernier export ${formatRelative(config.lastAt)}`
+    : 'Aucun export pour le moment'
+  const nextLine =
+    config.period === 'off'
+      ? ''
+      : next
+        ? ` · prochain ${formatDate(next.toISOString())}`
+        : ''
+  const dueLine = due
+    ? `<span class="badge badge--orange" data-role="export-due">Export dû</span>`
+    : ''
+  const extension = formatOf(config.format).extension
+  const matches = config.name.toLowerCase().endsWith('.' + extension)
+  const fileLine = config.name
+    ? matches
+      ? `Fichier : <strong>${esc(config.name)}</strong> — réécrit à chaque échéance tant que l'application est ouverte.`
+      : `Fichier : <strong>${esc(config.name)}</strong> — il ne correspond pas au format choisi. Reprenez « Choisir un fichier » pour qu'il soit écrit, sinon l'export repassera par un téléchargement.`
+    : supported
+      ? "Choisissez un fichier une fois : il sera alors mis à jour tout seul, sans nouvelle boîte de dialogue."
+      : "Ce navigateur ne sait pas réécrire un fichier seul : l'application vous rappellera de l'enregistrer."
+
+  return tile(
+    'Export Excel & CSV',
+    `Un fichier pour le tableur, avec une feuille par table (produits, dépenses, recettes,
+     investissements, catégories, factures) et un résumé des chiffres. Le CSV suit la
+     convention française : point-virgule et virgule décimale.`,
+    `<div class="export-panel">
+      <div class="export-grid">
+        <label class="export-field">
+          <span>Contenu</span>
+          <select class="select" data-action="set-export-scope" aria-label="Contenu de l'export">
+            ${options(EXPORT_SCOPES, config.scope)}
+          </select>
+        </label>
+        <label class="export-field">
+          <span>Format</span>
+          <select class="select" data-action="set-export-format" aria-label="Format de l'export">
+            ${options(EXPORT_FORMATS, config.format)}
+          </select>
+        </label>
+        <label class="export-field">
+          <span>Rythme</span>
+          <select class="select" data-action="set-export-period" aria-label="Rythme de l'export automatique">
+            ${options(EXPORT_PERIODS, config.period)}
+          </select>
+        </label>
+      </div>
+      <div class="u-row u-wrap">
+        <button type="button" class="btn btn--primary btn--sm" data-action="export-now">
+          ${icon('download', 13)} Télécharger maintenant
+        </button>
+        ${
+          supported
+            ? `<button type="button" class="btn btn--secondary btn--sm" data-action="pick-export-file">
+                 ${icon('save', 13)} ${config.name ? 'Changer de fichier' : 'Choisir un fichier'}
+               </button>`
+            : ''
+        }
+        ${
+          due
+            ? `<button type="button" class="btn btn--secondary btn--sm" data-action="export-due-now">
+                 ${icon('refresh', 13)} Enregistrer l'export dû
+               </button>`
+            : ''
+        }
+      </div>
+      <p class="export-state">${dueLine} ${state}${nextLine}</p>
+      <p class="setting-sub">${fileLine}</p>
+    </div>`,
+    { wide: true, iconName: 'download' },
+  )
+}
+
 function dangerTile() {
   const products = getProducts().length
   const bills = getBills().length
@@ -400,6 +496,7 @@ function aboutTile() {
          · ${photos} photo${photos > 1 ? 's' : ''}
          ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
        </span>
+       <span class="setting-sub" data-role="storage-quota">Espace accordé par le navigateur : mesure en cours…</span>
        <span class="setting-sub" data-role="storage-detail">
          ${
            separated
@@ -420,6 +517,35 @@ function aboutTile() {
       '',
       { wide: true, iconName: 'sparkles' },
     )}`
+}
+
+/**
+ * Ce que le navigateur accorde vraiment à l'origine, et ce qu'on en utilise.
+ *
+ * Une estimation à la main (« 5 à 10 Mo ») donnait un pourcentage inventé :
+ * la seule réponse honnête vient de `navigator.storage.estimate()`.
+ */
+async function paintQuota() {
+  const node = host?.querySelector('[data-role="storage-quota"]')
+  if (!node) return
+  if (!navigator.storage?.estimate) {
+    node.remove()
+    return
+  }
+  try {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate()
+    const persisted = await isPersisted()
+    if (!quota) {
+      node.remove()
+      return
+    }
+    const share = Math.max(0, Math.round((usage / quota) * 100))
+    node.textContent =
+      `Espace accordé par le navigateur : ${readableBytes(quota)} · utilisé ${readableBytes(usage)} (${share} %).` +
+      (persisted ? ' Le navigateur s’est engagé à conserver ces données.' : '')
+  } catch {
+    node.remove()
+  }
 }
 
 /** Met à jour la ligne d'état et le badge sans redessiner la vue entière. */
@@ -451,7 +577,7 @@ function template() {
 
       ${group('Affichage', themeTile() + layoutTile())}
       ${group('Partage', shareTile())}
-      ${group('Données', dataTile() + dangerTile())}
+      ${group('Données', dataTile() + exportTile() + dangerTile())}
       ${group('Application', installTile() + updateTile() + aboutTile())}
 
     </section>`
@@ -645,6 +771,8 @@ function bind() {
     toast(`Partage connecté au ${label}.`, { type: 'ok' })
   })
 
+  paintQuota()
+
   host.querySelector('[data-action="test-share"]')?.addEventListener('click', handleTest)
   host.querySelector('[data-action="import-from-github"]')?.addEventListener('click', handleImportFromGithub)
   host.querySelector('[data-action="check-update"]')?.addEventListener('click', handleCheckUpdate)
@@ -683,6 +811,10 @@ function dataSignature() {
     state.storageProblem || '',
     state.usage?.bytes || 0,
     state.usage?.photos || 0,
+    /* Les réglages d'export pilotent la ligne d'état de leur tuile :
+       dernier export, prochaine échéance, fichier retenu. */
+    JSON.stringify(getAutoExport()),
+    isDue(getAutoExport()),
   ])
 }
 

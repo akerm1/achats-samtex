@@ -594,6 +594,51 @@
   line-height: 1.55;
 }
 
+/* Export tableur : trois choix côte à côte, puis les actions. Chaque
+   champ garde son étiquette au-dessus, jamais à côté : sur téléphone,
+   un libellé à gauche d'un select le rétrécit jusqu'à l'illisible. */
+.export-panel {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.export-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+}
+
+.export-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.export-field > span {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.export-field .select {
+  width: 100%;
+  min-height: 44px;
+}
+
+.export-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
 /* Tablette : la barre « tri » n'a pas la place de tenir sur une ligne
    avec ses dates. Les mêmes règles qu'au téléphone, plus tôt. */
 @media (max-width: 900px) {

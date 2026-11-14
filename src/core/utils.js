@@ -5,7 +5,7 @@
 /* par domaine : dom.js, format.js, math.js, ids.js.                   */
 /* ------------------------------------------------------------------ */
 
-export { $, $$, esc, escAttr, debounce, downloadText, copyText, slug, isTyping } from './dom.js'
+export { $, $$, esc, escAttr, debounce, downloadBlob, downloadText, copyText, slug, isTyping } from './dom.js'
 export {
   NO_VALUE,
   toNumber,

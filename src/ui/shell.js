@@ -12,6 +12,7 @@ import { $, esc, formatRelative } from '../core/utils.js'
 import { isUpdateAvailable } from '../core/update.js'
 import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
+import { getAutoExport, isDue, periodLabel } from '../app/autoexport.js'
 
 /* Les quatre écrans du dock et du rail. Les réglages vivent à part,
    dans le pied du rail et dans la barre haute : cinq onglets égaux
@@ -38,6 +39,8 @@ const shell = {
   installEvent: null,
   updateAvailable: false,
   offlineReady: false,
+  /* Export automatique : rappel masqué pour cette session seulement. */
+  exportDismissed: false,
   syncErrorDismissed: null,
 }
 
@@ -389,6 +392,26 @@ export function renderBanners() {
       </aside>`)
   }
 
+  /* Export automatique en retard : sans ce rappel, un réglage « chaque
+     semaine » resterait sans effet tant que personne n'ouvre les Réglages. */
+  const exportConfig = getAutoExport()
+  if (isDue(exportConfig) && !shell.exportDismissed) {
+    html.push(`
+      <aside class="banner banner--export">
+        <span class="banner-mark">${icon('download', 15)}</span>
+        <div class="banner-text">
+          <strong>Export automatique en attente</strong>
+          <span>Rythme : ${esc(periodLabel(exportConfig.period).toLowerCase())}. ${
+            exportConfig.name
+              ? `Le fichier « ${esc(exportConfig.name)} » va être mis à jour.`
+              : 'Un appui enregistre le fichier ; choisissez-en un dans les Réglages pour que ce soit vraiment automatique.'
+          }</span>
+        </div>
+        <button type="button" class="btn btn--primary btn--sm" data-action="export-due-now">Enregistrer</button>
+        <button type="button" class="icon-btn icon-btn--plain" data-action="hide-export-notice" aria-label="Masquer">${icon('x', 14)}</button>
+      </aside>`)
+  }
+
   if (!isInstalled() && !installHidden && !shell.updateAvailable && !shell.offlineReady) {
     html.push(`
       <aside class="banner banner--install">
@@ -400,6 +423,12 @@ export function renderBanners() {
   }
 
   region.innerHTML = html.join('')
+}
+
+/** Masque le rappel d'export pour cette session (il revient au prochain lancement). */
+export function dismissExportNotice() {
+  shell.exportDismissed = true
+  renderBanners()
 }
 
 export function hideOfflineNotice() {

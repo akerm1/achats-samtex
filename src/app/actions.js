@@ -20,6 +20,16 @@ import {
 } from '../data/store.js'
 import { exportCSV, exportJSON } from '../data/backup.js'
 import {
+  chooseDestination,
+  downloadNow,
+  forgetDestination,
+  getAutoExport,
+  runDueNow,
+  setAutoExport,
+} from './autoexport.js'
+import { scopeLabel } from '../data/export-tables.js'
+import { formatOf } from '../data/exporter.js'
+import {
   getAnalysis,
 } from '../data/analysis-store.js'
 import {
@@ -30,6 +40,7 @@ import { openBillForm } from '../screens/bills/form.js'
 import { openColorPreview, openPhotoPreview, openReceiptPreview } from '../ui/preview.js'
 import {
   canPromptInstall,
+  dismissExportNotice,
   dismissInstall,
   dismissSyncError,
   hideOfflineNotice,
@@ -198,11 +209,62 @@ export const ACTIONS = {
     toast('Export CSV généré (Excel).', { type: 'ok' })
   },
 
+  /* Export tableur : le contenu et le format viennent des Réglages. */
+  'export-now': () => {
+    const config = getAutoExport()
+    const filename = downloadNow(config.scope, config.format)
+    toast(`Export enregistré : ${filename}`, { type: 'ok' })
+  },
+  'export-due-now': () => {
+    runDueNow()
+  },
+  'pick-export-file': async () => {
+    const result = await chooseDestination()
+    if (result.cancelled) return
+    if (!result.ok) {
+      toast(result.message || 'Fichier non retenu.', { type: 'error' })
+      return
+    }
+    toast(
+      result.written
+        ? `Fichier « ${result.name} » prêt : il sera mis à jour à chaque échéance.`
+        : `Fichier « ${result.name} » retenu, mais l'écriture a échoué. Utilisez « Télécharger maintenant ».`,
+      { type: result.written ? 'ok' : 'error' },
+    )
+  },
+  'forget-export-file': () => {
+    forgetDestination()
+    toast('Fichier oublié : les exports repasseront par un téléchargement.', { type: 'ok' })
+  },
+  'set-export-scope': (node) => {
+    setAutoExport({ scope: node.value })
+    toast(`Export : ${scopeLabel(node.value)}.`, { type: 'ok' })
+  },
+  'set-export-format': (node) => {
+    setAutoExport({ format: node.value })
+    toast(`Format : ${formatOf(node.value).label}.`, { type: 'ok' })
+  },
+  'set-export-period': (node) => {
+    const period = node.value
+    /* Activer l'automatisme ne doit pas déclencher un export dans la
+       seconde : on part de maintenant, la première échéance est complète. */
+    const patch = { period }
+    if (period !== 'off' && !getAutoExport().lastAt) patch.lastAt = new Date().toISOString()
+    setAutoExport(patch)
+    toast(
+      period === 'off'
+        ? 'Export automatique arrêté.'
+        : `Export automatique : ${{ day: 'chaque jour', week: 'chaque semaine', month: 'chaque mois' }[period] || period}.`,
+      { type: 'ok' },
+    )
+  },
+
   /* PWA et bandeaux */
   'install-update': () => installUpdate(),
   'install-app': () => (canPromptInstall() ? promptInstall() : showInstallHelp()),
   'hide-install': () => dismissInstall(),
   'hide-offline': () => hideOfflineNotice(),
+  'hide-export-notice': () => dismissExportNotice(),
   'hide-sync-error': () => dismissSyncError(),
 }
 
