@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-14T11:46:02.183Z",
+  "updatedAt": "2026-11-14T11:47:04.529Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -3950,7 +3950,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "id": "rent",
@@ -3961,7 +3961,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "id": "labor",
@@ -3972,7 +3972,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "id": "tools",
@@ -3983,7 +3983,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "id": "transfer",
@@ -3994,7 +3994,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "id": "car",
@@ -4005,7 +4005,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-14T11:45:58.462Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       }
     ],
     "expenses": [
@@ -4018,7 +4018,7 @@
         "linkedInvestmentId": null,
         "id": "exp_1794607884337",
         "createdAt": "2026-11-13T22:11:24.337Z",
-        "updatedAt": "2026-11-14T10:04:54.108Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       }
     ],
     "investments": [],
@@ -4029,7 +4029,7 @@
         "note": "Test",
         "id": "rev_1794585194389",
         "createdAt": "2026-11-13T15:53:14.390Z",
-        "updatedAt": "2026-11-14T10:04:54.108Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       },
       {
         "date": "2026-11-14",
@@ -4037,7 +4037,7 @@
         "note": "Test",
         "id": "rev_1794650625844",
         "createdAt": "2026-11-14T10:03:45.844Z",
-        "updatedAt": "2026-11-14T10:04:54.108Z"
+        "updatedAt": "2026-11-14T11:47:04.469Z"
       }
     ],
     "settings": {
