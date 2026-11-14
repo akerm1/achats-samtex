@@ -276,7 +276,7 @@ function installHint() {
   const kind = detectPlatform()
   if (kind === 'ios') return 'Partager → « Sur l’écran d’accueil »'
   if (kind === 'android') return 'Menu ⋮ → « Installer l’application »'
-  return 'Ouvrez cette page depuis le navigateur du téléphone'
+  return 'Depuis le navigateur du téléphone'
 }
 
 /**

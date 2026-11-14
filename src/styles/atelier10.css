@@ -907,6 +907,77 @@
   }
 }
 
+/* Téléphone : la place au-dessus de la liste. Le premier article doit
+   se voir sans faire défiler trois écrans de bandeaux et de filtres. */
+@media (max-width: 560px) {
+  /* L'invite d'installation tient sur une ligne : l'action passe à côté
+     du texte au lieu de prendre une rangée entière. */
+  .banner--install {
+    grid-template-columns: 28px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .banner--install .banner-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+  }
+
+  .banner--install .banner-text strong {
+    font-size: var(--text-sm);
+    line-height: 1.25;
+  }
+
+  .banner--install .banner-text span {
+    font-size: var(--text-xs);
+    line-height: 1.3;
+  }
+
+  .banner--install .btn {
+    grid-column: 3;
+    grid-row: 1;
+    width: auto;
+    min-height: 36px;
+    padding: 0 12px;
+  }
+
+  .banner--install .icon-btn {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  /* Le visuel garde son cadrage, pas sa hauteur : une fiche entière doit
+     tenir sous le pouce. */
+  .product--card .hero {
+    max-height: 168px;
+  }
+
+  .filterbar {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  /* L'en-tête se resserre : un titre, un sous-titre, deux chiffres, et
+     la liste commence. */
+  .screen-head {
+    gap: 12px;
+  }
+
+  .screen-title {
+    font-size: clamp(26px, 7.6vw, 30px);
+  }
+
+  .screen-sub {
+    font-size: 13.5px;
+  }
+
+  .stat {
+    padding: 8px 11px;
+  }
+}
+
 /* Très petits écrans : on serre encore, sans jamais descendre sous 44 px. */
 @media (max-width: 380px) {
   .stat-value {
