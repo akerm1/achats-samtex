@@ -1,11 +1,11 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T17:59:29.694Z",
+  "updatedAt": "2026-11-15T18:00:10.030Z",
   "settings": {
     "theme": "light",
-    "filter": "all",
-    "category": "tissu",
+    "filter": "todo",
+    "category": "all",
     "sort": "recent",
     "layout": "card"
   },
@@ -3940,7 +3940,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       },
       {
         "id": "rent",
@@ -3951,7 +3951,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       },
       {
         "id": "labor",
@@ -3962,7 +3962,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       },
       {
         "id": "tools",
@@ -3973,7 +3973,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       },
       {
         "id": "transfer",
@@ -3984,7 +3984,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       },
       {
         "id": "car",
@@ -3995,12 +3995,41 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
+        "updatedAt": "2026-11-15T18:00:09.981Z"
       }
     ],
-    "expenses": [],
+    "expenses": [
+      {
+        "categoryId": "gas",
+        "amount": 1000,
+        "date": "2026-11-13",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1794607884337",
+        "createdAt": "2026-11-13T22:11:24.337Z",
+        "updatedAt": "2026-11-14T10:04:54.108Z"
+      }
+    ],
     "investments": [],
-    "revenues": [],
+    "revenues": [
+      {
+        "date": "2026-11-13",
+        "amount": 20000,
+        "note": "Test",
+        "id": "rev_1794585194389",
+        "createdAt": "2026-11-13T15:53:14.390Z",
+        "updatedAt": "2026-11-14T10:04:54.108Z"
+      },
+      {
+        "date": "2026-11-14",
+        "amount": 30000,
+        "note": "Test",
+        "id": "rev_1794650625844",
+        "createdAt": "2026-11-14T10:03:45.844Z",
+        "updatedAt": "2026-11-14T10:04:54.108Z"
+      }
+    ],
     "settings": {
       "currency": "DZD",
       "autoDeductTransfer": true
