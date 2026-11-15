@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T17:58:32.307Z",
+  "updatedAt": "2026-11-15T17:58:36.598Z",
   "settings": {
     "theme": "light",
     "filter": "all",
@@ -9,28 +9,7 @@
     "sort": "recent",
     "layout": "card"
   },
-  "products": [
-    {
-      "name": "Nnnnnn",
-      "photo": "",
-      "note": "",
-      "type": "tissu",
-      "color": "",
-      "colorRgb": null,
-      "supplier": "",
-      "qty": 1,
-      "unit": "metre",
-      "price": null,
-      "priority": "normale",
-      "id": "local-mumziazy-vnlika",
-      "status": "bought",
-      "boughtAt": "2026-11-12T08:42:28.353Z",
-      "createdAt": "2026-09-29T18:02:56.688Z",
-      "updatedAt": "2026-11-14T11:47:15.897Z",
-      "receipt": "",
-      "receiptAt": null
-    }
-  ],
+  "products": [],
   "bills": [
     {
       "supplier": "Test",
