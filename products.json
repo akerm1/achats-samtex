@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T17:58:46.490Z",
+  "updatedAt": "2026-11-15T17:59:05.276Z",
   "settings": {
     "theme": "light",
     "filter": "all",
@@ -4019,14 +4019,6 @@
         "note": "Test",
         "id": "rev_1794585194389",
         "createdAt": "2026-11-13T15:53:14.390Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
-      },
-      {
-        "date": "2026-11-14",
-        "amount": 30000,
-        "note": "Test",
-        "id": "rev_1794650625844",
-        "createdAt": "2026-11-14T10:03:45.844Z",
         "updatedAt": "2026-11-15T17:58:44.197Z"
       }
     ],
