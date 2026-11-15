@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T18:01:11.640Z",
+  "updatedAt": "2026-11-15T18:01:21.198Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4012,16 +4012,7 @@
       }
     ],
     "investments": [],
-    "revenues": [
-      {
-        "date": "2026-11-13",
-        "amount": 20000,
-        "note": "Test",
-        "id": "rev_1794585194389",
-        "createdAt": "2026-11-13T15:53:14.390Z",
-        "updatedAt": "2026-11-15T18:00:13.030Z"
-      }
-    ],
+    "revenues": [],
     "settings": {
       "currency": "DZD",
       "autoDeductTransfer": true
