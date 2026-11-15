@@ -1,10 +1,10 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T17:58:28.064Z",
+  "updatedAt": "2026-11-15T17:58:32.307Z",
   "settings": {
     "theme": "light",
-    "filter": "todo",
+    "filter": "all",
     "category": "tissu",
     "sort": "recent",
     "layout": "card"
