@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-15T17:59:05.276Z",
+  "updatedAt": "2026-11-15T17:59:29.694Z",
   "settings": {
     "theme": "light",
     "filter": "all",
@@ -3998,30 +3998,9 @@
         "updatedAt": "2026-11-15T17:58:44.197Z"
       }
     ],
-    "expenses": [
-      {
-        "categoryId": "gas",
-        "amount": 1000,
-        "date": "2026-11-13",
-        "note": "",
-        "isTransfer": false,
-        "linkedInvestmentId": null,
-        "id": "exp_1794607884337",
-        "createdAt": "2026-11-13T22:11:24.337Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
-      }
-    ],
+    "expenses": [],
     "investments": [],
-    "revenues": [
-      {
-        "date": "2026-11-13",
-        "amount": 20000,
-        "note": "Test",
-        "id": "rev_1794585194389",
-        "createdAt": "2026-11-13T15:53:14.390Z",
-        "updatedAt": "2026-11-15T17:58:44.197Z"
-      }
-    ],
+    "revenues": [],
     "settings": {
       "currency": "DZD",
       "autoDeductTransfer": true
