@@ -1625,7 +1625,7 @@
 /* ================================================================== */
 
 /* ================================================================= */
-/* 7. Réglages — accordion-style card system                         */
+/* 7. Réglages — grey card sections                                   */
 /* ================================================================= */
 
 .view--settings {
@@ -1633,7 +1633,7 @@
   padding: clamp(16px, 3vw, 40px);
 }
 
-/* Section container with grey card styling */
+/* Section container - grey card */
 .settings-section {
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
@@ -1648,27 +1648,11 @@
   box-shadow: var(--shadow-accent-lg);
 }
 
-.settings-header {
+.settings-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 16px 20px;
-  background: var(--surface-2);
-  border: 0;
-  font: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.settings-header:hover {
-  background: var(--surface-3);
-}
-
-.settings-title {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
+  padding: 16px 20px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -1677,34 +1661,16 @@
   color: var(--ink-2);
   margin: 0;
   line-height: 1.3;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
 }
 
-.settings-icon {
-  display: inline-flex;
-  align-items: center;
-  transition: transform 0.2s ease;
-  color: var(--ink-3);
-}
-
-/* Rotated icon when expanded */
-.settings-section.settings-open .settings-icon {
-  transform: rotate(180deg);
-}
-
-/* Collapsible body */
+/* Body - always visible */
 .settings-body {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.25s cubic-bezier(0.22, 0.68, 0.32, 1);
-}
-
-/* Expanded state */
-.settings-section.settings-open .settings-body {
-  max-height: 2000px;
-  opacity: 1;
-  transform: translateY(0);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
 }
 
 /* Individual setting cards */
