@@ -43,37 +43,305 @@ export function backupFilename(extension, prefix = 'mes-achats') {
   return `${prefix}-${stamp}.${extension}`
 }
 
-const CSV_COLUMNS = [
-  ['id', 'id'],
-  ['name', 'nom'],
-  ['type', 'categorie'],
-  ['color', 'couleur'],
-  ['supplier', 'fournisseur'],
-  ['qty', 'quantite'],
-  ['unit', 'unite'],
-  ['price', 'prix_unitaire'],
-  ['priority', 'priorite'],
-  ['status', 'statut'],
-  ['boughtAt', 'achete_le'],
-  ['note', 'details'],
-  ['createdAt', 'ajoute_le'],
-]
+/* Colonnes CSV "tout-en-un" : produits + factures + dépenses + analyse.
+   Chaque ligne affiche toutes les dates (createdAt, updatedAt, date de la ligne)
+   et toutes les autres champs, triés par collection pour une lecture claire. */
+/* Colonnes CSV "tout-en-un" : produits + factures + dépenses + analyse.
+   Chaque ligne affiche toutes les dates (createdAt, updatedAt, date de la ligne)
+   et toutes les autres champs, triés par collection pour une lecture claire. */
+const CSV_COLUMNS = {
+  /* Produits */
+  products: [
+    ['id', 'id'],
+    ['name', 'nom'],
+    ['type', 'type'],
+    ['color', 'couleur'],
+    ['supplier', 'fournisseur'],
+    ['qty', 'qtée'],
+    ['unit', 'unite'],
+    ['price', 'prix_unitaire'],
+    ['priority', 'priorité'],
+    ['status', 'statut'],
+    ['boughtAt', 'acheté_le'],
+    ['note', 'details'],
+    ['createdAt', 'ajouté_le'],
+    ['updatedAt', 'modifié_le'],
+  ],
+  /* Factures */
+  bills: [
+    ['id', 'id'],
+    ['supplier', 'fournisseur'],
+    ['total', 'montant_total'],
+    ['payedAt', 'payé_le'],
+    ['createdAt', 'créé_le'],
+    ['updatedAt', 'modifié_le'],
+    ['note', 'details'],
+  ],
+  /* Dépenses */
+  expenses: {
+    header: [
+      ['id', 'id'],
+      ['expenseId', 'id_dépense'],
+      ['categoryId', 'categorie_id'],
+      ['amount', 'montant'],
+      ['date', 'date'],
+      ['note', 'details'],
+      ['createdAt', 'ajouté_le'],
+      ['updatedAt', 'modifié_le'],
+    ],
+    investmentHeader: [
+      ['id', 'id'],
+      ['name', 'nom_inv'],
+      ['amount', 'montant'],
+      ['remaining', 'restant'],
+      ['date', 'date'],
+      ['note', 'details'],
+      ['createdAt', 'ajouté_le'],
+      ['updatedAt', 'modifié_le'],
+    ],
+    revenueHeader: [
+      ['id', 'id'],
+      ['amount', 'montant_recette'],
+      ['date', 'date'],
+      ['note', 'details'],
+      ['createdAt', 'ajouté_le'],
+      ['updatedAt', 'modifié_le'],
+    ],
+  },
+  /* Analyse */
+  analysis: {
+    sales: [
+      ['id', 'id'],
+      ['date', 'date'],
+      ['amount', 'montant'],
+      ['kind', 'type'],
+    ],
+    purchases: [
+      ['id', 'id'],
+      ['date', 'date'],
+      ['amount', 'montant'],
+    ],
+    investments: [
+      ['id', 'id'],
+      ['name', 'nom_inv'],
+      ['amount', 'montant'],
+      ['remaining', 'restant'],
+      ['date', 'date'],
+    ],
+    holdings: [
+      ['id', 'id'],
+      ['name', 'nom_holding'],
+      ['amount', 'montant'],
+      ['date', 'date'],
+    ],
+    places: [
+      ['id', 'id'],
+      ['name', 'nom_place'],
+      ['date', 'date'],
+    ],
+  },
+}
+
+/* Rend la bonne ligne d'en-tête selon le type de donnée. */
+function csvHeaderFor(type, subtype) {
+  const base = CSV_COLUMNS[type]
+  if (!base) return null
+  if (subtype && CSV_COLUMNS[type][subtype]) return CSV_COLUMNS[type][subtype]
+  if (Array.isArray(base)) return base
+  /* C'est un objet avec des clés nommées : on renvoie le premier jeu trouvé. */
+  for (const key of Object.keys(base)) {
+    if (Array.isArray(base[key])) return base[key]
+  }
+  return null
+}
+
+/* Extrait les valeurs d'un produit/objet selon les colonnes CSV. */
+function csvRowFor(item, columns) {
+  return columns.map(([field, label]) => {
+    const value = item?.[field]
+    if (value === null || value === undefined) return ''
+    if (field === 'price' || field === 'amount' || field === 'total' || field === 'remaining') {
+      const num = Number(value)
+      return num !== null && num !== undefined ? num.toFixed(2) : ''
+    }
+    if (field.match(/At|date|Date$/i)) {
+      const date = new Date(value)
+      return isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('fr-FR')
+    }
+    return String(value)
+  })
+}
 
 function csvCell(value) {
   const text = String(value ?? '')
   return `"${text.replace(/"/g, '""')}"`
 }
 
-export function toCSV(products) {
-  const lines = [CSV_COLUMNS.map(([, header]) => header).join(';')]
-  for (const product of products || []) {
-    lines.push(
-      CSV_COLUMNS.map(([field]) => {
-        const value = product[field]
-        return csvCell(field === 'price' ? (value === null || value === undefined ? '' : value) : value)
-      }).join(';'),
-    )
+/* Génère une ligne CSV à partir d'un objet produit/facture/dépense/analyse.
+   Utilise les colonnes définies dans CSV_COLUMNS selon le type d'élément. */
+function csvItemRow(item, type, subtype) {
+  const columns = csvHeaderFor(type, subtype)
+  if (!columns) return null
+  return csvRowFor(item, columns).join(';')
+}
+
+/* Génère le bloc d'en-tête CSV selon le type de données. */
+function csvBlockHeader(type, subtype) {
+  const columns = csvHeaderFor(type, subtype)
+  if (!columns) return null
+  return columns.map(([, header]) => header).join(';')
+}
+
+/* Exporte toutes les collections (produits, factures, dépenses, analyse) en CSV. */
+export function toCSV(products, bills, analysis = null, expenses = null) {
+  const lines = []
+  /* En-têtes globaux */
+  let headerWritten = false
+
+  /* --- Produits --- */
+  if (products && Array.isArray(products)) {
+    const h = csvBlockHeader('products')
+    if (h) {
+      lines.push(h)
+      headerWritten = true
+    }
+    for (const p of products) {
+      const row = csvItemRow(p, 'products')
+      if (row) lines.push(row)
+    }
   }
+
+  /* --- Factures --- */
+  if (bills && Array.isArray(bills)) {
+    const h = csvBlockHeader('bills')
+    if (h) {
+      if (!headerWritten) lines.push(h)
+      headerWritten = true
+    }
+    for (const b of bills) {
+      const row = csvItemRow(b, 'bills')
+      if (row) lines.push(row)
+    }
+  }
+
+  /* --- Dépenses --- */
+  if (expenses && typeof expenses === 'object' && !Array.isArray(expenses)) {
+    const exp = expenses
+    /* Catégories */
+    if (exp.categories && Array.isArray(exp.categories)) {
+      const h = csvBlockHeader('expenses', 'header')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const cat of exp.categories) {
+        const row = csvItemRow(cat, 'expenses', 'header')
+        if (row) lines.push(row)
+      }
+    }
+    /* Investissements */
+    if (exp.investments && Array.isArray(exp.investments)) {
+      const h = csvBlockHeader('expenses', 'investmentHeader')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const inv of exp.investments) {
+        const row = csvItemRow(inv, 'expenses', 'investmentHeader')
+        if (row) lines.push(row)
+      }
+    }
+    /* Recettes */
+    if (exp.revenues && Array.isArray(exp.revenues)) {
+      const h = csvBlockHeader('expenses', 'revenueHeader')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const rev of exp.revenues) {
+        const row = csvItemRow(rev, 'expenses', 'revenueHeader')
+        if (row) lines.push(row)
+      }
+    }
+    /* Si aucune sous-collection n'a été rencontrée, on traite le cas général */
+    if (!headerWritten && exp.expenses && Array.isArray(exp.expenses)) {
+      const h = csvBlockHeader('expenses', 'header')
+      if (h) {
+        lines.push(h)
+        headerWritten = true
+      }
+      for (const e of exp.expenses) {
+        const row = csvItemRow(e, 'expenses', 'header')
+        if (row) lines.push(row)
+      }
+    }
+  }
+
+  /* --- Analyse --- */
+  if (analysis && typeof analysis === 'object' && !Array.isArray(analysis)) {
+    const ana = analysis
+    /* Ventes */
+    if (ana.sales && Array.isArray(ana.sales)) {
+      const h = csvBlockHeader('analysis', 'sales')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const s of ana.sales) {
+        const row = csvItemRow(s, 'analysis', 'sales')
+        if (row) lines.push(row)
+      }
+    }
+    /* Achats */
+    if (ana.purchases && Array.isArray(ana.purchases)) {
+      const h = csvBlockHeader('analysis', 'purchases')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const p of ana.purchases) {
+        const row = csvItemRow(p, 'analysis', 'purchases')
+        if (row) lines.push(row)
+      }
+    }
+    /* Investissements */
+    if (ana.investments && Array.isArray(ana.investments)) {
+      const h = csvBlockHeader('analysis', 'investments')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const inv of ana.investments) {
+        const row = csvItemRow(inv, 'analysis', 'investments')
+        if (row) lines.push(row)
+      }
+    }
+    /* Positions */
+    if (ana.holdings && Array.isArray(ana.holdings)) {
+      const h = csvBlockHeader('analysis', 'holdings')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const hd of ana.holdings) {
+        const row = csvItemRow(hd, 'analysis', 'holdings')
+        if (row) lines.push(row)
+      }
+    }
+    /* Endroits */
+    if (ana.places && Array.isArray(ana.places)) {
+      const h = csvBlockHeader('analysis', 'places')
+      if (h) {
+        if (!headerWritten) lines.push(h)
+        headerWritten = true
+      }
+      for (const pl of ana.places) {
+        const row = csvItemRow(pl, 'analysis', 'places')
+        if (row) lines.push(row)
+      }
+    }
+  }
+
   /* BOM pour qu'Excel reconnaisse l'UTF-8. */
   return `\uFEFF${lines.join('\r\n')}`
 }

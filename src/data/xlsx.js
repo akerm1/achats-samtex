@@ -2,8 +2,8 @@
 /* Classeur Excel (.xlsx) sans dépendance                              */
 /*                                                                     */
 /* Un .xlsx est une archive ZIP de quelques fichiers XML. Le navigateur */
-/* sait déjà tout faire sauf le ZIP : on l'écrit ici, en méthode        */
-/* « stored » (sans compression), qui est parfaitement légale et tient  */
+/* sait déjà tout faire sauf le ZIP : on l'écrit ici, en méthode       */
+/* « stored » (sans compression), qui est parfaitement légale et tient   */
 /* en quelques dizaines de lignes. Aucune bibliothèque, aucun build :   */
 /* le fichier s'ouvre dans Excel, LibreOffice et Google Sheets.         */
 /*                                                                     */
@@ -90,7 +90,6 @@ function zip(files) {
     entryView.setUint16(30, 0, true)
     entryView.setUint16(32, 0, true) // commentaire
     entryView.setUint16(34, 0, true) // disque
-    entryView.setUint16(36, 0, true) // attributs internes
     entryView.setUint32(38, 0, true) // attributs externes
     entryView.setUint32(42, offset, true) // position de l'entrée locale
     entry.set(name, 46)
@@ -122,10 +121,10 @@ function zip(files) {
 
 function escapeXml(value) {
   return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
     /* Les caractères de contrôle ne sont pas admis dans XML 1.0. */
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '')
 }
@@ -142,17 +141,21 @@ function columnName(index) {
   return name
 }
 
-function cellXml(ref, value) {
+function cellXml(ref, value, type = 's') {
   if (value === null || value === undefined || value === '') return ''
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return `<c r="${ref}"><v>${value}</v></c>`
+    return `<c r="${ref}" t="n"><v>${value}</v></c>`
   }
-  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`
+  if (type === 'd' && value instanceof Date && !isNaN(value.getTime())) {
+    const iso = value.toISOString().slice(0, 10)
+    return `<c r="${ref}" t="inlineStr"><is><t>${iso}</t></is></c>`
+  }
+  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(String(value))}</t></is></c>`
 }
 
 const HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 
-function sheetXml({ columns, rows }) {
+function sheetXml({ columns, rows, type = 'products' }) {
   const width = columns.length
   const cols = columns
     .map((column, index) => {
@@ -161,15 +164,25 @@ function sheetXml({ columns, rows }) {
     })
     .join('')
 
-  const headerRow = `<row r="1">${columns
-    .map((column, index) => cellXml(`${columnName(index + 1)}1`, column.label))
+  /* En-tête avec cellules formatées */
+  const headerRow = `<row r="1" s="1">${columns
+    .map((column, index) => cellXml(`${columnName(index + 1)}1`, column.label, 's'))
     .join('')}</row>`
 
+  /* Corps : selon le type, on sait quelles clés attendre */
   const body = rows
     .map((row, rowIndex) => {
       const number = rowIndex + 2
       const cells = columns
-        .map((column, index) => cellXml(`${columnName(index + 1)}${number}`, row[column.key]))
+        .map((column, index) => {
+          const value = row[column.key]
+          /* Dates : format jj/mm/aaaa */
+          if (column.key.match(/At|date|Date$/i) && value) {
+            const d = new Date(value)
+            return cellXml(`${columnName(index + 1)}${number}`, d, 'd')
+          }
+          return cellXml(`${columnName(index + 1)}${number}`, value)
+        })
         .join('')
       return `<row r="${number}">${cells}</row>`
     })
@@ -183,7 +196,7 @@ function sheetXml({ columns, rows }) {
 </worksheet>`
 }
 
-/** Excel refuse certains caractères dans un nom de feuille (31 max). */
+/* Excel refuse certains caractères dans un nom de feuille (31 max). */
 function safeSheetName(name, index, used) {
   let base = String(name || `Feuille ${index + 1}`)
     .replace(/[\\/?*[\]:]/g, ' ')
@@ -202,51 +215,55 @@ function safeSheetName(name, index, used) {
 }
 
 /**
- * Construit un classeur complet.
- * @param {{name: string, columns: {key: string, label: string, width?: number}[], rows: object[]}[]} sheets
+ * Construit un classeur Excel moderne avec plusieurs feuilles.
+ * Chaque feuille peut avoir son propre type de données (produits, factures,
+ * dépenses, analyse) et des colonnes adaptées.
+ * @param {{name: string, columns: {key: string, label: string, width?: number}[],
+ *   rows: object[][], type?: 'products'|'bills'|'expenses'|'analysis'}[]} sheets
  * @returns {Uint8Array}
  */
 export function buildXlsx(sheets) {
   const used = new Set()
-  const list = (sheets || []).filter((sheet) => sheet && Array.isArray(sheet.columns))
+  const list = (sheets || [])
+    .filter((sheet) => sheet && Array.isArray(sheet.columns) && Array.isArray(sheet.rows) && sheet.rows.length > 0)
   if (!list.length) throw new Error('Aucune feuille à exporter.')
 
   const names = list.map((sheet, index) => safeSheetName(sheet.name, index, used))
 
   const contentTypes = `${HEADER}
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-${list
-  .map(
-    (_, index) =>
-      `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
-  )
-  .join('\n')}
-</Types>`
+ <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+ <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+ <Default Extension="xml" ContentType="application/xml"/>
+ <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+ ${list
+   .map(
+     (_, index) =>
+       `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+   )
+   .join('\n')}
+ </Types>`
 
   const rootRels = `${HEADER}
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`
+ <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+ </Relationships>`
 
   const workbook = `${HEADER}
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets>${names
-    .map((name, index) => `<sheet name="${escapeXml(name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`)
-    .join('')}</sheets>
-</workbook>`
+ <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+ <sheets>${names
+   .map((name, index) => `<sheet name="${escapeXml(name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`)
+   .join('')}</sheets>
+ </workbook>`
 
   const workbookRels = `${HEADER}
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-${list
-  .map(
-    (_, index) =>
-      `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`,
-  )
-  .join('\n')}
-</Relationships>`
+ <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ ${list
+   .map(
+     (_, index) =>
+       `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`,
+   )
+   .join('\n')}
+ </Relationships>`
 
   const files = [
     { name: '[Content_Types].xml', text: contentTypes },
