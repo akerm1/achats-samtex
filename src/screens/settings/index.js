@@ -79,16 +79,18 @@ function tile(title, help, control, { wide = false, iconName = '' } = {}) {
     </div>`
 }
 
-/** Un groupe de réglages : un titre cliquable, puis le corps repliable */
+/** Un groupe de réglages : un titre en card, puis le corps repliable en dessous */
 function group(title, body, sectionId, initiallyOpen = false) {
   const id = sectionId || `section-${title.toLowerCase().replace(/\s+/g, '-')}`
   return `
-    <div class="settings-section ${initiallyOpen ? 'settings-open' : ''}" id="${esc(id)}">
-      <h3 class="settings-title" data-action="toggle-section-${id}">
-        <span>${esc(title)}</span>
-        <span class="settings-icon">${icon('chevron-down', 14)}</span>
-      </h3>
-      <div class="settings-body">
+    <div class="settings-section" id="${esc(id)}">
+      <div class="settings-card-titles">
+        <button type="button" class="settings-card-title" data-action="toggle-section-${id}">
+          <span class="settings-card-title-text">${esc(title)}</span>
+          <span class="settings-card-icon">${icon('chevron-down', 14)}</span>
+        </button>
+      </div>
+      <div class="settings-content ${initiallyOpen ? 'settings-open' : ''}" data-role="settings-body-${id}">
         ${body}
       </div>
     </div>`
@@ -789,11 +791,14 @@ function bind() {
   host.querySelector('[data-role="import-file"]')?.addEventListener('change', handleImport)
 
   /* Accordion toggle for settings sections */
-  host.querySelectorAll('[data-action^="toggle-section-"]').forEach((element) => {
-    element.addEventListener('click', (event) => {
-      const section = element.closest('.settings-section')
+  host.querySelectorAll('[data-action^="toggle-section-"]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const section = button.closest('.settings-section')
       if (!section) return
-      section.classList.toggle('settings-open')
+      const content = section.querySelector('.settings-content')
+      if (content) {
+        content.classList.toggle('settings-open')
+      }
     })
   })
 
