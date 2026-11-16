@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-16T18:09:40.669Z",
+  "updatedAt": "2026-11-16T18:09:47.095Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -3987,19 +3987,7 @@
         "updatedAt": "2026-11-16T17:32:41.866Z"
       }
     ],
-    "expenses": [
-      {
-        "categoryId": "transfer",
-        "amount": 2000,
-        "date": "2026-11-16",
-        "note": "",
-        "isTransfer": false,
-        "linkedInvestmentId": null,
-        "id": "exp_1794852576216",
-        "createdAt": "2026-11-16T18:09:36.216Z",
-        "updatedAt": "2026-11-16T18:09:36.216Z"
-      }
-    ],
+    "expenses": [],
     "investments": [],
     "revenues": [],
     "settings": {
@@ -4008,6 +3996,7 @@
     }
   },
   "deleted": {
-    "exp.expenses|exp_1794607884337": 1794852537902
+    "exp.expenses|exp_1794607884337": 1794852537902,
+    "exp.expenses|exp_1794852576216": 1794852584514
   }
 }
