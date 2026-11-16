@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-16T18:09:20.414Z",
+  "updatedAt": "2026-11-16T18:09:36.281Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -3987,7 +3987,19 @@
         "updatedAt": "2026-11-16T17:32:41.866Z"
       }
     ],
-    "expenses": [],
+    "expenses": [
+      {
+        "categoryId": "transfer",
+        "amount": 2000,
+        "date": "2026-11-16",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1794852576216",
+        "createdAt": "2026-11-16T18:09:36.216Z",
+        "updatedAt": "2026-11-16T18:09:36.216Z"
+      }
+    ],
     "investments": [],
     "revenues": [],
     "settings": {
