@@ -569,16 +569,16 @@ function template() {
     <section class="view view--settings">
       <header class="screen-head">
         <div class="screen-head-main">
-          <span class="screen-eyebrow">Préférences</span>
-          <h1 class="screen-title">Réglages</h1>
-          <p class="screen-sub">Apparence, partage entre appareils, sauvegardes et informations.</p>
+          <span class="screen-eyebrow">Réglages &amp; Configuration</span>
+          <h1 class="screen-title">Paramètres de l&rsquo;Application</h1>
+          <p class="screen-sub">Apparence, synchronisation, export de données et informations techniques.</p>
         </div>
       </header>
 
-      ${group('Affichage', themeTile() + layoutTile())}
-      ${group('Partage', shareTile())}
-      ${group('Données', dataTile() + exportTile() + dangerTile())}
-      ${group('Application', installTile() + updateTile() + aboutTile())}
+      ${group('Interface &amp; Affichage', themeTile() + layoutTile())}
+      ${group('Synchronisation &amp; Partage', shareTile())}
+      ${group('Gestion des Données', dataTile() + exportTile() + dangerTile())}
+      ${group('Informations &amp; Assistance', installTile() + updateTile() + aboutTile())}
 
     </section>`
 }
