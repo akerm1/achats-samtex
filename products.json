@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-16T18:10:07.700Z",
+  "updatedAt": "2026-11-16T18:10:10.445Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -3989,16 +3989,7 @@
     ],
     "expenses": [],
     "investments": [],
-    "revenues": [
-      {
-        "date": "2026-11-16",
-        "amount": 3333,
-        "note": "",
-        "id": "rev_1794852601472",
-        "createdAt": "2026-11-16T18:10:01.472Z",
-        "updatedAt": "2026-11-16T18:10:01.472Z"
-      }
-    ],
+    "revenues": [],
     "settings": {
       "currency": "DZD",
       "autoDeductTransfer": true
@@ -4006,6 +3997,7 @@
   },
   "deleted": {
     "exp.expenses|exp_1794607884337": 1794852537902,
-    "exp.expenses|exp_1794852576216": 1794852584514
+    "exp.expenses|exp_1794852576216": 1794852584514,
+    "exp.revenues|rev_1794852601472": 1794852610390
   }
 }
