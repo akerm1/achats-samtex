@@ -245,7 +245,7 @@ async function workerBench() {
   check('worker : un document vide ne prétend pas avoir des dépenses', 'expenses' in empty && empty.expenses === null, `expenses = ${JSON.stringify(empty.expenses)}`)
 
   const written = await (await call('PUT', { products: [{ id: 'p1' }], expenses: EXPENSES }, 2)).json()
-  check('worker : l’écriture annonce la version 6', written.version === 6, String(written.version))
+  check('worker : l’écriture annonce la version 7', written.version === 7, String(written.version))
   check('worker : l’écriture annonce que les dépenses passent', written.expenses === true, String(written.expenses))
 
   const withExpenses = await (await call('GET')).json()
@@ -273,7 +273,7 @@ async function workerBench() {
      sur `expenses: null`. */
   kv.set('doc', JSON.stringify({ version: 3, rev: 50, products: [{ id: 'vieux' }] }))
   const oldDoc = await (await call('GET')).json()
-  check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 6, `version = ${oldDoc.version}`)
+  check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 7, `version = ${oldDoc.version}`)
   check('worker : un vieux document ne prétend pas avoir des dépenses', oldDoc.expenses === null, JSON.stringify(oldDoc.expenses))
 
   /* L'appareil qui écrit se nomme : sans cela, un téléphone resté sur une
@@ -281,6 +281,154 @@ async function workerBench() {
   await call('PUT', { products: [{ id: 'p1' }], client: '9.9.9' }, 51)
   const named = await (await call('GET')).json()
   check('worker : la version de l’appareil qui écrit est conservée', named.client === '9.9.9', String(named.client))
+
+  /* Les suppressions sont ce qui empêche un produit supprimé de revenir :
+     elles doivent être relues, conservées par une écriture qui n'en envoie
+     pas (appareil resté sur une version antérieure), et jointes au conflit
+     pour que le client puisse fusionner sans résurrection. */
+  await call('PUT', { products: [{ id: 'p1' }], deleted: { 'products|p-ghost': 1700000000000 } }, 60)
+  const withDeleted = await (await call('GET')).json()
+  check('worker : les suppressions publiées sont relues', withDeleted.deleted?.['products|p-ghost'] === 1700000000000, JSON.stringify(withDeleted.deleted))
+
+  await call('PUT', { products: [{ id: 'p1' }] }, 61)
+  const keptDeleted = await (await call('GET')).json()
+  check('worker : une écriture sans suppressions ne les efface pas', keptDeleted.deleted?.['products|p-ghost'] === 1700000000000, JSON.stringify(keptDeleted.deleted))
+
+  const deletedConflict = await call('PUT', { products: [{ id: 'p2' }] }, 0)
+  const deletedBody = await deletedConflict.json()
+  check(
+    'worker : le conflit renvoie les suppressions à fusionner',
+    deletedConflict.status === 409 && deletedBody.deleted?.['products|p-ghost'] === 1700000000000,
+    `${deletedConflict.status} · ${JSON.stringify(deletedBody.deleted)}`,
+  )
+}
+
+/* Le cœur du bogue « je supprime, ça revient » : la fusion par `id` est une
+   union, et un produit absent d'un côté revenait par l'autre. Le registre de
+   suppressions doit l'en empêcher, sans empêcher une modification faite
+   APRÈS la suppression de gagner. */
+async function deletionBench() {
+  const backup = await import('/src/data/backup.js')
+  const { DELETED } = await import('/src/data/deletions.js')
+  const now = Date.now()
+  const iso = (ms) => new Date(ms).toISOString()
+  const kept = { id: 'p-keep', name: 'Gardé', updatedAt: iso(now - 120000) }
+  const ghost = { id: 'p-ghost', name: 'Supprimé', updatedAt: iso(now - 120000) }
+  const edited = { id: 'p-edited', name: 'Supprimé puis modifié', updatedAt: iso(now + 1000) }
+  const deleted = { [`${DELETED.products}|p-ghost`]: now, [`${DELETED.products}|p-edited`]: now }
+
+  const merged = backup.mergeProducts([kept], [kept, ghost, edited], deleted)
+  check(
+    'fusion : un produit supprimé ne revient pas',
+    !merged.list.some((item) => item.id === 'p-ghost'),
+    merged.list.map((item) => item.id).join(', ') || 'liste vide',
+  )
+  check(
+    'fusion : une modification postérieure à la suppression gagne',
+    merged.list.some((item) => item.id === 'p-edited'),
+    merged.list.map((item) => item.id).join(', ') || 'liste vide',
+  )
+  const plain = backup.mergeProducts([kept], [kept, ghost])
+  check(
+    'fusion : sans registre, l’union d’origine est conservée (compatibilité)',
+    plain.list.length === 2,
+    `${plain.list.length} produit(s)`,
+  )
+
+  /* Même règle pour une dépense : c'est la collection qui a le plus souffert
+     des fusions silencieuses. */
+  const expenses = await import('/src/data/expenses-model.js')
+  const xDeleted = { [`${DELETED.expenses}|e-ghost`]: now }
+  const xMerged = expenses.mergeExpenses(
+    { expenses: [{ id: 'e-keep', amount: 10, updatedAt: iso(now - 120000) }] },
+    {
+      expenses: [
+        { id: 'e-keep', amount: 10, updatedAt: iso(now - 120000) },
+        { id: 'e-ghost', amount: 90, updatedAt: iso(now - 120000) },
+      ],
+    },
+    xDeleted,
+  )
+  check(
+    'fusion : une dépense supprimée ne revient pas',
+    !xMerged.expenses.expenses.some((item) => item.id === 'e-ghost'),
+    xMerged.expenses.expenses.map((item) => item.id).join(', ') || 'aucune',
+  )
+}
+
+/* Le second chemin du même bogue : la lecture distante ne se contente pas de
+   fusionner, elle REMPLACE les collections de dépenses et d'analyse. Sans
+   filtre par les pierres tombales, chaque rafraîchissement réinstallait la
+   ligne supprimée — « je supprime, je recharge, c'est revenu ». */
+async function remoteDeletionBench() {
+  const exp = await import('/src/data/expenses-store.js')
+  const ana = await import('/src/data/analysis-store.js')
+  const { DELETED, mark, clear } = await import('/src/data/deletions.js')
+  const now = Date.now()
+  const iso = (ms) => new Date(ms).toISOString()
+  const beforeExpenses = exp.getSnapshot()
+  const beforeAnalysis = ana.getSnapshot()
+  try {
+    mark(DELETED.expenses, 'e-ghost', now)
+    exp.applyRemoteExpenses({
+      categories: [],
+      expenses: [
+        { id: 'e-keep', amount: 10, updatedAt: iso(now - 120000) },
+        { id: 'e-ghost', amount: 90, updatedAt: iso(now - 120000) },
+      ],
+      investments: [],
+      revenues: [],
+    })
+    const expenses = exp.getSnapshot().expenses.map((item) => item.id)
+    check(
+      'lecture : une dépense supprimée ne revient pas',
+      expenses.includes('e-keep') && !expenses.includes('e-ghost'),
+      expenses.join(', ') || 'aucune',
+    )
+
+    mark(DELETED.analysisInvestments, 'inv-ghost', now)
+    ana.applyRemoteAnalysis({
+      investments: [
+        { id: 'inv-keep', amount: 100, updatedAt: iso(now - 120000) },
+        { id: 'inv-ghost', amount: 500, updatedAt: iso(now - 120000) },
+      ],
+    })
+    const analysis = ana.getSnapshot().investments.map((item) => item.id)
+    check(
+      'lecture : un investissement supprimé ne revient pas',
+      analysis.includes('inv-keep') && !analysis.includes('inv-ghost'),
+      analysis.join(', ') || 'aucun',
+    )
+
+    /* Deux données que le document distant peut porter et qui battaient la
+       pierre tombale : une ligne sans date (la normalisation lui donne
+       « maintenant ») et une ligne datée par une horloge en avance. Dans les
+       deux cas la suppression doit gagner, sinon « je supprime, je recharge,
+       c'est revenu » revient par la petite porte. */
+    mark(DELETED.expenses, 'e-undated', now)
+    exp.applyRemoteExpenses({ expenses: [{ id: 'e-undated', amount: 7 }] })
+    check(
+      'lecture : une ligne sans date ne revient pas',
+      !exp.getSnapshot().expenses.some((item) => item.id === 'e-undated'),
+      exp.getSnapshot().expenses.map((item) => item.id).join(', ') || 'aucune',
+    )
+
+    const ahead = iso(now + 3600000)
+    exp.applyRemoteExpenses({ expenses: [{ id: 'e-ahead', amount: 5, updatedAt: ahead }] })
+    exp.deleteExpense('e-ahead')
+    exp.applyRemoteExpenses({ expenses: [{ id: 'e-ahead', amount: 5, updatedAt: ahead }] })
+    check(
+      'lecture : une ligne datée par une horloge en avance ne revient pas',
+      !exp.getSnapshot().expenses.some((item) => item.id === 'e-ahead'),
+      exp.getSnapshot().expenses.map((item) => item.id).join(', ') || 'aucune',
+    )
+  } finally {
+    /* Le banc ne doit rien laisser derrière lui : ni pierre tombale, ni état
+       de dépôt modifié pour les essais suivants. */
+    clear()
+    exp.applyRemoteExpenses(beforeExpenses)
+    ana.applyRemoteAnalysis(beforeAnalysis)
+  }
 }
 
 /* L'aiguillage du partage (`sync.js`) est le seul chemin qu'emprunte le
@@ -322,7 +470,7 @@ async function routerBench() {
       null,
       EXPENSES,
     )
-    check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 6, put.message || `version ${put.docVersion}`)
+    check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 7, put.message || `version ${put.docVersion}`)
 
     const doc = await (await worker.fetch(new Request(endpoint), env)).json()
     check(
@@ -402,7 +550,7 @@ async function githubBench() {
       { rows: [{ id: 'a1' }] },
       EXPENSES,
     )
-    check('github : la publication écrit la version 6', first.ok && first.docVersion === 6, first.message || `version ${first.docVersion}`)
+    check('github : la publication écrit la version 7', first.ok && first.docVersion === 7, first.message || `version ${first.docVersion}`)
 
     const stored = JSON.parse(text)
     check(
@@ -419,8 +567,8 @@ async function githubBench() {
 
     const remote = await github.fetchRemoteList(config)
     check(
-      'github : la relecture rend les dépenses et la version 6',
-      remote.ok && remote.docVersion === 6 && remote.expenses?.expenses?.[0]?.id === 'e1',
+      'github : la relecture rend les dépenses et la version 7',
+      remote.ok && remote.docVersion === 7 && remote.expenses?.expenses?.[0]?.id === 'e1',
       remote.message || `version ${remote.docVersion}`,
     )
 
@@ -527,6 +675,152 @@ async function photoBench(store, photoStore) {
   check('photo : le ticket ne revient pas au rechargement', cleared.ok && !gone.shown, gone.why)
 }
 
+/* Le bogue principal, reproduit au niveau du store : une suppression faite
+   PENDANT une publication. Avant, la publication en vol terminait, effaçait
+   le drapeau « modifications non poussées » et la suppression n'était jamais
+   envoyée ; la lecture suivante réinstallait alors le produit depuis le
+   serveur. Le test bloque le PUT, supprime, puis relâche. */
+async function storeRaceBench(store) {
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'race-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.race.workers.dev/race-key'
+  const realFetch = window.fetch
+  let holdNext = false
+  let startedResolve = null
+  let releaseResolve = null
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input.url
+    if (!url.startsWith(endpoint)) return realFetch(input, init)
+    if ((init.method || 'GET').toUpperCase() === 'PUT' && holdNext) {
+      holdNext = false
+      startedResolve?.()
+      await new Promise((resolve) => {
+        releaseResolve = resolve
+      })
+    }
+    return worker.fetch(new Request(url, init), env)
+  }
+  try {
+    await store.saveConfig({ provider: 'worker', endpoint })
+    await store.push({ force: true })
+
+    const started = new Promise((resolve) => {
+      startedResolve = resolve
+    })
+    holdNext = true
+    const product = store.addProduct({ name: 'Article éphémère' })
+    await started
+    /* Le PUT est en vol avec l'article encore dedans. */
+    const removed = store.deleteProduct(product.id)
+    check(
+      'course : la suppression part pendant une publication',
+      Boolean(removed) && !store.getProducts().some((item) => item.id === product.id),
+      `${store.getProducts().length} produit(s) en mémoire`,
+    )
+    releaseResolve?.()
+
+    await sleep(800)
+    await store.refresh()
+
+    const doc = await (await worker.fetch(new Request(endpoint), env)).json()
+    const remoteIds = (doc.products || []).map((item) => item.id)
+    check(
+      'course : le produit supprimé ne reste pas publié',
+      !remoteIds.includes(product.id),
+      `${remoteIds.length} produit(s) sur le serveur`,
+    )
+    check(
+      'course : il ne revient pas après relecture',
+      !store.getProducts().some((item) => item.id === product.id),
+      `${store.getProducts().length} produit(s) affichés`,
+    )
+  } finally {
+    window.fetch = realFetch
+    store.clearConfig()
+  }
+}
+
+/* Le symptôme signalé, bout en bout : une dépense supprimée revient au
+   rafraîchissement. Le serveur peut encore la porter (écriture KV en retard,
+   ou Worker qui ignore les pierres tombales) ; la lecture doit la filtrer
+   localement, et la publication suivante nettoyer le document. */
+async function expenseRefreshBench(store) {
+  const { default: worker } = await import('/worker/share-list-worker.mjs')
+  const exp = await import('/src/data/expenses-store.js')
+  const kv = new Map()
+  const env = {
+    LIST_KEY: 'exp-key',
+    LIST: {
+      async get(key) {
+        return kv.has(key) ? JSON.parse(kv.get(key)) : null
+      },
+      async put(key, value) {
+        kv.set(key, value)
+      },
+    },
+  }
+  const endpoint = 'https://liste.exp.workers.dev/exp-key'
+  const realFetch = window.fetch
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input.url
+    if (!url.startsWith(endpoint)) return realFetch(input, init)
+    return worker.fetch(new Request(url, init), env)
+  }
+  const ids = () => exp.getSnapshot().expenses.map((item) => item.id)
+  try {
+    await store.saveConfig({ provider: 'worker', endpoint })
+    const created = exp.addExpense({ categoryId: 'tools', amount: 42, date: '2026-11-16', note: 'banc' })
+    await store.push({ force: true })
+    exp.deleteExpense(created.id)
+    await store.push({ force: true })
+    check(
+      'dépenses : la suppression sort de la mémoire',
+      !ids().includes(created.id),
+      ids().join(', ') || 'aucune',
+    )
+
+    /* Le serveur « en retard » : il rend encore la ligne, sans pierre
+       tombale — exactement ce que voit un appareil après un rafraîchissement
+       quand l'écriture n'a pas encore atteint le KV. */
+    const doc = JSON.parse(kv.get('doc'))
+    const expenses = doc.expenses && typeof doc.expenses === 'object' ? doc.expenses : {}
+    doc.expenses = { categories: [], investments: [], revenues: [], ...expenses }
+    doc.expenses.expenses = [...(doc.expenses.expenses || []), { ...created }]
+    doc.deleted = null
+    doc.rev = (doc.rev || 0) + 1
+    kv.set('doc', JSON.stringify(doc))
+
+    await store.refresh()
+    check(
+      'dépenses : une dépense supprimée ne revient pas après rafraîchissement',
+      !ids().includes(created.id),
+      ids().join(', ') || 'aucune',
+    )
+
+    await store.push({ force: true })
+    const after = JSON.parse(kv.get('doc'))
+    check(
+      'dépenses : la publication suivante nettoie le document',
+      !(after.expenses?.expenses || []).some((item) => item.id === created.id),
+      `${(after.expenses?.expenses || []).length} dépense(s) sur le serveur`,
+    )
+  } finally {
+    window.fetch = realFetch
+    store.clearConfig()
+  }
+}
+
 async function run() {
   const report = { theme: 'light', fatal: null, results, errors, detail: {} }
   try {
@@ -534,6 +828,8 @@ async function run() {
     seed()
 
     await workerBench()
+    await deletionBench()
+    await remoteDeletionBench()
     await routerBench()
     await githubBench()
     await backupBench()
@@ -549,6 +845,8 @@ async function run() {
     await store.load()
 
     await photoBench(store, photoStore)
+    await storeRaceBench(store)
+    await expenseRefreshBench(store)
 
     check('aucune erreur JavaScript dans l’application', errors.length === 0, errors.slice(0, 3).join(' | '))
   } catch (error) {

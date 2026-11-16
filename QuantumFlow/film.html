@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <style>
+    .card { object-fit: cover; border-radius: 24px; }
+    .text-center { text-align: center; color: white; font-family: sans-serif; }
+    .stage { position: relative; width: 1920px; height: 1080px; }
+    .panel { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    .box { position: absolute; left: 100px; top: 100px; width: 600px; height: 400px; background: #1a1a2e; border-radius: 8px; color: white; }
+    .button { position: absolute; left: 50%; top: 70%; transform: translate(-50%, -50%); padding: 20px 40px; font-size: 32px; background: #00d4aa; color: black; border: none; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- Music track (loops for the full 60 seconds) -->
+<section>
+  <audio src="assets/hopeful-indie-electronic-build-00523e.mp3" volume="0.5" loop></audio>
+</section>
+
+<!-- Scene 1: Title/intro (0-12 seconds) -->
+<section>
+  <div class="panel">
+    <div class="text-center" style="font-size: 80px; padding: 200px;">
+      <h1>QuantumFlow</h1>
+      <p>Innovative Tech Solutions</p>
+    </div>
+    <!-- Pure CSS geometric circles - no external files -->
+    <div style="position: absolute; left: 200px; top: 300px; width: 200px; height: 200px; background: #00d4aa; border-radius: 50%; animation: float 10s ease-in-out infinite;"></div>
+    <div style="position: absolute; right: 300px; bottom: 400px; width: 150px; height: 150px; background: #ff6b6b; border-radius: 50%; animation: float 8s ease-in-out infinite;"></div>
+    <style>
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-40px); }
+      }
+    </style>
+  </div>
+</section>
+
+<!-- Scene 2: Feature 1 (12-24 seconds) -->
+<section>
+  <div class="panel">
+    <div class="text-center" style="font-size: 60px; padding: 200px;">
+      <h2>Feature One</h2>
+      <p>Real-time Data Processing</p>
+    </div>
+    <!-- Solid color box as placeholder for media -->
+    <div class="box">
+      <h3>Data Visualization</h3>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 3: Feature 2 (24-36 seconds) -->
+<section>
+  <div class="panel">
+    <div class="text-center" style="font-size: 60px; padding: 200px;">
+      <h2>Feature Two</h2>
+      <p>AI-Powered Insights</p>
+    </div>
+    <!-- Solid color box -->
+    <div class="box" style="background: #16213e; top: 200px;">
+      <h3>AI Insights</h3>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 4: Feature 3 (36-48 seconds) -->
+<section>
+  <div class="panel">
+    <div class="text-center" style="font-size: 60px; padding: 200px;">
+      <h2>Feature Three</h2>
+      <p>Seamless Integration</p>
+    </div>
+    <!-- Solid color box -->
+    <div class="box" style="background: #0f3460; top: 300px;">
+      <h3>Integration</h3>
+    </div>
+  </div>
+</section>
+
+<!-- Scene 5: CTA/Closing (48-60 seconds) -->
+<section>
+  <div class="panel">
+    <div class="text-center" style="font-size: 80px; padding: 200px;">
+      <h2>Get Started</h2>
+      <p>Try QuantumFlow Today</p>
+    </div>
+    <!-- CTA Button -->
+    <button class="button">Learn More</button>
+  </div>
+</section>
+
+</body>
+</html>

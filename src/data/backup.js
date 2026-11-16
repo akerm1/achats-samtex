@@ -6,6 +6,7 @@ import { normalizeList } from './products-model.js'
 import { normalizeBillList } from './bills-model.js'
 import { mergeAnalysis as mergeAnalysisState, normalizeAnalysis } from './analysis-model.js'
 import { mergeExpenses as mergeExpensesState, normalizeExpenses } from './expenses-model.js'
+import { DELETED, without } from './deletions.js'
 import { downloadText } from '../core/utils.js'
 
 /* v1 : produits seuls · v2 : + factures · v3 : + analyse · v4 : + dépenses */
@@ -112,24 +113,25 @@ export function parseBackup(text) {
 /**
  * Fusionne une liste importée avec la liste courante (les identifiants
  * existants sont mis à jour, les nouveaux sont ajoutés).
+ * @param {object|null} deleted registre des pierres tombales (`deletions.snapshot()`)
  */
-export function mergeProducts(current, incoming) {
-  return mergeById(current, incoming)
+export function mergeProducts(current, incoming, deleted = null) {
+  return mergeById(current, incoming, DELETED.products, deleted)
 }
 
 /** Même fusion pour les factures : le conflit se joue aussi par `id`. */
-export function mergeBills(current, incoming) {
-  return mergeById(current, incoming)
+export function mergeBills(current, incoming, deleted = null) {
+  return mergeById(current, incoming, DELETED.bills, deleted)
 }
 
 /** L'analyse suit la même règle « incoming wins » (v3 + conflit 409). */
-export function mergeAnalysis(current, incoming) {
-  return mergeAnalysisState(current, incoming)
+export function mergeAnalysis(current, incoming, deleted = null) {
+  return mergeAnalysisState(current, incoming, deleted)
 }
 
 /** Les dépenses suivent la même règle « incoming wins ». */
-export function mergeExpenses(current, incoming) {
-  return mergeExpensesState(current, incoming)
+export function mergeExpenses(current, incoming, deleted = null) {
+  return mergeExpensesState(current, incoming, deleted)
 }
 
 /**
@@ -138,8 +140,15 @@ export function mergeExpenses(current, incoming) {
  * C'est la règle qui évite qu'une publication concurrente n'efface une
  * modification : deux appareils convergent vers l'union de leurs changes,
  * et le perdant garde le sien.
+ *
+ * L'union ne suffit pas pour une SUPPRESSION : un `id` absent de l'un des
+ * deux côtés revient par l'autre. Les pierres tombales (`deleted`) écartent
+ * donc, après fusion, tout élément supprimé depuis sa dernière modification.
+ * On ne réécrit plus `updatedAt` au passage : cette date est celle de la
+ * dernière vraie modification, et la falsifier ferait revivre un élément
+ * supprimé (sa date deviendrait plus récente que la pierre tombale).
  */
-function mergeById(current, incoming) {
+function mergeById(current, incoming, collection, deleted = null) {
   const map = new Map((current || []).map((item) => [item.id, item]))
   let added = 0
   let updated = 0
@@ -147,14 +156,15 @@ function mergeById(current, incoming) {
     if (!item || typeof item !== 'object') continue
     const existing = map.get(item.id)
     if (existing) {
-      map.set(item.id, { ...existing, ...item, updatedAt: new Date().toISOString() })
+      map.set(item.id, { ...existing, ...item })
       updated += 1
     } else {
       map.set(item.id, item)
       added += 1
     }
   }
-  return { list: [...map.values()], added, updated }
+  const list = deleted ? without(deleted, collection, [...map.values()]) : [...map.values()]
+  return { list, added, updated, removed: map.size - list.length }
 }
 
 /**

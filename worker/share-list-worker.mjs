@@ -20,18 +20,24 @@
 /* C'est ici, et seulement ici, que factures, analyse et dépenses se */
 /* synchronisent : la voie GitHub reste produits seule.              */
 /*                                                                   */
-/* v6 ajoute `expenses`. Un Worker v5 le recevait puis l'ignorait :  */
-/* l'application envoyait les dépenses, le serveur ne les gardait    */
-/* pas, et elles restaient sur l'appareil qui les avait saisies.     */
+/* v6 ajoute `expenses`. Un Worker v5 le recevait puis l'ignorait :   */
+/* l'application envoyait les dépenses, le serveur ne les gardait     */
+/* pas, et elles restaient sur l'appareil qui les avait saisies.      */
+/*                                                                   */
+/* v7 ajoute `deleted` : les pierres tombales des suppressions. Sans  */
+/* elles, un produit supprimé revenait dès qu'un autre appareil      */
+/* publiait sa liste (la fusion ne savait pas distinguer « jamais vu »*/
+/* de « supprimé »).                                                 */
 /* ------------------------------------------------------------------ */
 
-const DOC_VERSION = 6
+const DOC_VERSION = 7
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-Rev',
   'Access-Control-Max-Age': '86400',
+  'Cache-Control': 'no-store',
 }
 
 /* Garde-fou : KV accepte 25 Mo par valeur, on reste large en dessous. */
@@ -64,12 +70,36 @@ function expensesOf(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : null
 }
 
+/**
+ * `deleted` : pierres tombales `collection|id -> date (ms)`.
+ * Un document antérieur à la v7 n'en a pas : `null`, et l'appareil garde
+ * alors les siennes (il ne peut pas conclure « rien n'a été supprimé »).
+ */
+function deletedOf(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const clean = {}
+  for (const [key, at] of Object.entries(value)) {
+    const stamp = Number(at)
+    if (Number.isFinite(stamp) && stamp > 0) clean[key] = stamp
+  }
+  return clean
+}
+
+/** Union de deux registres de suppressions : la date la plus récente gagne. */
+function mergeDeleted(current, incoming) {
+  const out = { ...(deletedOf(current) || {}) }
+  for (const [key, at] of Object.entries(deletedOf(incoming) || {})) {
+    if (!(out[key] >= at)) out[key] = at
+  }
+  return out
+}
+
 async function handleGet(env) {
   const raw = await env.LIST.get(DOC_KEY, 'json')
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
   if (!raw) {
-    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null, client: null })
+    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null, deleted: null, client: null })
   }
   return json({
     /* `version` = version du Worker qui répond, pas celle du document
@@ -94,6 +124,9 @@ async function handleGet(env) {
     /* Idem pour `expenses` : `null` = document écrit avant la v6, et
        l'appareil garde alors ses dépenses locales. */
     expenses: expensesOf(raw.expenses),
+    /* `null` = document écrit avant la v7 : l'appareil garde ses pierres
+       tombales locales et les publiera à sa prochaine écriture. */
+    deleted: deletedOf(raw.deleted),
     /* Version de l'application du dernier appareil qui a publié : c'est
        elle qui dit si un appareil écrit encore sans les dépenses. */
     client: typeof raw.client === 'string' ? raw.client : null,
@@ -141,13 +174,18 @@ async function handlePut(request, env) {
         /* Idem pour les dépenses : sans elles, la fusion par `id` n'aurait
            rien à fusionner et l'écriture suivante les écraserait. */
         expenses: expensesOf(current?.expenses),
+        /* Les suppressions voyagent avec le conflit : sans elles, la fusion
+           par `id` ferait revenir ce que l'autre appareil a supprimé. */
+        deleted: deletedOf(current?.deleted),
         client: typeof current?.client === 'string' ? current.client : null,
       },
       { status: 409 },
     )
   }
 
-  const rev = currentRev + 1
+  /* La révision ne recule jamais : une lecture KV en retard peut donner un
+     `rev` plus petit que celui que l'appareil a déjà publié. */
+  const rev = Math.max(currentRev, Number(sentRev) || 0) + 1
   const updatedAt = new Date().toISOString()
   const document = {
     version: DOC_VERSION,
@@ -164,6 +202,10 @@ async function handlePut(request, env) {
        pas effacer celles déjà publiées : on garde alors le document courant.
        Un objet vide, lui, reste une suppression volontaire et s'applique. */
     expenses: expensesOf(payload.expenses) ?? expensesOf(current?.expenses),
+    /* Les suppressions s'ADDITIONNENT : un appareil resté sur une version
+       qui ne les envoie pas ne doit pas effacer celles déjà connues, sinon
+       les éléments supprimés reviendraient sur les autres appareils. */
+    deleted: mergeDeleted(current?.deleted, payload.deleted),
     /* L'appareil qui a écrit, pour diagnostiquer à distance. */
     client: typeof payload.client === 'string' ? payload.client : null,
   }
@@ -175,7 +217,7 @@ async function handlePut(request, env) {
   }
   /* `version` est renvoyée pour que l'application sache si ce Worker sait
      transporter les dépenses (`expenses: true`) ou non. */
-  return json({ version: DOC_VERSION, rev, updatedAt, count: payload.products.length, expenses: true, client: document.client })
+  return json({ version: DOC_VERSION, rev, updatedAt, count: payload.products.length, expenses: true, deleted: document.deleted, client: document.client })
 }
 
 export default {

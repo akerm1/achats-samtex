@@ -13,6 +13,7 @@
 /* ------------------------------------------------------------------ */
 
 import { round2, toNumber, uid } from '../core/utils.js'
+import { DELETED, without } from './deletions.js'
 
 export const SALE_KINDS = { AMOUNT: 'amount', AID: 'aid', CLOSED: 'closed' }
 const KIND_VALUES = Object.values(SALE_KINDS)
@@ -467,8 +468,18 @@ export function synthesis(analysis, fy) {
 
 const COLLECTIONS = ['sales', 'purchases', 'investments', 'holdings', 'places']
 
+/* Un espace de noms distinct pour les `investments` de l'analyse, qui ne
+   sont pas ceux des dépenses. */
+const DELETION_NAMES = {
+  sales: DELETED.sales,
+  purchases: DELETED.purchases,
+  investments: DELETED.analysisInvestments,
+  holdings: DELETED.holdings,
+  places: DELETED.places,
+}
+
 /** Fusion par `id` : l'entrant gagne, comme produits et factures. */
-function mergeById(current, incoming) {
+function mergeById(current, incoming, collection, deleted = null) {
   const map = new Map((current || []).map((item) => [item.id, item]))
   let added = 0
   let updated = 0
@@ -476,23 +487,28 @@ function mergeById(current, incoming) {
     if (!item || typeof item !== 'object') continue
     const existing = map.get(item.id)
     if (existing) {
-      map.set(item.id, { ...existing, ...item, updatedAt: new Date().toISOString() })
+      /* La date de modification n'est PAS réécrite : elle sert de repère
+         face aux pierres tombales (une ligne supprimée ailleurs ne doit pas
+         revivre parce qu'une fusion l'a retouchée). */
+      map.set(item.id, { ...existing, ...item })
       updated += 1
     } else {
       map.set(item.id, item)
       added += 1
     }
   }
-  return { list: [...map.values()], added, updated }
+  const list = deleted ? without(deleted, collection, [...map.values()]) : [...map.values()]
+  return { list, added, updated }
 }
 
 /**
  * Fusionne deux états d'analyse par `id` (l'entrant gagne). Réglages et
  * libellés sont remplacés par ceux de l'entrant quand ils sont présents :
  * c'est la règle « incoming wins » de la sauvegarde et du 409.
+ * @param {object|null} deleted registre des pierres tombales
  * @returns {{analysis: object, added: number, updated: number}}
  */
-export function mergeAnalysis(current, incoming) {
+export function mergeAnalysis(current, incoming, deleted = null) {
   const base = normalizeAnalysis(current)
   const other = source(incoming)
   const result = { ...base }
@@ -500,7 +516,7 @@ export function mergeAnalysis(current, incoming) {
   let updated = 0
   for (const key of COLLECTIONS) {
     if (!Array.isArray(other[key])) continue
-    const merged = mergeById(base[key], other[key])
+    const merged = mergeById(base[key], other[key], DELETION_NAMES[key], deleted)
     result[key] = merged.list
     added += merged.added
     updated += merged.updated

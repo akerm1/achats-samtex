@@ -31,6 +31,7 @@ import {
   normalizePurchase,
   normalizeSale,
 } from './analysis-model.js'
+import { DELETED, mark, snapshot, stampFor, without } from './deletions.js'
 
 const KEY = 'purchase-gros-analysis-v1'
 const SEEDED_KEY = 'purchase-gros-analysis-seeded-v1'
@@ -265,11 +266,12 @@ function updateItem(key, id, changes, normalize) {
   return next
 }
 
-function deleteItem(key, id) {
+function deleteItem(key, id, collection) {
   const index = state[key].findIndex((item) => item.id === id)
   if (index < 0) return null
   const item = state[key][index]
   state = { ...state, [key]: state[key].filter((entry) => entry.id !== id) }
+  if (collection) mark(collection, id, stampFor(item))
   touch()
   return { item, index }
 }
@@ -278,22 +280,22 @@ function deleteItem(key, id) {
 export const addPurchase = (input = {}) =>
   addItem('purchases', { date: dateKey(new Date()), ...input }, normalizePurchase, 'purchase')
 export const updatePurchase = (id, changes) => updateItem('purchases', id, changes, normalizePurchase)
-export const deletePurchase = (id) => deleteItem('purchases', id)
+export const deletePurchase = (id) => deleteItem('purchases', id, DELETED.purchases)
 
 /* Investissements — nom + somme. */
 export const addInvestment = (input = {}) => addItem('investments', input, normalizeInvestment, 'inv')
 export const updateInvestment = (id, changes) => updateItem('investments', id, changes, normalizeInvestment)
-export const deleteInvestment = (id) => deleteItem('investments', id)
+export const deleteInvestment = (id) => deleteItem('investments', id, DELETED.analysisInvestments)
 
 /* Possession — quatre colonnes de montants. */
 export const addHolding = (input = {}) => addItem('holdings', input, normalizeHolding, 'hold')
 export const updateHolding = (id, changes) => updateItem('holdings', id, changes, normalizeHolding)
-export const deleteHolding = (id) => deleteItem('holdings', id)
+export const deleteHolding = (id) => deleteItem('holdings', id, DELETED.holdings)
 
 /* Possession (détail) — libellé + montant. */
 export const addPlace = (input = {}) => addItem('places', input, normalizePlace, 'place')
 export const updatePlace = (id, changes) => updateItem('places', id, changes, normalizePlace)
-export const deletePlace = (id) => deleteItem('places', id)
+export const deletePlace = (id) => deleteItem('places', id, DELETED.places)
 
 /* ------------------------------------------------------------------ */
 /* Réglages & libellés                                                  */
@@ -332,14 +334,57 @@ export function importAnalysis(data, { mode = 'merge' } = {}) {
     return { added: 0, updated: 0 }
   }
   if (mode === 'replace') {
-    state = normalizeAnalysis(data)
+    const next = normalizeAnalysis(data)
+    /* Un remplacement supprime : chaque ligne écartée laisse une pierre
+       tombale, sinon la prochaine fusion la ramènerait. */
+    markMissing(DELETED.sales, state.sales, next.sales)
+    markMissing(DELETED.purchases, state.purchases, next.purchases)
+    markMissing(DELETED.analysisInvestments, state.investments, next.investments)
+    markMissing(DELETED.holdings, state.holdings, next.holdings)
+    markMissing(DELETED.places, state.places, next.places)
+    state = next
     touch()
     return { added: state.sales.length + state.purchases.length, updated: 0 }
   }
-  const merged = mergeAnalysis(state, data)
+  const merged = mergeAnalysis(state, data, snapshot())
   state = merged.analysis
   touch()
   return { added: merged.added, updated: merged.updated }
+}
+
+/** Marque comme supprimé ce qui existait avant un remplacement complet. */
+function markMissing(collection, previous, next) {
+  const kept = new Set((next || []).map((item) => item?.id))
+  for (const item of previous || []) {
+    if (item?.id && !kept.has(item.id)) mark(collection, item.id, stampFor(item))
+  }
+}
+
+/**
+ * Applique les pierres tombales apprises du distant (voir la même fonction
+ * dans `expenses-store.js`). Sans elle, une ligne supprimée sur un appareil
+ * réapparaîtrait sur l'autre à la première lecture.
+ * @returns {boolean} vrai si l'état local a changé.
+ */
+export function applyDeletions(map = snapshot()) {
+  const sales = without(map, DELETED.sales, state.sales)
+  const purchases = without(map, DELETED.purchases, state.purchases)
+  const investments = without(map, DELETED.analysisInvestments, state.investments)
+  const holdings = without(map, DELETED.holdings, state.holdings)
+  const places = without(map, DELETED.places, state.places)
+  if (
+    sales.length === state.sales.length &&
+    purchases.length === state.purchases.length &&
+    investments.length === state.investments.length &&
+    holdings.length === state.holdings.length &&
+    places.length === state.places.length
+  ) {
+    return false
+  }
+  state = { ...state, sales, purchases, investments, holdings, places }
+  queuePersist()
+  emit()
+  return true
 }
 
 /**
@@ -350,7 +395,23 @@ export function importAnalysis(data, { mode = 'merge' } = {}) {
  */
 export function applyRemoteAnalysis(incoming) {
   if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return false
-  const next = normalizeAnalysis(incoming)
+  /* Même règle que pour les dépenses : adopter le document distant sans
+     écarter d'abord nos pierres tombales ferait revenir chaque ligne
+     supprimée au premier rafraîchissement. */
+  /* Le filtre passe AVANT la normalisation : elle date les lignes sans
+     `updatedAt` à l'instant présent, et ces lignes battraient alors leur
+     pierre tombale à chaque lecture (voir `applyRemoteExpenses`). */
+  const map = snapshot()
+  const keep = (key, collection) =>
+    Array.isArray(incoming[key]) ? without(map, collection, incoming[key]) : incoming[key]
+  const next = normalizeAnalysis({
+    ...incoming,
+    sales: keep('sales', DELETED.sales),
+    purchases: keep('purchases', DELETED.purchases),
+    investments: keep('investments', DELETED.analysisInvestments),
+    holdings: keep('holdings', DELETED.holdings),
+    places: keep('places', DELETED.places),
+  })
   if (JSON.stringify(next) === JSON.stringify(state)) return false
   state = next
   queuePersist()

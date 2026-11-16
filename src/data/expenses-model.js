@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { round2, toNumber, uid } from '../core/utils.js'
+import { DELETED, without } from './deletions.js'
 
 /** Catégories de dépenses par défaut (modifiables par l'utilisateur). */
 export const DEFAULT_EXPENSE_CATEGORIES = [
@@ -139,15 +140,18 @@ export function emptyExpenses() {
   }
 }
 
-/** Fusionne deux états de dépenses (pour sync/sauvegarde). */
-export function mergeExpenses(current, incoming) {
+/** Fusionne deux états de dépenses (pour sync/sauvegarde).
+ *  @param {object|null} deleted registre des pierres tombales ; une dépense,
+ *  une catégorie, un investissement ou une recette supprimé sur un autre
+ *  appareil ne doit pas revenir par l'union. */
+export function mergeExpenses(current, incoming, deleted = null) {
   const base = normalizeExpenses(current)
   const other = incoming && typeof incoming === 'object' && !Array.isArray(incoming) ? incoming : {}
   const result = { ...base }
   let added = 0
   let updated = 0
 
-  const mergeById = (arr, incomingArr, normalize) => {
+  const mergeById = (arr, incomingArr, normalize, collection) => {
     const map = new Map((arr || []).map((item) => [item.id, item]))
     let a = 0
     let u = 0
@@ -155,32 +159,35 @@ export function mergeExpenses(current, incoming) {
       if (!item || typeof item !== 'object') continue
       const existing = map.get(item.id)
       if (existing) {
-        map.set(item.id, { ...existing, ...item, updatedAt: new Date().toISOString() })
+        /* Pas de `updatedAt` réécrit : la date d'une vraie modification doit
+           rester comparable aux pierres tombales (voir `backup.js`). */
+        map.set(item.id, { ...existing, ...item })
         u += 1
       } else {
         map.set(item.id, normalize(item))
         a += 1
       }
     }
-    return { list: [...map.values()], added: a, updated: u }
+    const list = deleted ? without(deleted, collection, [...map.values()]) : [...map.values()]
+    return { list, added: a, updated: u }
   }
 
-  const catMerge = mergeById(base.categories, other.categories, normalizeCategory)
+  const catMerge = mergeById(base.categories, other.categories, normalizeCategory, DELETED.categories)
   result.categories = catMerge.list
   added += catMerge.added
   updated += catMerge.updated
 
-  const expMerge = mergeById(base.expenses, other.expenses, normalizeExpense)
+  const expMerge = mergeById(base.expenses, other.expenses, normalizeExpense, DELETED.expenses)
   result.expenses = expMerge.list
   added += expMerge.added
   updated += expMerge.updated
 
-  const invMerge = mergeById(base.investments, other.investments, normalizeInvestment)
+  const invMerge = mergeById(base.investments, other.investments, normalizeInvestment, DELETED.expenseInvestments)
   result.investments = invMerge.list
   added += invMerge.added
   updated += invMerge.updated
 
-  const revMerge = mergeById(base.revenues, other.revenues, normalizeRevenue)
+  const revMerge = mergeById(base.revenues, other.revenues, normalizeRevenue, DELETED.revenues)
   result.revenues = revMerge.list
   added += revMerge.added
   updated += revMerge.updated

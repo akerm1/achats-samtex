@@ -14,15 +14,17 @@
 /* ------------------------------------------------------------------ */
 
 import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
 const API = 'https://api.github.com'
 export const DATA_PATH = 'products.json'
 
-/* Version du document : 6 = il transporte les dépenses (comme le Worker).
-   Un products.json plus ancien n'a pas de numéro — donc 3, la dernière
-   version qui n'emportait que liste, réglages et factures. */
-export const DOC_VERSION = 6
+/* Version du document : 7 = il transporte les dépenses (comme le Worker) et
+   les pierres tombales des suppressions. Un products.json plus ancien n'a
+   pas de numéro — donc 3, la dernière version qui n'emportait que liste,
+   réglages et factures. */
+export const DOC_VERSION = 7
 
 export const READ_ONLY_MESSAGE =
   'Lecture seule : un jeton GitHub valide est nécessaire pour publier vos modifications.'
@@ -149,6 +151,11 @@ async function readContents(response) {
       parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
         ? parsed.expenses
         : null,
+    /* `null` = fichier écrit avant la v7, donc aucune suppression connue. */
+    deleted:
+      parsed?.deleted && typeof parsed.deleted === 'object' && !Array.isArray(parsed.deleted)
+        ? parsed.deleted
+        : null,
     docVersion: Number.isFinite(version) ? version : 3,
     sha: data.sha,
   }
@@ -192,7 +199,7 @@ export async function fetchRemoteList(config) {
     if (reachable === null) {
       return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
     }
-    return { ok: true, list: null, bills: null, analysis: null, expenses: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
+    return { ok: true, list: null, bills: null, analysis: null, expenses: null, deleted: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
   }
 
   if (response.status === 401 && canWrite(config)) {
@@ -243,7 +250,7 @@ export async function fetchRemoteList(config) {
  * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
  * @returns {Promise<{ok:boolean, sha:string|null, docVersion:number, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
+export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   /* Sans jeton (ou jeton refusé), GitHub refusera l'écriture : inutile
      d'envoyer la requête, et l'utilisateur garde sa liste locale intacte. */
@@ -266,9 +273,11 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null
   let outExpenses =
     expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null
+  let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
   let mergedAnalysis = null
   let mergedExpenses = null
+  let mergedDeleted = null
 
   const buildBody = (ref) => {
     const payload = JSON.stringify(
@@ -283,6 +292,7 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
         bills: outBills,
         analysis: outAnalysis,
         expenses: outExpenses,
+        deleted: outDeleted,
       },
       null,
       2,
@@ -314,6 +324,7 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     bills: mergedBills,
     analysis: mergedAnalysis,
     expenses: mergedExpenses,
+    deleted: mergedDeleted,
   })
 
   let response
@@ -362,8 +373,11 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
   }
 
   /* Conflit d'écriture : on relit la version fraîche, on fusionne chaque
-     collection par `id`, puis on retente sur le SHA frais. */
-  if (response.status === 409 || response.status === 422) {
+     collection par `id`, puis on retente sur le SHA frais. Plusieurs
+     appareils peuvent publier en même temps : on réessaie quelques fois
+     avant d'annoncer une erreur, sinon un simple conflit ressemble à une
+     déconnexion. */
+  for (let attempt = 0; (response.status === 409 || response.status === 422) && attempt < 4; attempt += 1) {
     const fresh = await fetchRemoteList(config)
     if (!fresh.ok || fresh.list === null) {
       return {
@@ -373,17 +387,20 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
         message: fresh.message || 'products.json introuvable sur GitHub',
       }
     }
-    outList = mergeProducts(outList, fresh.list).list
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 80 + attempt * 120))
+    outDeleted = mergeMaps(outDeleted, fresh.deleted)
+    mergedDeleted = outDeleted
+    outList = mergeProducts(outList, fresh.list, outDeleted).list
     if (Array.isArray(fresh.bills)) {
-      mergedBills = mergeBills(outBills || [], fresh.bills).list
+      mergedBills = mergeBills(outBills || [], fresh.bills, outDeleted).list
       outBills = mergedBills
     }
     if (fresh.analysis && typeof fresh.analysis === 'object') {
-      mergedAnalysis = mergeAnalysis(outAnalysis || {}, fresh.analysis).analysis
+      mergedAnalysis = mergeAnalysis(outAnalysis || {}, fresh.analysis, outDeleted).analysis
       outAnalysis = mergedAnalysis
     }
     if (fresh.expenses && typeof fresh.expenses === 'object') {
-      mergedExpenses = mergeExpenses(outExpenses || {}, fresh.expenses).expenses
+      mergedExpenses = mergeExpenses(outExpenses || {}, fresh.expenses, outDeleted).expenses
       outExpenses = mergedExpenses
     }
     const retry = await send(fresh.sha)
@@ -391,11 +408,14 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
       const data = await retry.json()
       return success(data, fresh.sha)
     }
+    response = retry
+  }
+  if (response.status === 409 || response.status === 422) {
     return {
       ok: false,
-      sha: fresh.sha,
-      status: 'error',
-      message: `GitHub ${retry.status} ${retry.statusText || ''}`.trim(),
+      sha,
+      status: 'conflict',
+      message: 'Un autre appareil publie en même temps — la modification sera renvoyée automatiquement.',
     }
   }
 

@@ -14,6 +14,7 @@ import { subscribe as subscribeUpdate } from './core/update.js'
 import { renderChrome } from './ui/shell.js'
 import { initActions } from './app/actions.js'
 import { initShortcuts } from './app/shortcuts.js'
+import { initNetworkWatch } from './app/network.js'
 import { initAutoExport } from './app/autoexport.js'
 import { checkUpdateInBackground, initInstallFlow, initServiceWorker } from './app/pwa.js'
 import { VIEWS, getActiveRoute, initRouting, showRoute } from './app/routes.js'
@@ -27,6 +28,7 @@ function init() {
   initShortcuts()
   initServiceWorker()
   initInstallFlow()
+  initNetworkWatch()
   initAutoExport()
   /* Le navigateur peut évincer une origine peu utilisée (sept jours chez
      Safari). La demande est gratuite et protège la liste quand elle aboutit. */

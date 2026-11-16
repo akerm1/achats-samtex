@@ -41,6 +41,8 @@ import { mergeBills, mergeProducts } from './backup.js'
 import * as analysisStore from './analysis-store.js'
 import * as photoStore from './photo-store.js'
 import * as expensesStore from './expenses-store.js'
+import * as deletions from './deletions.js'
+import { DELETED, without } from './deletions.js'
 
 /* Clés historiques conservées pour ne rien perdre sur les appareils existants. */
 const PRODUCTS_KEY = 'purchase-gros-list-v2'
@@ -74,16 +76,14 @@ export const DEFAULT_PREFS = {
    la même mécanique que `touchBills()` + `push()`. Le module d'analyse
    n'importe pas ce store — le branchement se fait ici, à sens unique. */
 analysisStore.onAnalysisChange(() => {
-  state.dirty = true
-  storage.set(DIRTY_KEY, true)
+  markChanged()
   emit()
   push()
 })
 
 /* Les dépenses partagent le même drapeau : toute modification pousse. */
 expensesStore.subscribe(() => {
-  state.dirty = true
-  storage.set(DIRTY_KEY, true)
+  markChanged()
   emit()
   push()
 })
@@ -122,6 +122,17 @@ let remoteExpensesCount = null
 let lastNotified = { message: '', at: 0 }
 const listeners = new Set()
 const NOTIFY_COOLDOWN_MS = 8000
+/* Reprise après coupure réseau : 5 s, puis doublement jusqu'à une minute. */
+const RETRY_FIRST_MS = 5000
+const RETRY_MAX_MS = 60000
+/* Compteur des modifications locales. Il sert à ne pas déclarer « tout est
+   publié » alors qu'une modification est arrivée PENDANT l'envoi : c'était
+   la cause de « je supprime, ça revient » — le drapeau `dirty` était effacé
+   par une publication partie avant la suppression, et la lecture suivante
+   réinstallait l'élément depuis le serveur. */
+let changeSeq = 0
+let pushChain = Promise.resolve()
+let queuedPush = null
 
 /* ------------------------------------------------------------------ */
 /* Abonnement / émission                                               */
@@ -164,9 +175,65 @@ function reportFailure(result) {
 }
 
 function applyFailure(result) {
+  if (result.status === 'conflict') {
+    /* Deux appareils publient au même instant : c'est normal, pas une panne.
+       On garde l'état « prêt » avec un message calme ; le drapeau `dirty`
+       est resté posé et une nouvelle publication part automatiquement. */
+    state.status = 'ready'
+    state.message = result.message || 'Synchronisation en cours avec les autres appareils.'
+    state.messageKind = 'ok'
+    state.lastSyncAt = Date.now()
+    scheduleRetry()
+    return
+  }
   /* `offline` = réseau coupé ; `error` = dépôt inaccessible, écriture refusée… */
   state.status = result.status === 'offline' ? 'offline' : 'error'
   reportFailure(result)
+  scheduleRetry()
+}
+
+/* Une reprise automatique, avec un délai qui double : une coupure de réseau
+   de quelques secondes ne doit pas laisser l'application « hors ligne »
+   jusqu'au prochain clic. Aucune scrutation quand tout va bien : ce minuteur
+   n'existe qu'après un échec et s'arrête au premier succès. */
+let retryTimer = null
+let retryDelay = RETRY_FIRST_MS
+
+function scheduleRetry() {
+  if (retryTimer || typeof setTimeout !== 'function' || !config) return
+  /* Lecture seule : réessayer n'y changera rien (il manque un jeton). */
+  if (providerOf(config) === PROVIDER_GITHUB && !canWrite(config)) return
+  retryTimer = setTimeout(async () => {
+    retryTimer = null
+    if (!config) return
+    const result = state.dirty ? await push({ force: true }) : await refresh()
+    if (result?.ok) {
+      retryDelay = RETRY_FIRST_MS
+      return
+    }
+    retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS)
+    scheduleRetry()
+  }, retryDelay)
+}
+
+/** Reprise immédiate (retour du réseau, application revenue au premier plan). */
+export function wakeUp() {
+  if (retryTimer) {
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
+  retryDelay = RETRY_FIRST_MS
+  if (!config) return Promise.resolve({ ok: true, status: 'local' })
+  return refresh()
+}
+
+/** Une synchronisation a réussi : plus rien à réessayer. */
+function syncSucceeded() {
+  retryDelay = RETRY_FIRST_MS
+  if (retryTimer) {
+    clearTimeout(retryTimer)
+    retryTimer = null
+  }
 }
 
 /**
@@ -339,6 +406,9 @@ export function saveConfig(input) {
   remoteDocVersion = 0
   remoteExpensesCount = null
   if (switched) storage.remove(EXPENSES_SEEN_KEY)
+  /* Nouveau partage : les pierres tombales de l'ancien ne le concernent pas
+     (le document distant garde les siennes et les redonnera à la lecture). */
+  if (switched) deletions.clear()
   state.dirty = publishLocal
   if (publishLocal) storage.set(DIRTY_KEY, true)
   else storage.remove(DIRTY_KEY)
@@ -686,10 +756,16 @@ function carriesExpenses() {
 async function syncWithRemote() {
   const remote = await fetchRemoteList(config)
   if (!remote.ok) return { ok: false, status: remote.status, message: remote.message }
+  /* Les suppressions apprises comptent même sur une lecture en retard :
+     elles ne font que croître, une lecture plus ancienne n'en oublie pas. */
+  deletions.absorb(remote.deleted)
+  /* Puis on retire du local ce qu'un autre appareil a supprimé : sans cela
+     l'élément resterait affiché et repartirait à la publication suivante. */
+  const cleaned = learnDeletions()
   if (isStaleRead(remote)) {
     /* Lecture arrivée après coup : on garde l'état local, déjà à jour. */
     if (typeof remote.rev === 'number') remoteRev = Math.max(remoteRev, remote.rev)
-    return markReady(false)
+    return markReady(cleaned)
   }
   if (typeof remote.rev === 'number') remoteRev = Math.max(remoteRev, remote.rev)
   if (typeof remote.docVersion === 'number' && remote.docVersion > 0) {
@@ -699,11 +775,14 @@ async function syncWithRemote() {
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
     if (state.dirty || products.length || bills.length || analysisStore.hasData()) return push({ force: true })
-    return markReady()
+    return markReady(cleaned)
   }
   if (state.dirty) return push()
 
-  const normalized = normalizeList(remote.list)
+  /* Filtre sur la donnée brute, avant normalisation : celle-ci date les
+     produits sans `updatedAt` à l'instant présent, et ils battraient alors
+     leur propre pierre tombale à chaque lecture. */
+  const normalized = normalizeList(deletions.without(deletions.snapshot(), DELETED.products, remote.list))
   sha = remote.sha
   let changed = false
   if (JSON.stringify(normalized) !== JSON.stringify(products)) {
@@ -718,7 +797,7 @@ async function syncWithRemote() {
      locales : ce silence ne doit jamais coûter les siennes. Un tableau vide,
      lui, reste une suppression et s'applique. */
   if (Array.isArray(remote.bills)) {
-    const remoteBills = normalizeBillList(remote.bills)
+    const remoteBills = normalizeBillList(deletions.without(deletions.snapshot(), DELETED.bills, remote.bills))
     if (JSON.stringify(remoteBills) !== JSON.stringify(bills)) {
       bills = remoteBills
       await queuePersistBills()
@@ -769,11 +848,40 @@ async function syncWithRemote() {
   if (remote.expenses == null && carriesExpenses() && expensesStore.hasData()) {
     return push({ force: true })
   }
+  /* Des éléments locaux ont été écartés parce qu'un autre appareil les avait
+     supprimés : on republie pour que le document serveur ne les garde pas. */
+  if (cleaned) return push({ force: true })
   return markReady(changed)
+}
+
+/**
+ * Applique au local les pierres tombales connues (produits, factures,
+ * dépenses, analyse).
+ * @returns {boolean} vrai si un élément a été retiré.
+ */
+function learnDeletions() {
+  const map = deletions.snapshot()
+  const kept = without(map, DELETED.products, products)
+  const keptBills = without(map, DELETED.bills, bills)
+  let changed = false
+  if (kept.length !== products.length) {
+    products = kept
+    queuePersist()
+    changed = true
+  }
+  if (keptBills.length !== bills.length) {
+    bills = keptBills
+    queuePersistBills()
+    changed = true
+  }
+  if (expensesStore.applyDeletions(map)) changed = true
+  if (analysisStore.applyDeletions(map)) changed = true
+  return changed
 }
 
 /** État « à jour » : le libellé et l'horodatage ne changent qu'en cas de succès. */
 function markReady(changed = false) {
+  syncSucceeded()
   state.status = 'ready'
   state.message = ''
   state.messageKind = ''
@@ -830,14 +938,15 @@ async function connectDefault() {
   config = defaults
   sha = remote.sha
   if (typeof remote.docVersion === 'number') remoteDocVersion = remote.docVersion
-  products = normalizeList(remote.list || [])
+  deletions.absorb(remote.deleted)
+  products = normalizeList(deletions.without(deletions.snapshot(), DELETED.products, remote.list || []))
   await queuePersist()
   /* Le document par défaut porte tout le partage : factures, analyse et
      dépenses aussi. Les ignorer ici donnerait un appareil neuf qui voit la
      liste mais pas le reste — exactement le symptôme d'un partage à moitié
      chargé. */
   if (Array.isArray(remote.bills)) {
-    bills = normalizeBillList(remote.bills)
+    bills = normalizeBillList(deletions.without(deletions.snapshot(), DELETED.bills, remote.bills))
     await queuePersistBills()
   }
   analysisStore.applyRemoteAnalysis(remote.analysis)
@@ -861,7 +970,12 @@ export async function refresh() {
     await queuePersist()
     return { ok: true, status: 'local' }
   }
-  if (state.pending) return { ok: true, status: state.status }
+  if (state.pending) {
+    /* Une publication est en vol : l'attendre évite de lire un document plus
+       ancien que ce qu'on vient d'envoyer (et donc de réafficher un élément
+       supprimé). On ne renvoie plus « à jour » sans avoir rien lu. */
+    await pushChain
+  }
 
   state.status = 'connecting'
   emit()
@@ -878,35 +992,68 @@ export async function refresh() {
   return result
 }
 
-/** Publie la liste (GitHub ou lien privé si configuré, sinon stockage local). */
-export async function push({ force = false } = {}) {
+/**
+ * Publie la liste (GitHub ou lien privé si configuré, sinon stockage local).
+ *
+ * Les publications sont SÉRIALISÉES. Avant, une publication en vol faisait
+ * simplement ignorer la suivante : une suppression faite pendant l'envoi
+ * n'était jamais transmise, et le drapeau `dirty` était effacé au retour —
+ * la lecture suivante réinstallait alors l'élément depuis le serveur.
+ * Désormais la publication suivante attend son tour et relit l'état au
+ * moment de partir, donc elle emporte la modification.
+ */
+export function push({ force = false } = {}) {
+  /* Une publication déjà en file suffit : elle lira l'état à son départ. */
+  if (queuedPush && !force) return queuedPush
+  const run = () => {
+    queuedPush = null
+    return pushNow()
+  }
+  const next = pushChain.then(run, run)
+  queuedPush = next
+  pushChain = next.then(
+    () => undefined,
+    () => undefined,
+  )
+  return next
+}
+
+async function pushNow() {
   if (!config) {
     /* Attend l'écriture avant d'annoncer « rien à pousser » : sans cela un
        rafraîchissement immédiat repartirait d'un disque encore ancien. */
     await queuePersist()
     state.dirty = false
+    storage.remove(DIRTY_KEY)
     emit()
     return { ok: true, status: 'local' }
   }
-  if (state.pending && !force) return { ok: true, status: state.status }
+
+  const seq = changeSeq
 
   /* Le document publié est construit depuis `products`, en mémoire. La base
      locale doit être à jour avant l'envoi : sinon une publication qui suit un
-     rechargement partirait d'un JSON encore sans les photos de la session.
-     Le verrou est posé avant l'attente, sinon deux publications rapprochées
-     passeraient toutes deux le test ci-dessus et enverraient en double. */
+     rechargement partirait d'un JSON encore sans les photos de la session. */
   state.pending = true
   try {
     await queuePersist()
   } catch (error) {
-    state.pending = false
     console.error('Écriture locale impossible avant publication :', error)
   }
 
   state.status = 'saving'
   emit()
 
-  const result = await putRemoteList(config, products, sha, settingsSnapshot(), bills, analysisStore.getSnapshot(), expensesStore.getSnapshot())
+  const result = await putRemoteList(
+    config,
+    products,
+    sha,
+    settingsSnapshot(),
+    bills,
+    analysisStore.getSnapshot(),
+    expensesStore.getSnapshot(),
+    deletions.snapshot(),
+  )
   state.pending = false
 
   if (result.ok) {
@@ -915,10 +1062,14 @@ export async function push({ force = false } = {}) {
     if (typeof result.docVersion === 'number' && result.docVersion > 0) {
       remoteDocVersion = result.docVersion
     }
+    /* Le conflit a pu apporter des pierres tombales : on les apprend avant
+       d'adopter les listes fusionnées, sinon un élément supprimé ailleurs
+       reviendrait par la fusion. */
+    deletions.absorb(result.deleted)
     if (Array.isArray(result.list)) {
       /* Une fusion propose la liste retenue : on l'adopte pour que l'écran et
          le distant affichent exactement la même chose. */
-      const merged = normalizeList(result.list)
+      const merged = normalizeList(deletions.without(deletions.snapshot(), DELETED.products, result.list))
       if (JSON.stringify(merged) !== JSON.stringify(products)) {
         products = merged
         await queuePersist()
@@ -927,7 +1078,7 @@ export async function push({ force = false } = {}) {
     /* Les factures suivent la même règle : un conflit peut en avoir ramené
        une que cet appareil n'avait pas, et l'écran doit le montrer. */
     if (Array.isArray(result.bills)) {
-      const mergedBills = normalizeBillList(result.bills)
+      const mergedBills = normalizeBillList(deletions.without(deletions.snapshot(), DELETED.bills, result.bills))
       if (JSON.stringify(mergedBills) !== JSON.stringify(bills)) {
         bills = mergedBills
         await queuePersistBills()
@@ -943,8 +1094,14 @@ export async function push({ force = false } = {}) {
     if (carriesExpenses()) {
       remoteExpensesCount = expensesStore.getSnapshot().expenses.length
     }
-    state.dirty = false
-    storage.remove(DIRTY_KEY)
+    /* « À jour » seulement si RIEN n'a changé pendant l'envoi. Sinon la
+       modification est plus récente que le document publié : le drapeau
+       reste posé et la publication suivante (déjà en file) l'emporte. */
+    if (changeSeq === seq) {
+      state.dirty = false
+      storage.remove(DIRTY_KEY)
+    }
+    syncSucceeded()
     state.status = 'ready'
     /* Une synchronisation réussie ne doit pas effacer une alerte de stockage :
        le message distant est valide, mais les photos peuvent rester en échec
@@ -994,7 +1151,16 @@ export async function importFromGithub() {
   /* Les produits viennent de GitHub, les factures restent locales : on ne
      copie que ce que GitHub sait porter. Sans cela, la copie viderait les
      factures d'un appareil qui en a — l'analyse fait de même. */
-  const result = await putRemoteList(config, list, null, remote.settings, bills, analysisStore.getSnapshot(), expensesStore.getSnapshot())
+  const result = await putRemoteList(
+    config,
+    list,
+    null,
+    remote.settings,
+    bills,
+    analysisStore.getSnapshot(),
+    expensesStore.getSnapshot(),
+    deletions.snapshot(),
+  )
   if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
 
   sha = result.sha
@@ -1019,13 +1185,22 @@ export async function importFromGithub() {
  *  Le drapeau « modifications non poussées » est persistant : un rafraîchissement
  *  ou un redémarrage ne peut jamais écraser la liste locale par la distante. */
 function touch({ broadcast = true } = {}) {
-  state.dirty = true
-  storage.set(DIRTY_KEY, true)
+  markChanged()
   /* Volontairement sans `await` : `touch()` est synchrone, sinon chaque
      frappe attendrait IndexedDB. L'écriture est sérialisée par `queuePersist`,
      donc elle aboutit quand même, et l'ordre est respecté. */
   queuePersist()
   if (broadcast) emit()
+}
+
+/**
+ * Enregistre une modification locale : drapeau persistant + compteur.
+ * Le compteur est ce qui empêche une publication en vol de se croire à jour.
+ */
+function markChanged() {
+  changeSeq += 1
+  state.dirty = true
+  storage.set(DIRTY_KEY, true)
 }
 
 /**
@@ -1036,8 +1211,7 @@ function touch({ broadcast = true } = {}) {
  * serait autrement écrasée au prochain rafraîchissement.
  */
 function touchBills() {
-  state.dirty = true
-  storage.set(DIRTY_KEY, true)
+  markChanged()
   queuePersistBills()
   emit()
 }
@@ -1053,6 +1227,9 @@ export function addProduct(input = {}) {
     status: STATUS.TODO,
     boughtAt: null,
   })
+  /* Ré-ajouter un identifiant déjà supprimé, c'est le ramener (import d'une
+     sauvegarde, duplication) : la pierre tombale doit tomber. */
+  deletions.unmark(DELETED.products, product.id)
   products = [...products, product]
   touch()
   push()
@@ -1111,6 +1288,9 @@ export function deleteProduct(id) {
   /* La photo part avec le produit, sinon elle resterait sur le disque pour
      toujours. L'annulation la réécrira si l'utilisateur revient en arrière. */
   if (photoStore.isAvailable()) photoStore.remove([id])
+  /* La suppression laisse une pierre tombale : c'est elle qui empêche le
+     produit de revenir à la prochaine fusion avec un autre appareil. */
+  deletions.mark(DELETED.products, id, deletions.stampFor(product))
   touch()
   push()
   return { product, index }
@@ -1120,6 +1300,7 @@ export function deleteProduct(id) {
 export function restoreProduct(product, index = null) {
   if (!product) return null
   const restored = normalizeProduct(product)
+  deletions.unmark(DELETED.products, restored.id)
   const next = [...products]
   const position = Number.isInteger(index) ? Math.min(Math.max(index, 0), next.length) : next.length
   next.splice(position, 0, restored)
@@ -1135,6 +1316,7 @@ export function clearBought() {
   products = products.filter((item) => item.status !== STATUS.BOUGHT)
   /* Les photos des produits achetés partants sont libérées ici aussi. */
   if (photoStore.isAvailable()) photoStore.remove(removed.map((item) => item.id))
+  deletions.mark(DELETED.products, removed.map((item) => item.id), deletions.stampFor(removed))
   touch()
   push()
   return removed
@@ -1143,6 +1325,7 @@ export function clearBought() {
 /** Réinjecte des produits supprimés (action « Annuler »). */
 export function restoreMany(list = []) {
   if (!list.length) return 0
+  deletions.unmark(DELETED.products, list.map((item) => item?.id).filter(Boolean))
   products = [...products, ...normalizeList(list)]
   touch()
   push()
@@ -1150,6 +1333,8 @@ export function restoreMany(list = []) {
 }
 
 export function clearAll() {
+  deletions.mark(DELETED.products, products.map((item) => item.id), deletions.stampFor(products))
+  deletions.mark(DELETED.bills, bills.map((item) => item.id), deletions.stampFor(bills))
   products = []
   /* Les factures partent avec : les laisser derrière pointait vers des
      images déjà effacées. */
@@ -1166,13 +1351,19 @@ export function clearAll() {
  * @param {'merge'|'replace'} mode
  */
 export function importProducts(list = [], { mode = 'merge' } = {}) {
+  const incoming = normalizeList(list)
+  /* Importer, c'est vouloir ces produits : leurs pierres tombales tombent. */
+  deletions.unmark(DELETED.products, incoming.map((item) => item.id).filter(Boolean))
   if (mode === 'replace') {
-    products = normalizeList(list)
+    const kept = new Set(incoming.map((item) => item.id))
+    const gone = products.filter((item) => !kept.has(item.id))
+    deletions.mark(DELETED.products, gone.map((item) => item.id), deletions.stampFor(gone))
+    products = incoming
     touch()
     push()
     return { added: products.length, updated: 0 }
   }
-  const result = mergeProducts(products, normalizeList(list))
+  const result = mergeProducts(products, incoming, deletions.snapshot())
   products = result.list
   touch()
   push()
@@ -1196,6 +1387,7 @@ export function addBill(input = {}) {
     ...input,
     id: input.id || uid('bill'),
   })
+  deletions.unmark(DELETED.bills, bill.id)
   bills = [...bills, bill]
   touchBills()
   push()
@@ -1246,6 +1438,7 @@ export function deleteBill(id) {
   /* Le ticket part avec la facture : sinon il resterait sur le disque, et
      « vider la liste » ne viderait pas tout. */
   if (photoStore.isAvailable()) photoStore.remove([id])
+  deletions.mark(DELETED.bills, id, deletions.stampFor(bill))
   touchBills()
   push()
   return { bill, index }
@@ -1255,6 +1448,7 @@ export function deleteBill(id) {
 export function restoreBill(bill, index = null) {
   if (!bill) return null
   const restored = normalizeBill(bill)
+  deletions.unmark(DELETED.bills, restored.id)
   const next = [...bills]
   const position = Number.isInteger(index) ? Math.min(Math.max(index, 0), next.length) : next.length
   next.splice(position, 0, restored)
@@ -1271,13 +1465,18 @@ export function restoreBill(bill, index = null) {
  */
 export function importBills(list = [], { mode = 'merge' } = {}) {
   if (!list.length) return { added: 0, updated: 0 }
+  const incoming = normalizeBillList(list)
+  deletions.unmark(DELETED.bills, incoming.map((item) => item.id).filter(Boolean))
   if (mode === 'replace') {
-    bills = normalizeBillList(list)
+    const kept = new Set(incoming.map((item) => item.id))
+    const gone = bills.filter((item) => !kept.has(item.id))
+    deletions.mark(DELETED.bills, gone.map((item) => item.id), deletions.stampFor(gone))
+    bills = incoming
     touchBills()
     push()
     return { added: bills.length, updated: 0 }
   }
-  const result = mergeBills(bills, normalizeBillList(list))
+  const result = mergeBills(bills, incoming, deletions.snapshot())
   bills = result.list
   touchBills()
   push()

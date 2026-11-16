@@ -16,6 +16,7 @@
 /* ------------------------------------------------------------------ */
 
 import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
 export const LINK_PLACEHOLDER = 'https://liste-achats.<votre-sous-domaine>.workers.dev/<clé-secrète>'
@@ -73,11 +74,17 @@ function parseDocument(payload) {
       payload?.expenses && typeof payload.expenses === 'object' && !Array.isArray(payload.expenses)
         ? payload.expenses
         : null,
+    /* Pierres tombales : `null` = document écrit avant la v7, donc aucune
+       suppression connue du serveur. */
+    deleted:
+      payload?.deleted && typeof payload.deleted === 'object' && !Array.isArray(payload.deleted)
+        ? payload.deleted
+        : null,
     settings,
     sha: String(payload?.rev ?? 0),
     rev: Number.isFinite(rev) ? rev : 0,
-    /* Version du document publié : 6 = le Worker transporte les dépenses.
-       Un Worker v5 répond `{rev, updatedAt, count}`, donc 5 par défaut. */
+    /* Version du document publié : 7 = le Worker transporte les dépenses ET
+       les suppressions. Un Worker v5 répond `{rev, updatedAt, count}`, donc 5. */
     docVersion: Number.isFinite(version) ? version : 5,
     updatedAt: payload?.updatedAt || null,
   }
@@ -119,16 +126,16 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, bills: null, analysis: null, expenses: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, analysis: null, expenses: null, deleted: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings, bills, analysis, expenses) {
+function buildBody(list, settings, bills, analysis, expenses, deleted) {
   return JSON.stringify({
-    version: 6,
+    version: 7,
     /* Quelle application écrit : le serveur le garde, ce qui permet de
        savoir — sans demander à personne — quel appareil publie encore avec
        une version qui ignore les dépenses. */
@@ -139,47 +146,68 @@ function buildBody(list, settings, bills, analysis, expenses) {
     bills: bills ?? null,
     analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null,
     expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null,
+    deleted: deleted && typeof deleted === 'object' && !Array.isArray(deleted) ? deleted : null,
   })
 }
+
+/** Attend un court instant avant de retenter un conflit (multi-appareils). */
+const conflictDelay = (attempt) => new Promise((resolve) => setTimeout(resolve, 80 + attempt * 120))
+
+/** Nombre d'essais sur conflit : deux appareils qui publient en même temps
+ *  doivent converger sans afficher d'erreur. */
+const MAX_CONFLICT_ATTEMPTS = 4
 
 /**
  * Publie la liste. En cas de conflit (révision plus récente que celle
  * que l'appareil a lue), on fusionne avec l'état distant puis on retente —
  * aucune modification n'est donc écrasée en silence. Factures, analyse et dépenses
  * suivent exactement le même chemin, chacune avec leur propre fusion par
- * `id` (l'état distant gagne).
+ * `id` (l'état distant gagne), et les pierres tombales empêchent un élément
+ * supprimé de revenir par la fusion.
+ *
+ * Plusieurs appareils publient rarement au même instant, mais quand cela
+ * arrive le conflit est NORMAL : on réessaie plusieurs fois avant d'en faire
+ * une erreur visible. Un seul essai affichait « Lien privé 409 » et laissait
+ * croire à une déconnexion.
+ *
  * @param {Array|null} bills factures à publier, `null` pour ne rien changer
  * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
  * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
- * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, status:string, message?:string}>}
+ * @param {object|null} deleted registre des suppressions à publier
+ * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, deleted:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses) {
+export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev, payloadBills, payloadAnalysis, payloadExpenses) =>
+  const send = (payload, rev, payloadBills, payloadAnalysis, payloadExpenses, payloadDeleted) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings, payloadBills, payloadAnalysis, payloadExpenses),
+      body: buildBody(payload, settings, payloadBills, payloadAnalysis, payloadExpenses, payloadDeleted),
     })
 
   let out = list
   let outBills = bills ?? null
   let outAnalysis = analysis ?? null
   let outExpenses = expenses ?? null
+  /* Le registre local rencontré dans un 409 s'y ajoute : la publication
+     suivante doit emporter les deux, sinon les suppressions de l'autre
+     appareil seraient oubliées. */
+  let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
   let mergedAnalysis = null
   let mergedExpenses = null
+  let mergedDeleted = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev, outBills, outAnalysis, outExpenses)
+    response = await send(out, outRev, outBills, outAnalysis, outExpenses, outDeleted)
   } catch (error) {
     return {
       ok: false,
@@ -189,28 +217,31 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     }
   }
 
-  if (response.status === 409) {
+  for (let attempt = 0; response.status === 409 && attempt < MAX_CONFLICT_ATTEMPTS; attempt += 1) {
     const current = await response.json().catch(() => null)
     if (!current || !Array.isArray(current.products)) {
       return { ok: false, sha, status: 'error', message: 'Conflit de publication illisible.' }
     }
-    const merged = mergeProducts(out, current.products)
+    if (attempt > 0) await conflictDelay(attempt)
+    outDeleted = mergeMaps(outDeleted, current.deleted)
+    mergedDeleted = outDeleted
+    const merged = mergeProducts(out, current.products, outDeleted)
     out = merged.list
     if (Array.isArray(current.bills)) {
-      mergedBills = mergeBills(outBills || [], current.bills).list
+      mergedBills = mergeBills(outBills || [], current.bills, outDeleted).list
       outBills = mergedBills
     }
     if (current.analysis && typeof current.analysis === 'object' && !Array.isArray(current.analysis)) {
-      mergedAnalysis = mergeAnalysis(outAnalysis || {}, current.analysis).analysis
+      mergedAnalysis = mergeAnalysis(outAnalysis || {}, current.analysis, outDeleted).analysis
       outAnalysis = mergedAnalysis
     }
     if (current.expenses && typeof current.expenses === 'object' && !Array.isArray(current.expenses)) {
-      mergedExpenses = mergeExpenses(outExpenses || {}, current.expenses).expenses
+      mergedExpenses = mergeExpenses(outExpenses || {}, current.expenses, outDeleted).expenses
       outExpenses = mergedExpenses
     }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev, outBills, outAnalysis, outExpenses)
+      response = await send(out, outRev, outBills, outAnalysis, outExpenses, outDeleted)
     } catch (error) {
       return {
         ok: false,
@@ -224,13 +255,25 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
   if (response.status === 404) {
     return { ok: false, sha, status: 'config', message: notFoundMessage() }
   }
+  if (response.status === 409) {
+    /* Un autre appareil publie plus vite que ce que KV laisse voir. Ce n'est
+       pas une panne : on le dit sans « hors ligne », et le prochain
+       rafraîchissement republiera la modification (le drapeau `dirty` reste).
+       Message distinct pour que l'écran ne parle pas de lien introuvable. */
+    return {
+      ok: false,
+      sha,
+      status: 'conflict',
+      message: 'Un autre appareil publie en même temps — la modification sera renvoyée automatiquement.',
+    }
+  }
   if (!response.ok) {
     return { ok: false, sha, status: 'error', message: failureMessage(response) }
   }
 
   const data = await response.json().catch(() => null)
   const rev = Number(data?.rev)
-  /* Un Worker v6 renvoie `version: 6` ; un Worker v5 ne renvoie pas de
+  /* Un Worker v7 renvoie `version: 7` ; un Worker v5 ne renvoie pas de
      version du tout, donc 5 : c'est ainsi que l'application repère un
      Worker qui reçoit les dépenses sans les garder. */
   const docVersion = Number.isFinite(Number(data?.version)) ? Number(data.version) : 5
@@ -243,6 +286,7 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     bills: mergedBills,
     analysis: mergedAnalysis,
     expenses: mergedExpenses,
+    deleted: mergedDeleted,
     status: 'ok',
   }
 }

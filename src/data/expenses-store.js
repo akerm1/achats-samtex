@@ -15,6 +15,7 @@ import {
   normalizeInvestment,
   normalizeRevenue,
 } from './expenses-model.js'
+import { DELETED, mark, snapshot, stampFor, without } from './deletions.js'
 
 const KEY = 'purchase-gros-expenses-v1'
 const SEEDED_KEY = 'purchase-gros-expenses-seeded-v1'
@@ -140,6 +141,9 @@ export function deleteCategory(id) {
   if (index < 0) return null
   const cat = state.categories[index]
   state = { ...state, categories: state.categories.filter((c) => c.id !== id) }
+  /* La suppression voyage : sans cette pierre tombale, la catégorie
+     reviendrait à la prochaine fusion avec un autre appareil. */
+  mark(DELETED.categories, id, stampFor(cat))
   touch()
   return { cat, index }
 }
@@ -246,6 +250,7 @@ export function deleteExpense(id) {
   }
 
   state = { ...state, expenses: state.expenses.filter((e) => e.id !== id) }
+  mark(DELETED.expenses, id, stampFor(exp))
   touch()
   return { exp, index }
 }
@@ -290,6 +295,7 @@ export function deleteInvestment(id) {
   }
 
   state = { ...state, investments: state.investments.filter((i) => i.id !== id) }
+  mark(DELETED.expenseInvestments, id, stampFor(inv))
   touch()
   return { inv, index }
 }
@@ -323,6 +329,7 @@ export function deleteRevenue(id) {
   if (index < 0) return null
   const rev = state.revenues[index]
   state = { ...state, revenues: state.revenues.filter((r) => r.id !== id) }
+  mark(DELETED.revenues, id, stampFor(rev))
   touch()
   return { rev, index }
 }
@@ -346,19 +353,81 @@ export function setExpenseSettings(patch = {}) {
 export function importExpenses(data, { mode = 'merge' } = {}) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return { added: 0, updated: 0 }
   if (mode === 'replace') {
-    state = normalizeExpenses(data)
+    const next = normalizeExpenses(data)
+    /* Remplacer, c'est aussi supprimer ce qui n'est plus là : sans pierre
+       tombale, le prochain conflit ramènerait les lignes écartées. */
+    markMissing(DELETED.categories, state.categories, next.categories)
+    markMissing(DELETED.expenses, state.expenses, next.expenses)
+    markMissing(DELETED.expenseInvestments, state.investments, next.investments)
+    markMissing(DELETED.revenues, state.revenues, next.revenues)
+    state = next
     touch()
     return { added: state.expenses.length + state.investments.length + state.revenues.length, updated: 0 }
   }
-  const merged = mergeExpenses(state, data)
+  const merged = mergeExpenses(state, data, snapshot())
   state = merged.expenses
   touch()
   return { added: merged.added, updated: merged.updated }
 }
 
+/** Marque comme supprimé ce qui existait avant un remplacement complet. */
+function markMissing(collection, previous, next) {
+  const kept = new Set((next || []).map((item) => item?.id))
+  for (const item of previous || []) {
+    if (item?.id && !kept.has(item.id)) mark(collection, item.id, stampFor(item))
+  }
+}
+
+/**
+ * Applique les pierres tombales apprises du distant à l'état local.
+ *
+ * Une lecture distante ne suffit pas : le document peut avoir été écrit par
+ * un appareil resté sur l'ancienne liste, et certaines collections ne sont
+ * pas remplacées (documents antérieurs). Filtrer ici garantit qu'une
+ * dépense supprimée ailleurs ne s'affiche ni ne reparte.
+ * @returns {boolean} vrai si l'état local a changé.
+ */
+export function applyDeletions(map = snapshot()) {
+  const categories = without(map, DELETED.categories, state.categories)
+  const expenses = without(map, DELETED.expenses, state.expenses)
+  const investments = without(map, DELETED.expenseInvestments, state.investments)
+  const revenues = without(map, DELETED.revenues, state.revenues)
+  if (
+    categories.length === state.categories.length &&
+    expenses.length === state.expenses.length &&
+    investments.length === state.investments.length &&
+    revenues.length === state.revenues.length
+  ) {
+    return false
+  }
+  state = { ...state, categories, expenses, investments, revenues }
+  queuePersist()
+  emit()
+  return true
+}
+
 export function applyRemoteExpenses(incoming) {
   if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return false
-  const next = normalizeExpenses(incoming)
+  /* Le distant remplace, mais une ligne supprimée ICI ne doit pas revenir :
+     sa pierre tombale est plus récente que le document lu. Sans ce filtre,
+     chaque rafraîchissement réinstallait la dépense (le serveur la garde tant
+     qu'un appareil ne republie pas), et le symptôme était exactement
+     « je supprime, je recharge, elle est de retour ». */
+  const map = snapshot()
+  /* Le filtre passe AVANT la normalisation : `normalizeExpense` date une
+     ligne dépourvue de `updatedAt` à l'instant présent, ce qui la rendrait
+     plus récente que sa pierre tombale — elle reviendrait donc à chaque
+     lecture. Sur la donnée brute, une date absente vaut 0 et la suppression
+     gagne. */
+  const keep = (key, collection) =>
+    Array.isArray(incoming[key]) ? without(map, collection, incoming[key]) : incoming[key]
+  const next = normalizeExpenses({
+    ...incoming,
+    categories: keep('categories', DELETED.categories),
+    expenses: keep('expenses', DELETED.expenses),
+    investments: keep('investments', DELETED.expenseInvestments),
+    revenues: keep('revenues', DELETED.revenues),
+  })
   if (JSON.stringify(next) === JSON.stringify(state)) return false
   state = next
   queuePersist()
