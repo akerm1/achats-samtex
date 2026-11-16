@@ -83,12 +83,12 @@ function tile(title, help, control, { wide = false, iconName = '' } = {}) {
 function group(title, body, sectionId, initiallyOpen = false) {
   const id = sectionId || `section-${title.toLowerCase().replace(/\s+/g, '-')}`
   return `
-    <div class="settings-section" id="${esc(id)}">
-      <button type="button" class="settings-card-title" data-action="toggle-section-${id}">
-        <span class="settings-card-title-text">${esc(title)}</span>
-        <span class="settings-card-icon">${icon('chevron-down', 14)}</span>
-      </button>
-      <div class="settings-content ${initiallyOpen ? 'settings-open' : ''}" data-role="settings-body-${id}">
+    <div class="settings-section ${initiallyOpen ? 'settings-open' : ''}" id="${esc(id)}">
+      <div class="settings-section-title" data-action="toggle-section-${id}">
+        <span>${esc(title)}</span>
+        <span class="settings-section-icon">${icon('chevron-down', 14)}</span>
+      </div>
+      <div class="settings-section-content" data-role="settings-body-${id}">
         ${body}
       </div>
     </div>`
@@ -793,9 +793,10 @@ function bind() {
     button.addEventListener('click', (event) => {
       const section = button.closest('.settings-section')
       if (!section) return
-      const content = section.querySelector('.settings-content')
+      const content = section.querySelector('.settings-section-content')
       if (content) {
         content.classList.toggle('settings-open')
+        section.classList.toggle('settings-open')
       }
     })
   })

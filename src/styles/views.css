@@ -1625,7 +1625,7 @@
 /* ================================================================== */
 
 /* ================================================================= */
-/* 7. Réglages — section titles as cards in a vertical stack          */
+/* 7. Réglages — header card + expandable content                     */
 /* ================================================================= */
 
 .view--settings {
@@ -1640,69 +1640,74 @@
   gap: 8px;
 }
 
-/* Individual title card */
-.settings-card-title {
+/* Header card - standalone card with rounded top corners */
+.settings-section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-2);
-  background: var(--surface-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
+  margin: 0;
+  line-height: 1.3;
   cursor: pointer;
+  box-shadow: var(--shadow-card);
   transition: all 0.15s ease;
   text-align: left;
-  box-shadow: var(--shadow-card);
 }
 
-.settings-card-title:hover {
+.settings-section-title:hover {
   background: var(--surface-2);
   transform: translateY(-2px);
   box-shadow: var(--shadow-accent);
   border-color: var(--accent-line);
 }
 
-.settings-card-title-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.settings-card-icon {
+/* Toggle icon */
+.settings-section-icon {
   display: inline-flex;
   align-items: center;
   transition: transform 0.2s ease;
   color: var(--ink-3);
-  font-size: 14px;
 }
 
-.settings-content {
+/* Rotated when expanded */
+.settings-section.settings-open .settings-section-icon {
+  transform: rotate(180deg);
+}
+
+/* Collapsed content */
+.settings-section-content {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
   transition: all 0.25s cubic-bezier(0.22, 0.68, 0.32, 1);
   padding: 0;
   border: 1px solid var(--line);
   border-top: 0;
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   background: var(--surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
 }
 
-.settings-content.settings-open {
+/* Expanded state */
+.settings-section.settings-open .settings-section-content {
   max-height: 2000px;
   opacity: 1;
   transform: translateY(0);
-  padding: 16px 20px;
 }
 
 /* Individual setting cards */
