@@ -1633,14 +1633,15 @@
   padding: clamp(16px, 3vw, 40px);
 }
 
-/* Section container with smooth expand/collapse */
+/* Section container with grey card styling */
 .settings-section {
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-3);
   box-shadow: var(--shadow-card);
   overflow: hidden;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+  margin: 8px 0;
 }
 
 .settings-section:hover {
@@ -1682,6 +1683,7 @@
   display: inline-flex;
   align-items: center;
   transition: transform 0.2s ease;
+  color: var(--ink-3);
 }
 
 /* Rotated icon when expanded */
