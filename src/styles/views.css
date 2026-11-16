@@ -1625,7 +1625,7 @@
 /* ================================================================== */
 
 /* ================================================================= */
-/* 7. Réglages — 4 card titles in a row, with expandable content     */
+/* 7. Réglages — section titles as cards in a vertical stack          */
 /* ================================================================= */
 
 .view--settings {
@@ -1640,36 +1640,25 @@
   gap: 8px;
 }
 
-/* Title cards container - 4 cards in a row */
-.settings-card-titles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
 /* Individual title card */
 .settings-card-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 18px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-2);
   background: var(--surface-3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
   box-shadow: var(--shadow-card);
-  flex: 1 1 auto;
-  min-width: 140px;
-  max-width: 280px;
 }
 
 .settings-card-title:hover {
@@ -1682,7 +1671,7 @@
 .settings-card-title-text {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .settings-card-icon {
@@ -1690,14 +1679,9 @@
   align-items: center;
   transition: transform 0.2s ease;
   color: var(--ink-3);
+  font-size: 14px;
 }
 
-/* Rotated icon when expanded */
-.settings-section .settings-card-icon {
-  transition: transform 0.2s ease;
-}
-
-/* Collapsed state */
 .settings-content {
   max-height: 0;
   overflow: hidden;
@@ -1714,7 +1698,6 @@
   gap: 12px;
 }
 
-/* Expanded state */
 .settings-content.settings-open {
   max-height: 2000px;
   opacity: 1;

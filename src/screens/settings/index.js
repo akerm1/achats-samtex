@@ -84,12 +84,10 @@ function group(title, body, sectionId, initiallyOpen = false) {
   const id = sectionId || `section-${title.toLowerCase().replace(/\s+/g, '-')}`
   return `
     <div class="settings-section" id="${esc(id)}">
-      <div class="settings-card-titles">
-        <button type="button" class="settings-card-title" data-action="toggle-section-${id}">
-          <span class="settings-card-title-text">${esc(title)}</span>
-          <span class="settings-card-icon">${icon('chevron-down', 14)}</span>
-        </button>
-      </div>
+      <button type="button" class="settings-card-title" data-action="toggle-section-${id}">
+        <span class="settings-card-title-text">${esc(title)}</span>
+        <span class="settings-card-icon">${icon('chevron-down', 14)}</span>
+      </button>
       <div class="settings-content ${initiallyOpen ? 'settings-open' : ''}" data-role="settings-body-${id}">
         ${body}
       </div>
