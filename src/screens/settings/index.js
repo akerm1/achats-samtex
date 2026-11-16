@@ -62,19 +62,20 @@ const STATUS_CLASS = {
   error: 'badge--orange',
 }
 
-/**
- * Une ligne de réglage. `wide` empile le contrôle sous le libellé : c'est
- * le cas de tout ce qui dépasse deux ou trois mots (un formulaire, une
- * range de boutons, une série d'actions).
+/** Une ligne de réglage. Chaque réglage est une carte autonome avec
+ * son titre, aide et contrôle. `wide` empile le contrôle sous le libellé.
  */
 function tile(title, help, control, { wide = false, iconName = '' } = {}) {
   return `
-    <div class="setting${wide ? ' setting--wide' : ''}">
-      <div class="setting-copy">
-        <strong>${iconName ? icon(iconName, 15) : ''}${esc(title)}</strong>
-        ${help ? `<p>${help}</p>` : ''}
+    <div class="setting-card${wide ? ' setting-card--wide' : ''}">
+      <div class="setting-card-content">
+        <div class="setting-card-header">
+          ${iconName ? icon(iconName, 16) : ''}
+          <strong class="setting-card-title">${esc(title)}</strong>
+        </div>
+        ${help ? `<p class="setting-card-help">${help}</p>` : ''}
+        <div class="setting-card-control">${control}</div>
       </div>
-      <div class="setting-control">${control}</div>
     </div>`
 }
 
