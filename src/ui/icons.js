@@ -65,6 +65,7 @@ export const icons = {
   analysis: S('<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>'),
   chevronLeft: S('<path d="m15 18-6-6 6-6"/>'),
   chevronRight: S('<path d="m9 18 6-6-6-6"/>'),
+  chevronDown: S('<path d="m6 9 6 6 6-6"/>'),
   sliders: S(
     '<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>',
   ),

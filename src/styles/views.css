@@ -1625,57 +1625,84 @@
 /* ================================================================== */
 
 /* ================================================================= */
-/* 7. Réglages — modern card system                                */
+/* 7. Réglages — accordion-style card system                         */
 /* ================================================================= */
 
 .view--settings {
-  gap: clamp(24px, 4vw, 48px);
+  gap: clamp(20px, 3vw, 32px);
   padding: clamp(16px, 3vw, 40px);
 }
 
-/* Section container with subtle visual separation */
-.tilegroup {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Section container with smooth expand/collapse */
+.settings-section {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.tilegroup-title {
+.settings-section:hover {
+  box-shadow: var(--shadow-accent-lg);
+}
+
+.settings-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 16px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--surface-2);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.tilegroup-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
+.settings-header:hover {
+  background: var(--surface-3);
 }
 
-/* Card-style section body */
-.tilegroup-body {
-  display: flex;
-  flex-direction: column;
+.settings-title {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--line);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
+  line-height: 1.3;
 }
 
-.tilegroup-body:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-accent-lg);
+.settings-icon {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+/* Rotated icon when expanded */
+.settings-section.settings-open .settings-icon {
+  transform: rotate(180deg);
+}
+
+/* Collapsible body */
+.settings-body {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.25s cubic-bezier(0.22, 0.68, 0.32, 1);
+}
+
+/* Expanded state */
+.settings-section.settings-open .settings-body {
+  max-height: 2000px;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Individual setting row within a card */
@@ -1686,7 +1713,7 @@
   gap: 10px;
   padding: 18px 20px;
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
   transition: background 0.15s ease;
 }
 
@@ -1695,10 +1722,6 @@
 }
 
 .setting:last-child {
-  border-bottom: none;
-}
-
-.setting:first-child {
   border-top: none;
 }
 
