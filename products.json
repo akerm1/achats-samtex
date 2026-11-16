@@ -1,7 +1,7 @@
 {
   "version": 6,
   "client": "10.1.1",
-  "updatedAt": "2026-11-16T17:21:27.066Z",
+  "updatedAt": "2026-11-16T17:21:49.276Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -3929,7 +3929,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       },
       {
         "id": "rent",
@@ -3940,7 +3940,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       },
       {
         "id": "labor",
@@ -3951,7 +3951,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       },
       {
         "id": "tools",
@@ -3962,7 +3962,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       },
       {
         "id": "transfer",
@@ -3973,7 +3973,7 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       },
       {
         "id": "car",
@@ -3984,10 +3984,22 @@
         "isDefault": false,
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:07:40.929Z"
+        "updatedAt": "2026-11-16T17:21:49.111Z"
       }
     ],
-    "expenses": [],
+    "expenses": [
+      {
+        "categoryId": "gas",
+        "amount": 1000,
+        "date": "2026-11-13",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1794607884337",
+        "createdAt": "2026-11-13T22:11:24.337Z",
+        "updatedAt": "2026-11-16T17:07:14.942Z"
+      }
+    ],
     "investments": [],
     "revenues": [],
     "settings": {
