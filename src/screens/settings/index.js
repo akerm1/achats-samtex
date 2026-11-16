@@ -79,12 +79,15 @@ function tile(title, help, control, { wide = false, iconName = '' } = {}) {
     </div>`
 }
 
-/** Un groupe de réglages : un titre, puis le corps */
-function group(title, body, sectionId) {
+/** Un groupe de réglages : un titre cliquable, puis le corps repliable */
+function group(title, body, sectionId, initiallyOpen = false) {
   const id = sectionId || `section-${title.toLowerCase().replace(/\s+/g, '-')}`
   return `
-    <div class="settings-section" id="${esc(id)}">
-      <h2 class="settings-title">${esc(title)}</h2>
+    <div class="settings-section ${initiallyOpen ? 'settings-open' : ''}" id="${esc(id)}">
+      <h3 class="settings-title" data-action="toggle-section-${id}">
+        <span>${esc(title)}</span>
+        <span class="settings-icon">${icon('chevron-down', 14)}</span>
+      </h3>
       <div class="settings-body">
         ${body}
       </div>
@@ -579,7 +582,7 @@ function template() {
         </div>
       </header>
 
-      ${group('Interface &amp; Affichage', themeTile() + layoutTile(), 'display')}
+      ${group('Interface &amp; Affichage', themeTile() + layoutTile(), 'display', true)}
       ${group('Synchronisation &amp; Partage', shareTile(), 'sync')}
       ${group('Gestion des Données', dataTile() + exportTile() + dangerTile(), 'data')}
       ${group('Informations &amp; Assistance', installTile() + updateTile() + aboutTile(), 'info')}
@@ -784,6 +787,15 @@ function bind() {
     host.querySelector('[data-role="import-file"]')?.click(),
   )
   host.querySelector('[data-role="import-file"]')?.addEventListener('change', handleImport)
+
+  /* Accordion toggle for settings sections */
+  host.querySelectorAll('[data-action^="toggle-section-"]').forEach((element) => {
+    element.addEventListener('click', (event) => {
+      const section = element.closest('.settings-section')
+      if (!section) return
+      section.classList.toggle('settings-open')
+    })
+  })
 
   /* Le `draft` suit la frappe : sans cela, « Tester » et « Enregistrer »
      lisaient une valeur absente. */
