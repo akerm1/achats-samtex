@@ -6,11 +6,15 @@
 /* Maintenant prise en charge : mode comparaison de dates.             */
 /* ------------------------------------------------------------------ */
 
-/import { esc } from '../core/utils.js'
+import { esc, formatDate } from '../../core/utils.js'
 import { icon } from './icons.js'
 
 export const LAYOUT_GRID = { value: 'cards', label: 'Grille', icon: 'grid' }
 export const LAYOUT_LIST = { value: 'list', label: 'Liste', icon: 'list' }
+
+function dayLabel(date) {
+  return formatDate(`${String(date || '')}T12:00:00`)
+}
 
 export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
 
