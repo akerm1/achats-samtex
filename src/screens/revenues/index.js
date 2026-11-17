@@ -264,12 +264,13 @@ function results() {
           label: dayLabel(d),
         }
       }),
+      settings,
     )
   }
   return layout === 'list' ? listHtml(sorted, settings) : daysHtml(sorted, settings)
 }
 
-function compareHtml(compareData) {
+function compareHtml(compareData, settings) {
   return `
     <div class="compare-view">
       ${compareData.map((item) => `
@@ -297,19 +298,7 @@ function paint() {
       ${toolbar()}
       ${actions()}
       <div class="list-results" data-role="results">
-        ${compareMode && compareDates.length > 0
-          ? compareHtml(
-              compareDates.map(d => {
-                const revs = revenues.filter((r) => r.date === d)
-                return {
-                  date: d,
-                  total: revs.reduce((a, r) => a + (r.amount || 0), 0),
-                  count: revs.length,
-                  label: dayLabel(d),
-                }
-              }),
-            )
-          : results()}
+        ${results()}
       </div>
     </section>`
   bindToolbar(host, 'set-revenues', {
