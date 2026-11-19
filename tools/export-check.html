@@ -156,11 +156,13 @@
   const byName = (name) => sheets.find((sheet) => sheet.name === name)
 
   /* --- 1. Complétude ------------------------------------------------ */
-  check('feuilles : treize, résumé compris', sheets.length === 13, sheets.map((sheet) => sheet.name).join(', '))
+  check('feuilles : quinze, résumé compris', sheets.length === 15, sheets.map((sheet) => sheet.name).join(', '))
   check(
     'feuilles : une par collection',
     [
       'Résumé',
+      'Par jour',
+      'Par mois',
       'Produits',
       'Dépenses',
       'Recettes',
@@ -240,6 +242,54 @@
     'total recettes = celui de l’application',
     money(sumColumn(revenueRows, 'amount')) === money(expModel.totalRevenues(snapshot.expenses.revenues)),
     `${money(sumColumn(revenueRows, 'amount'))} / ${money(expModel.totalRevenues(snapshot.expenses.revenues))}`,
+  )
+
+  /* Par jour : une ligne par date, totaux identiques aux détails. */
+  const daily = byName('Par jour')
+  const monthly = byName('Par mois')
+  check('par jour : une ligne par date d’activité', daily.rows.length === 4, daily.rows.length)
+  check(
+    'par jour : recettes = total de l’application',
+    money(sumColumn(daily.rows, 'revenue')) === money(expModel.totalRevenues(snapshot.expenses.revenues)),
+    `${money(sumColumn(daily.rows, 'revenue'))} / ${money(expModel.totalRevenues(snapshot.expenses.revenues))}`,
+  )
+  check(
+    'par jour : dépenses = total de l’application',
+    money(sumColumn(daily.rows, 'expense')) === money(expModel.totalExpenses(snapshot.expenses.expenses)),
+    `${money(sumColumn(daily.rows, 'expense'))} / ${money(expModel.totalExpenses(snapshot.expenses.expenses))}`,
+  )
+  check(
+    'par jour : solde du 13 novembre',
+    daily.rows.find((row) => row.date === '2026-11-13')?.balance === 49.5,
+    daily.rows.find((row) => row.date === '2026-11-13')?.balance,
+  )
+  check(
+    'par jour : détail par catégorie',
+    daily.rows.find((row) => row.date === '2026-11-13')?.['cat:gas'] === 1200.75 &&
+      daily.rows.find((row) => row.date === '2026-11-12')?.['cat:transfer'] === 5000,
+    '',
+  )
+  check(
+    'par mois : totaux repris des lignes par jour',
+    money(sumColumn(monthly.rows, 'revenue')) === money(sumColumn(daily.rows, 'revenue')) &&
+      money(sumColumn(monthly.rows, 'expense')) === money(sumColumn(daily.rows, 'expense')),
+    `${monthly.rows.length} mois`,
+  )
+  check(
+    'portée recettes : recettes par jour + détail',
+    (() => {
+      const list = buildSheets(snapshot, 'revenues')
+      return list.some((sheet) => sheet.name === 'Recettes par jour') && list.some((sheet) => sheet.name === 'Recettes')
+    })(),
+    '',
+  )
+  check(
+    'portée dépenses : dépenses par jour + détail',
+    (() => {
+      const list = buildSheets(snapshot, 'expenses')
+      return list.some((sheet) => sheet.name === 'Dépenses par jour') && list.some((sheet) => sheet.name === 'Dépenses')
+    })(),
+    '',
   )
   check(
     'total investi = celui de l’application',

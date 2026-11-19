@@ -186,6 +186,147 @@ function billRows(bills) {
     }))
 }
 
+/* --- Par jour / par mois ------------------------------------------- */
+
+const WEEKDAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+
+/**
+ * Une ligne par date : recettes, dépenses, solde et détail des dépenses
+ * par catégorie. Les montants vides ne comptent pas, les lignes restent.
+ */
+function dailyActivity(expenses, revenues, categories) {
+  const byDate = new Map()
+  const bucket = (value) => {
+    const key = day(value)
+    if (!key) return null
+    let entry = byDate.get(key)
+    if (!entry) {
+      entry = { date: key, revenue: 0, revenueCount: 0, expense: 0, expenseCount: 0, byCategory: new Map() }
+      byDate.set(key, entry)
+    }
+    return entry
+  }
+  for (const revenue of revenues || []) {
+    const entry = bucket(revenue.date)
+    if (!entry) continue
+    entry.revenue += Number(revenue.amount) || 0
+    entry.revenueCount += 1
+  }
+  for (const expense of expenses || []) {
+    const entry = bucket(expense.date)
+    if (!entry) continue
+    entry.expenseCount += 1
+    const amount = Number(expense.amount)
+    if (!Number.isFinite(amount)) continue
+    entry.expense += amount
+    entry.byCategory.set(expense.categoryId, (entry.byCategory.get(expense.categoryId) || 0) + amount)
+  }
+  const rows = [...byDate.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((entry) => {
+      const row = {
+        date: entry.date,
+        month: entry.date.slice(0, 7),
+        weekday: WEEKDAYS[new Date(`${entry.date}T12:00:00`).getDay()] || '',
+        revenue: money(entry.revenue),
+        expense: money(entry.expense),
+        balance: money(entry.revenue - entry.expense),
+        revenueCount: entry.revenueCount,
+        expenseCount: entry.expenseCount,
+      }
+      for (const category of categories || []) {
+        row[`cat:${category.id}`] = money(entry.byCategory.get(category.id) || 0)
+      }
+      return row
+    })
+  const categoryColumns = (categories || []).map((category) => ({
+    key: `cat:${category.id}`,
+    label: category.label,
+    width: 14,
+  }))
+  return { rows, categoryColumns }
+}
+
+const dateColumns = () => [
+  { key: 'date', label: 'Date', width: 12 },
+  { key: 'month', label: 'Mois', width: 10 },
+  { key: 'weekday', label: 'Jour', width: 12 },
+]
+
+/** Recettes seules, une ligne par jour d'entrée. */
+function revenueDailySheet(rows) {
+  return {
+    name: 'Recettes par jour',
+    columns: [...dateColumns(), { key: 'revenueCount', label: 'Entrées', width: 9 }, { key: 'revenue', label: 'Recettes', width: 14 }],
+    rows: rows.filter((row) => row.revenueCount > 0),
+  }
+}
+
+/** Dépenses seules, avec le détail par catégorie. */
+function expenseDailySheet(rows, categoryColumns) {
+  return {
+    name: 'Dépenses par jour',
+    columns: [
+      ...dateColumns(),
+      { key: 'expenseCount', label: 'Entrées', width: 9 },
+      { key: 'expense', label: 'Dépenses', width: 14 },
+      ...categoryColumns,
+    ],
+    rows: rows.filter((row) => row.expenseCount > 0),
+  }
+}
+
+/** Recettes et dépenses côte à côte, avec le solde du jour. */
+function activityDailySheet(rows, categoryColumns) {
+  return {
+    name: 'Par jour',
+    columns: [
+      ...dateColumns(),
+      { key: 'revenue', label: 'Recettes', width: 14 },
+      { key: 'expense', label: 'Dépenses', width: 14 },
+      { key: 'balance', label: 'Solde', width: 14 },
+      { key: 'revenueCount', label: 'Entrées recettes', width: 9 },
+      { key: 'expenseCount', label: 'Entrées dépenses', width: 9 },
+      ...categoryColumns,
+    ],
+    rows,
+  }
+}
+
+/** Les mêmes chiffres, regroupés par mois. */
+function monthlySheet(rows) {
+  const byMonth = new Map()
+  for (const row of rows) {
+    const entry = byMonth.get(row.month) || { month: row.month, revenue: 0, expense: 0, revenueDays: 0, expenseDays: 0 }
+    entry.revenue += Number(row.revenue) || 0
+    entry.expense += Number(row.expense) || 0
+    if (row.revenueCount > 0) entry.revenueDays += 1
+    if (row.expenseCount > 0) entry.expenseDays += 1
+    byMonth.set(row.month, entry)
+  }
+  return {
+    name: 'Par mois',
+    columns: [
+      { key: 'month', label: 'Mois', width: 12 },
+      { key: 'revenue', label: 'Recettes', width: 14 },
+      { key: 'expense', label: 'Dépenses', width: 14 },
+      { key: 'balance', label: 'Solde', width: 14 },
+      { key: 'revenueDays', label: 'Jours avec recette', width: 10 },
+      { key: 'expenseDays', label: 'Jours avec dépense', width: 10 },
+    ],
+    rows: [...byMonth.values()]
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((entry) => ({
+        month: entry.month,
+        revenue: money(entry.revenue),
+        expense: money(entry.expense),
+        balance: money(entry.revenue - entry.expense),
+        revenueDays: entry.revenueDays,
+        expenseDays: entry.expenseDays,
+      })),
+  }
+}
+
 /* --- Analyse ------------------------------------------------------- */
 
 const SALE_KIND_LABEL = { amount: 'Recette', aid: 'Férié', closed: 'Fermé' }
@@ -397,6 +538,7 @@ function summarySheet(tables, currency) {
   const bills = tables.bills.rows
   const sales = tables.sales.rows
   const purchases = tables.analysisPurchases.rows
+  const daily = tables.daily.rows
 
   const pending = products.filter((row) => row.status === 'À acheter')
   const totalExpense = sumColumn(expenses, 'amount')
@@ -423,6 +565,10 @@ function summarySheet(tables, currency) {
     { label: 'Recettes — lignes', value: revenues.length },
     { label: 'Recettes — total', value: totalRevenue },
     { label: 'Solde (recettes − dépenses)', value: Math.round((totalRevenue - totalExpense) * 100) / 100 },
+
+    { label: 'Par jour — dates couvertes', value: daily.length },
+    { label: 'Par jour — jours avec recette', value: daily.filter((row) => row.revenueCount > 0).length },
+    { label: 'Par jour — jours avec dépense', value: daily.filter((row) => row.expenseCount > 0).length },
 
     { label: 'Investissements — lignes', value: investments.length },
     { label: 'Investissements — total investi', value: totalInvested },
@@ -469,6 +615,7 @@ export function buildSheets(snapshot, scope = 'all') {
   const analysis = data.analysis || {}
   const categories = expensesState.categories || []
   const currency = expensesState.settings?.currency || 'DZD'
+  const daily = dailyActivity(expensesState.expenses, expensesState.revenues, categories)
 
   const tables = {
     products: { name: 'Produits', columns: PRODUCT_COLUMNS, rows: productRows(data.products) },
@@ -477,6 +624,7 @@ export function buildSheets(snapshot, scope = 'all') {
     investments: { name: 'Investissements (dépenses)', columns: INVESTMENT_COLUMNS, rows: investmentRows(expensesState.investments, expensesState.expenses) },
     categories: { name: 'Catégories', columns: CATEGORY_COLUMNS, rows: categoryRows(categories, expensesState.expenses) },
     bills: { name: 'Factures', columns: BILL_COLUMNS, rows: billRows(data.bills) },
+    daily: activityDailySheet(daily.rows, daily.categoryColumns),
     sales: { name: 'Analyse · Ventes', columns: SALE_COLUMNS, rows: analysisSaleRows(analysis) },
     analysisPurchases: { name: 'Analyse · Achats', columns: PURCHASE_COLUMNS, rows: analysisPurchaseRows(analysis) },
     analysisInvestments: { name: 'Analyse · Investissements', columns: ANALYSIS_INVESTMENT_COLUMNS, rows: analysisInvestmentRows(analysis) },
@@ -486,12 +634,14 @@ export function buildSheets(snapshot, scope = 'all') {
   }
 
   if (scope === 'products') return [tables.products]
-  if (scope === 'expenses') return [tables.expenses]
-  if (scope === 'revenues') return [tables.revenues]
+  if (scope === 'expenses') return [expenseDailySheet(daily.rows, daily.categoryColumns), tables.expenses]
+  if (scope === 'revenues') return [revenueDailySheet(daily.rows), tables.revenues]
   if (scope === 'bills') return [tables.bills]
 
   return [
     summarySheet(tables, currency),
+    tables.daily,
+    monthlySheet(daily.rows),
     tables.products,
     tables.expenses,
     tables.revenues,
