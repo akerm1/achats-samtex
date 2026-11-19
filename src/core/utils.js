@@ -16,7 +16,6 @@ export {
   formatDate,
   formatDateLong,
   dayKey,
-  periodRange,
   periodLabel,
   formatTime,
   formatRelative,

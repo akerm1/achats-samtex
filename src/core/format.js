@@ -126,7 +126,7 @@ export function formatDate(input) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Périodes — jour, semaine (lundi→dimanche), mois                     */
+/* Périodes — jour (MM-JJ) et mois (MM), sans année                    */
 /* ------------------------------------------------------------------ */
 
 /** Date locale à midi : « AAAA-MM-JJ » ne glisse pas d'un jour. */
@@ -147,43 +147,12 @@ export function dayKey(input) {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
-/** Bornes inclusives d'une période « day », « week » ou « month ». */
-export function periodRange(unit, value) {
-  const date = parseDay(value)
-  if (unit === 'week') {
-    const offset = (date.getDay() + 6) % 7 /* lundi = 0 */
-    const start = new Date(date)
-    start.setDate(date.getDate() - offset)
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6)
-    return { start: dayKey(start), end: dayKey(end) }
-  }
-  if (unit === 'month') {
-    return {
-      start: dayKey(new Date(date.getFullYear(), date.getMonth(), 1, 12)),
-      end: dayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0, 12)),
-    }
-  }
-  const key = dayKey(date)
-  return { start: key, end: key }
-}
-
-/** Libellé court : « 13 nov. 2025 », « 10 – 16 nov. 2025 », « novembre 2025 ». */
-export function periodLabel(unit, value) {
-  const date = parseDay(value)
-  if (unit === 'month') return `${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`
-  if (unit === 'week') {
-    const offset = (date.getDay() + 6) % 7
-    const start = new Date(date)
-    start.setDate(date.getDate() - offset)
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6)
-    const tail = `${MONTHS_SHORT[end.getMonth()]} ${end.getFullYear()}`
-    return start.getMonth() === end.getMonth()
-      ? `${start.getDate()} – ${end.getDate()} ${tail}`
-      : `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} – ${end.getDate()} ${tail}`
-  }
-  return formatDate(`${dayKey(date)}T12:00:00`)
+/** Libellé sans année : « 13 nov. » ou « novembre ». */
+export function periodLabel(unit, key) {
+  const [month, day] = String(key || '').split('-')
+  const index = Number(month) - 1
+  if (!(index >= 0 && index < 12)) return NO_VALUE
+  return unit === 'month' ? MONTHS_LONG[index] : `${Number(day) || 1} ${MONTHS_SHORT[index]}`
 }
 
 export function formatDateLong(input) {

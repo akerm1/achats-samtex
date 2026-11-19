@@ -26,8 +26,8 @@ export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
  * @param {string} options.startDate date de début
  * @param {string} options.endDate date de fin
  * @param {boolean} options.compareMode mode comparaison actif
- * @param {string} options.compareUnit période comparée : « day », « week » ou « month »
- * @param {Array<{unit:string,date:string}>} options.comparePeriods périodes ajoutées
+ * @param {string} options.compareUnit période comparée : « day » ou « month »
+ * @param {Array<{unit:string,key:string}>} options.comparePeriods périodes ajoutées
  * @param {Array<{value:string,label:string}>} options.compareUnits périodes proposées
  */
 export function toolbarHtml({
@@ -61,7 +61,7 @@ export function toolbarHtml({
       </div>`
     : ''
 
-  /* HTML du mode comparaison — jour, semaine ou mois */
+  /* HTML du mode comparaison — jour ou mois, toutes les années */
   const compareHtml = compareUnits.length > 0
     ? `
       <div class="compare-block ${compareMode ? 'is-open' : ''}">
@@ -80,8 +80,11 @@ export function toolbarHtml({
                             aria-pressed="${compareUnit === unit.value ? 'true' : 'false'}">${esc(unit.label)}</button>`).join('')}
                 </div>
                 <div class="compare-pick">
-                  <input type="date" class="date-input" data-action="${prefix}-compare-date"
-                         value="${dayKey(new Date())}" aria-label="Date à comparer">
+                  ${compareUnit === 'month'
+                    ? `<input type="month" class="date-input" data-action="${prefix}-compare-date"
+                             value="${dayKey(new Date()).slice(0, 7)}" aria-label="Mois à comparer">`
+                    : `<input type="date" class="date-input" data-action="${prefix}-compare-date"
+                             value="${dayKey(new Date())}" aria-label="Jour à comparer">`}
                   <button type="button" class="btn btn--primary btn--sm" data-action="${prefix}-compare-add">${icon('plus', 14)} Ajouter</button>
                 </div>
               </div>
@@ -89,12 +92,12 @@ export function toolbarHtml({
                 ? `<div class="compare-chips">
                     ${comparePeriods.map((period, index) => `
                       <span class="compare-chip">
-                        ${esc(periodLabel(period.unit, period.date))}
+                        ${esc(periodLabel(period.unit, period.key))}
                         <button type="button" class="compare-chip-x" data-action="${prefix}-compare-remove"
-                                data-index="${index}" aria-label="Retirer ${esc(periodLabel(period.unit, period.date))}">${icon('x', 11)}</button>
+                                data-index="${index}" aria-label="Retirer ${esc(periodLabel(period.unit, period.key))}">${icon('x', 11)}</button>
                       </span>`).join('')}
                   </div>`
-                : `<p class="compare-hint">Choisissez une date, puis <strong>Ajouter</strong> — le jour, la semaine ou le mois.</p>`}
+                : `<p class="compare-hint">Choisissez un jour ou un mois, puis <strong>Ajouter</strong> — toutes les années sont comparées.</p>`}
             </div>`
           : ''}
       </div>`

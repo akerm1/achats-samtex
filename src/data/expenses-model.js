@@ -267,6 +267,51 @@ export function revenueByDate(revenues) {
   return [...map.values()].sort((a, b) => b.date.localeCompare(a.date))
 }
 
+/**
+ * Totaux par période « jour » (`MM-JJ`) ou « mois » (`MM`), une ligne par
+ * année couverte par les recettes. Exemple : `{ unit: 'month', key: '04' }`
+ * donne avril 2025 et avril 2026.
+ */
+export function revenuePeriods(revenues, periods) {
+  const list = Array.isArray(revenues) ? revenues : []
+  const dates = list.map((rev) => rev.date).filter(Boolean).sort()
+  const minDate = dates[0] || ''
+  const maxDate = dates[dates.length - 1] || ''
+  const years = [...new Set(dates.map((date) => date.slice(0, 4)))].sort()
+  const rows = []
+  for (const period of periods || []) {
+    if (!period || (period.unit !== 'month' && period.unit !== 'day')) continue
+    for (const year of years) {
+      /* Une période hors des données ne compte pas : pas de faux 0. */
+      const stamp = `${year}-${period.key}`
+      const inSpan = period.unit === 'month'
+        ? stamp >= minDate.slice(0, 7) && stamp <= maxDate.slice(0, 7)
+        : stamp >= minDate && stamp <= maxDate
+      if (!inSpan) continue
+      let total = 0
+      let count = 0
+      for (const rev of list) {
+        if (rev.date.slice(0, 4) !== year) continue
+        const matched = period.unit === 'month'
+          ? rev.date.slice(5, 7) === period.key
+          : rev.date.slice(5) === period.key
+        if (!matched) continue
+        total += rev.amount || 0
+        count += 1
+      }
+      rows.push({
+        unit: period.unit,
+        key: period.key,
+        year,
+        total: round2(total),
+        count,
+        days: period.unit === 'month' ? new Date(Number(year), Number(period.key), 0).getDate() : 1,
+      })
+    }
+  }
+  return rows
+}
+
 export function expensesByDate(expenses) {
   const map = new Map()
   for (const exp of expenses || []) {

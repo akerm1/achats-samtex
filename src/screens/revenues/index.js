@@ -10,7 +10,7 @@
 /* pose à plat, et les trie par date ou par montant.                    */
 /* ------------------------------------------------------------------ */
 
-import { esc, formatDate, formatMoney, periodLabel, periodRange } from '../../core/utils.js'
+import { esc, formatDate, formatMoney, periodLabel } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
 import { toolbarHtml, bindToolbar } from '../../ui/toolbar.js'
 import * as expModel from '../../data/expenses-model.js'
@@ -24,7 +24,6 @@ const SORTS = [
 
 const COMPARE_UNITS = [
   { value: 'day', label: 'Jour' },
-  { value: 'week', label: 'Semaine' },
   { value: 'month', label: 'Mois' },
 ]
 
@@ -43,8 +42,8 @@ let layout = 'days'
 let startDate = ''
 let endDate = ''
 let compareMode = false
-let compareUnit = 'day' /* « day », « week » ou « month » */
-let comparePeriods = [] /* périodes ajoutées : { unit, date } */
+let compareUnit = 'day' /* « day » ou « month » */
+let comparePeriods = [] /* périodes ajoutées : { unit, key } — sans année */
 
 /** Une date « AAAA-MM-JJ » reste locale : midi évite le décalage de fuseau. */
 function dayLabel(date) {
@@ -78,34 +77,29 @@ function groupByDate(revenues) {
   return [...groups.values()]
 }
 
-/** Une ligne par période comparée : bornes, total, part visuelle, écart. */
+/** Une carte par année couverte par les données, pour chaque période choisie. */
 function compareRows(revenues) {
-  const rows = comparePeriods.map((period) => {
-    const range = periodRange(period.unit, period.date)
-    let total = 0
-    let count = 0
-    for (const revenue of revenues) {
-      if (revenue.date < range.start || revenue.date > range.end) continue
-      total += revenue.amount || 0
-      count += 1
-    }
-    const from = new Date(`${range.start}T12:00:00`)
-    const to = new Date(`${range.end}T12:00:00`)
+  const rows = expModel
+    .revenuePeriods(revenues, comparePeriods)
+    .map((entry) => ({ ...entry, label: `${periodLabel(entry.unit, entry.key)} ${entry.year}` }))
+  const max = rows.reduce((peak, row) => Math.max(peak, row.total), 0)
+  const firstTotals = new Map()
+  for (const row of rows) {
+    const group = `${row.unit}:${row.key}`
+    if (!firstTotals.has(group)) firstTotals.set(group, row.total)
+  }
+  const seen = new Set()
+  return rows.map((row) => {
+    const group = `${row.unit}:${row.key}`
+    const reference = firstTotals.get(group) || 0
+    const isReference = !seen.has(group)
+    seen.add(group)
     return {
-      unit: period.unit,
-      label: periodLabel(period.unit, period.date),
-      total,
-      count,
-      days: Math.round((to - from) / 86400000) + 1,
+      ...row,
+      share: max > 0 ? Math.round((row.total / max) * 100) : 0,
+      delta: isReference || reference <= 0 ? null : ((row.total - reference) / reference) * 100,
     }
   })
-  const max = rows.reduce((peak, row) => Math.max(peak, row.total), 0)
-  const reference = rows[0]?.total || 0
-  return rows.map((row, index) => ({
-    ...row,
-    share: max > 0 ? Math.round((row.total / max) * 100) : 0,
-    delta: index === 0 || reference <= 0 ? null : ((row.total - reference) / reference) * 100,
-  }))
 }
 
 function header() {
@@ -265,8 +259,8 @@ function compareHtml(rows, settings) {
     return `
       <div class="compare-empty">
         <span class="compare-empty-mark">${icon('chart', 28)}</span>
-        <strong>Aucune période à comparer</strong>
-        <p>Choisissez un jour, une semaine ou un mois dans la barre au-dessus, puis <strong>Ajouter</strong>.</p>
+        <strong>Aucune recette sur ces périodes</strong>
+        <p>Choisissez un jour ou un mois dans la barre au-dessus, puis <strong>Ajouter</strong>.</p>
       </div>`
   }
   const total = rows.reduce((sum, row) => sum + row.total, 0)
@@ -331,12 +325,16 @@ function paint() {
       paint()
     },
     onCompareUnitChange: (value) => {
-      compareUnit = value === 'week' || value === 'month' ? value : 'day'
+      compareUnit = value === 'month' ? 'month' : 'day'
       paint()
     },
-    onComparePeriodAdd: (date) => {
-      if (comparePeriods.some((period) => period.unit === compareUnit && period.date === date)) return
-      comparePeriods = [...comparePeriods, { unit: compareUnit, date }]
+    onComparePeriodAdd: (value) => {
+      const text = String(value || '')
+      const key = compareUnit === 'month' ? text.slice(5, 7) : text.slice(5)
+      const valid = compareUnit === 'month' ? /^\d{2}$/.test(key) : /^\d{2}-\d{2}$/.test(key)
+      if (!valid) return
+      if (comparePeriods.some((period) => period.unit === compareUnit && period.key === key)) return
+      comparePeriods = [...comparePeriods, { unit: compareUnit, key }]
       paint()
     },
     onComparePeriodRemove: (index) => {
