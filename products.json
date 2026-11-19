@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:45:08.150Z",
+  "updatedAt": "2026-11-19T14:46:34.828Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4109,6 +4109,17 @@
         "order": 999,
         "createdAt": "2026-11-13T12:57:35.061Z",
         "updatedAt": "2026-11-16T17:32:41.866Z"
+      },
+      {
+        "label": "Sarf",
+        "icon": "shield",
+        "color": "#c0ca33",
+        "order": 6,
+        "id": "cat_1795099594778",
+        "defaultAmount": 0,
+        "isDefault": false,
+        "createdAt": "2026-11-19T14:46:34.778Z",
+        "updatedAt": "2026-11-19T14:46:34.778Z"
       }
     ],
     "expenses": [
