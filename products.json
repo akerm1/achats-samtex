@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:40:05.587Z",
+  "updatedAt": "2026-11-19T14:40:33.524Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4122,6 +4122,17 @@
         "id": "exp_1795086864995",
         "createdAt": "2026-11-19T11:14:24.996Z",
         "updatedAt": "2026-11-19T11:14:24.996Z"
+      },
+      {
+        "categoryId": "gas",
+        "amount": 82250,
+        "date": "2026-11-19",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1795099233466",
+        "createdAt": "2026-11-19T14:40:33.466Z",
+        "updatedAt": "2026-11-19T14:40:33.466Z"
       }
     ],
     "investments": [],
