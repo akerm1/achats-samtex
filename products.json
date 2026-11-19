@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T11:14:25.146Z",
+  "updatedAt": "2026-11-19T11:15:16.676Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4127,7 +4127,7 @@
       {
         "categoryId": "transfer",
         "amount": 1200000,
-        "date": "2026-11-19",
+        "date": "2026-11-01",
         "note": "Versement mouh",
         "isTransfer": false,
         "linkedInvestmentId": null,
