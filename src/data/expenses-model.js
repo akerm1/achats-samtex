@@ -261,6 +261,14 @@ export function totalRevenues(revenues, { startDate = '', endDate = '' } = {}) {
   return round2(total)
 }
 
+/** Bornes du mois d'une date ISO (aujourd'hui par défaut) : le mois se
+    remplit jour après jour, puis repart à zéro le 1er. Les dates sont des
+    chaînes « AAAA-MM-JJ » : « -31 » couvre aussi les mois plus courts. */
+export function monthRange(isoDate = new Date().toISOString()) {
+  const month = String(isoDate).slice(0, 7)
+  return { startDate: `${month}-01`, endDate: `${month}-31` }
+}
+
 export function revenueByDate(revenues) {
   const map = new Map()
   for (const rev of revenues || []) {

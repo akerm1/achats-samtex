@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 import fs from 'node:fs'
-import { revenueComparisonGap, revenuePeriods } from '../src/data/expenses-model.js'
+import { monthRange, revenueComparisonGap, revenuePeriods, totalRevenues } from '../src/data/expenses-model.js'
 import { periodLabel } from '../src/core/format.js'
 import { toolbarHtml } from '../src/ui/toolbar.js'
 
@@ -67,6 +67,20 @@ const twoGroups = revenueComparisonGap([
 ])
 expect('deux périodes : écart cumulé', twoGroups?.gap, 30)
 expect('deux périodes : comptées', twoGroups?.pairs, 2)
+
+/* Le mois en cours : il additionne les jours du mois, et rien des voisins. */
+const june = monthRange('2026-06-17T10:00:00.000Z')
+expect('mois : premier jour', june.startDate, '2026-06-01')
+const juneTotal = totalRevenues(
+  [
+    { date: '2026-05-31', amount: 10 },
+    { date: '2026-06-01', amount: 2 },
+    { date: '2026-06-30', amount: 3 },
+    { date: '2026-07-01', amount: 99 },
+  ],
+  june,
+)
+expect('mois : seuls les jours du mois comptent', juneTotal, 5)
 
 /* Le sélecteur suit l'unité : un mois propose des mois, pas des jours. */
 const toolbar = toolbarHtml({

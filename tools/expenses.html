@@ -329,6 +329,44 @@ async function billsBench() {
   await mount('/depenses', '.screen-head')
 }
 
+/* L'encart vert « Ce mois » des recettes : il additionne les jours du mois
+   en cours et repart à zéro au 1er. Une recette du mois précédent ne doit
+   pas peser dedans. */
+async function monthBench() {
+  const iso = new Date().toISOString()
+  const month = iso.slice(0, 7)
+  const year = Number(month.slice(0, 4))
+  const index = Number(month.slice(5, 7))
+  const previous = new Date(Date.UTC(year, index - 2, 1)).toISOString().slice(0, 7)
+
+  const current = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}')
+  localStorage.setItem(
+    KEY_EXPENSES,
+    JSON.stringify({
+      ...current,
+      revenues: [
+        { id: 'rev-old', date: `${previous}-10`, amount: 5000 },
+        { id: 'rev-day1', date: `${month}-02`, amount: 700 },
+        { id: 'rev-day2', date: `${month}-03`, amount: 300 },
+      ],
+    }),
+  )
+
+  const opened = await mount('/recettes', '.screen-head')
+  check('mois : l’écran Recettes s’ouvre', opened.ok, opened.ok ? '' : opened.screen)
+  if (!opened.ok) return
+
+  const box = doc().querySelector('[data-role="month-total"]')
+  check('mois : l’encart vert est là', Boolean(box), box ? text(box) : 'encart absent')
+  check('mois : il s’appelle « Ce mois »', /Ce mois/.test(text(box)), text(box).slice(0, 40))
+  check('mois : il additionne les jours du mois', /1\s000/.test(text(box)), text(box).slice(0, 40))
+  check('mois : « Aujourd’hui » a disparu', !/Aujourd/.test(text(doc().querySelector('.screen-head'))), 'en-tête')
+  check('mois : le total garde tout', /6\s000/.test(text(doc().querySelector('.screen-stats'))), text(doc().querySelector('.screen-stats')).slice(-40))
+
+  /* Les bancs suivants attendent l'écran Dépenses. */
+  await mount('/depenses', '.screen-head')
+}
+
 /* Une recherche masque les cases pour laisser voir les résultats. */
 async function searchBench() {
   const search = await waitFor('#expenses-search')
@@ -633,6 +671,8 @@ async function run() {
     await searchBench()
     log('factures dans les dépenses…')
     await billsBench()
+    log('recettes du mois…')
+    await monthBench()
     log('repli…')
     await fallbackBench()
     log('transfert…')

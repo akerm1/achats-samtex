@@ -514,6 +514,20 @@
   color: var(--ink-on-accent);
 }
 
+/* Encart vert : un chiffre positif mis en avant (recettes du mois). */
+.stat--success {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 26%, transparent);
+}
+
+.stat--success .stat-label {
+  color: color-mix(in srgb, var(--success) 78%, var(--ink-3));
+}
+
+.stat--success .stat-value {
+  color: var(--success);
+}
+
 /* Compatibilité avec l'ancien en-tête (les autres écrans s'y rallient). */
 .view-head {
   display: flex;

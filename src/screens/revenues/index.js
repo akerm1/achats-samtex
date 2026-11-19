@@ -50,10 +50,6 @@ function dayLabel(date) {
   return formatDate(`${String(date || '')}T12:00:00`)
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function sortedRevenues(revenues) {
   const list = [...revenues]
   if (sort === 'amount') {
@@ -104,9 +100,9 @@ function compareRows(revenues) {
 
 function header() {
   const { revenues, settings } = expStore.getExpenses()
-  const today = todayKey()
   const total = expModel.totalRevenues(revenues)
-  const todayTotal = expModel.totalRevenues(revenues, { startDate: today, endDate: today })
+  /* Le mois courant se remplit jour après jour, puis repart à zéro. */
+  const monthTotal = expModel.totalRevenues(revenues, expModel.monthRange())
   const days = new Set(revenues.map((revenue) => revenue.date)).size
   const comparison = compareMode ? compareRows(revenues) : []
   const compareTotal = comparison.reduce((sum, row) => sum + row.total, 0)
@@ -122,9 +118,9 @@ function header() {
         </p>
       </div>
       <div class="screen-stats">
-        <div class="stat">
-          <span class="stat-label">Aujourd'hui</span>
-          <span class="stat-value">${formatMoney(todayTotal, settings.currency)}</span>
+        <div class="stat stat--success" data-role="month-total">
+          <span class="stat-label">Ce mois</span>
+          <span class="stat-value">${formatMoney(monthTotal, settings.currency)}</span>
         </div>
         <div class="stat stat--accent">
           <span class="stat-label">Total · ${days} jour${days > 1 ? 's' : ''}</span>
