@@ -83,21 +83,8 @@ function bindBody() {
     refreshResults()
   })
 
-  /* Filtre catégorie */
-  host.querySelectorAll('[data-action="set-expense-category"]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.categoryFilter = btn.dataset.value
-      refresh()
-    })
-  })
-
-  /* Filtre type */
-  host.querySelectorAll('[data-action="set-expense-type"]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.typeFilter = btn.dataset.value
-      refresh()
-    })
-  })
+  /* Filtre catégorie et type : gérés par les actions globales (voir
+     actions.js), pour survivre au redessin des onglets après une recherche. */
 
   /* Changement d'onglet */
   host.querySelectorAll('[data-action="set-expense-tab"]').forEach((btn) => {
@@ -114,13 +101,6 @@ function bindBody() {
     const clear = host.querySelector('[data-action="clear-expenses-search"]')
     if (clear) clear.hidden = true
     refreshResults()
-  })
-
-  host.querySelector('[data-action="reset-expense-filters"]')?.addEventListener('click', () => {
-    resetFilters()
-    const input = host.querySelector('#expenses-search')
-    if (input) input.value = ''
-    refresh()
   })
 
   host.querySelector('[data-action="toggle-reorder-categories"]')?.addEventListener('click', () => {

@@ -49,6 +49,8 @@ import {
 } from '../ui/shell.js'
 import { listView } from '../screens/list/index.js'
 import { billsView } from '../screens/bills/index.js'
+import { expensesView } from '../screens/expenses/index.js'
+import { state } from '../screens/expenses/state.js'
 import {
   openCategoryForm,
   openExpenseForm,
@@ -142,6 +144,37 @@ export const ACTIONS = {
     billsView.resetFilters()
     toast('Filtres réinitialisés.', { type: 'info' })
   },
+  /* Navigation depuis la catégorie « Factures » des dépenses.
+     Deux cas : data-bill-id (carte spécifique) → ouvre le formulaire.
+               data-bill-route (onglet catégorie) → ouvre l'écran avec filtre. */
+  'open-bill-route': (node) => {
+    if (node.dataset.billId) {
+      /* Clic sur une carte facture : ouvrir la facture dans le formulaire. */
+      const bill = getBills().find((b) => b.id === node.dataset.billId)
+      navigate('factures')
+      setTimeout(() => {
+        if (bill) openBillForm(bill)
+        else billsView.setStatus(state.billsStatusFilter)
+      }, 50)
+    } else {
+      /* Clic sur l'onglet catégorie « Factures » : ouvrir l'écran avec filtre. */
+      const statusFilter = node.dataset.billRoute || state.billsStatusFilter || 'all'
+      navigate('factures')
+      setTimeout(() => billsView.setStatus(statusFilter), 50)
+    }
+  },
+  /* Filtre de statut depuis les onglets de la catégorie « Factures »
+     (affichés seulement quand cette catégorie est sélectionnée). */
+  'set-bills-status-filter': (node) => {
+    state.billsStatusFilter = node.dataset.value
+    if (getActiveRoute() === 'depenses') expensesView.update()
+    else if (getActiveRoute() === 'factures') billsView.setStatus(node.dataset.value)
+  },
+  /* Toggle : inclure ou exclure les factures du total des dépenses. */
+  'toggle-include-bills': () => {
+    state.includeBills = !state.includeBills
+    if (getActiveRoute() === 'depenses') expensesView.update()
+  },
 
   /* Dépenses */
   'open-expense-form': (node) => {
@@ -160,6 +193,23 @@ export const ACTIONS = {
   'quick-expense': (node) => {
     const categoryId = node?.dataset?.category || ''
     openExpenseForm(null, categoryId ? { categoryId } : {})
+  },
+  /* Filtres de l'écran Dépenses. Ils vivent ici, et pas dans les écouteurs
+     locaux de l'écran : les onglets sont redessinés après une recherche,
+     ce qui emporterait leurs écouteurs. La délégation, elle, survit. */
+  'set-expense-category': (node) => {
+    state.categoryFilter = node.dataset.value
+    if (getActiveRoute() === 'depenses') expensesView.update()
+  },
+  'set-expense-type': (node) => {
+    state.typeFilter = node.dataset.value
+    if (getActiveRoute() === 'depenses') expensesView.update()
+  },
+  'reset-expense-filters': () => {
+    expensesView.resetFilters()
+    const input = state.host?.querySelector('#expenses-search')
+    if (input) input.value = ''
+    if (getActiveRoute() === 'depenses') expensesView.update()
   },
   'edit-expense': (node) => {
     const expense = expenseById(node.dataset.id)

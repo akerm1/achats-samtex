@@ -274,6 +274,61 @@ async function formBench() {
   check('écran : la case montre le total de la catégorie', /250/.test(text(quickAgain)), quickAgain ? text(quickAgain) : '—')
 }
 
+/* La catégorie « Factures » dans les dépenses : elle doit apparaître, sommer
+   les factures, se filtrer par statut, et renvoyer vers l'écran Factures.
+   Sans ce banc, ces liens ne sont couverts par aucun test. */
+const BILL_PAID = { id: 'bill-paid', supplier: 'Tissus Atlas', amount: 500, status: 'paid', createdAt: '2026-11-03T10:00:00.000Z' }
+const BILL_PENDING = { id: 'bill-pending', supplier: 'Rubans Nord', amount: 300, status: 'pending', createdAt: '2026-11-04T10:00:00.000Z' }
+
+async function billsBench() {
+  localStorage.setItem('purchase-gros-bills-v1', JSON.stringify([BILL_PAID, BILL_PENDING]))
+
+  const opened = await mount('/depenses', '.screen-head')
+  check('factures : l’écran Dépenses s’ouvre', opened.ok, opened.ok ? '' : opened.screen)
+  if (!opened.ok) return
+
+  const tab = doc().querySelector('[data-action="set-expense-category"][data-value="bills"]')
+  check('factures : la catégorie existe dans les dépenses', Boolean(tab), tab ? text(tab) : 'onglet absent')
+  if (!tab) return
+
+  tab.click()
+  await sleep(150)
+  check('factures : la catégorie s’ouvre sur les factures', /Factures/.test(text(doc().querySelector('.screen-title'))), text(doc().querySelector('.screen-title')))
+  check('factures : une carte par facture', doc().querySelectorAll('.group--bills .card').length === 2, `${doc().querySelectorAll('.group--bills .card').length} carte(s)`)
+
+  const head = text(doc().querySelector('.screen-head'))
+  check('factures : le total montre les deux sommes', /sans factures/.test(head), head.slice(0, 90))
+  check('factures : le total des factures est affiché', /800/.test(head), head.slice(0, 90))
+
+  /* Le filtre de statut ne garde que les payées. */
+  doc().querySelector('[data-action="set-bills-status-filter"][data-value="paid"]')?.click()
+  await sleep(150)
+  check('factures : le statut « Payées » filtre les cartes', doc().querySelectorAll('.group--bills .card').length === 1, `${doc().querySelectorAll('.group--bills .card').length} carte(s)`)
+
+  /* Le bouton bascule retire les factures du total. */
+  const toggle = doc().querySelector('[data-action="toggle-include-bills"]')
+  check('factures : le bouton d’inclusion est là', Boolean(toggle), toggle ? text(toggle) : 'bouton absent')
+  toggle?.click()
+  await sleep(150)
+  const afterToggle = text(doc().querySelector('.screen-head'))
+  check('factures : exclure retire la seconde somme', !/sans factures/.test(afterToggle), afterToggle.slice(0, 90))
+
+  /* Une carte renvoie vers l'écran Factures, sur cette facture. */
+  doc().querySelector('[data-action="set-bills-status-filter"][data-value="all"]')?.click()
+  await sleep(150)
+  doc().querySelector('.group--bills .card[data-id="bill-paid"] [data-action="open-bill-route"]')?.click()
+
+  const supplier = await waitFor('#bill-supplier')
+  check('factures : une carte ouvre l’écran Factures', Boolean(doc().querySelector('#bill-supplier')), 'formulaire ouvert')
+  check('factures : la facture cliquée est ouverte', Boolean(supplier), supplier ? supplier.value : 'aucun formulaire')
+  check('factures : c’est bien la bonne facture', supplier?.value === 'Tissus Atlas', supplier?.value || '—')
+  supplier?.closest('dialog')?.querySelector('[data-action="close-form"]')?.click()
+  await sleep(100)
+
+  /* Les bancs suivants attendent l'écran Dépenses : on le remonte. */
+  await mount('/depenses', '.screen-head')
+}
+
 /* Une recherche masque les cases pour laisser voir les résultats. */
 async function searchBench() {
   const search = await waitFor('#expenses-search')
@@ -290,6 +345,19 @@ async function searchBench() {
   doc().querySelector('[data-action="clear-expenses-search"]')?.click()
   await sleep(200)
   check('recherche : les cases reviennent une fois la recherche vidée', Boolean(doc().querySelector('.quick-add')), doc().querySelector('.quick-add') ? 'bloc présent' : 'bloc absent')
+
+  /* Après une recherche, les onglets sont redessinés : leurs clics doivent
+     survivre (la délégation globale les porte, pas des écouteurs locaux). */
+  const searchField = doc().querySelector('#expenses-search')
+  searchField.value = 'outils'
+  searchField.dispatchEvent(new win.Event('input', { bubbles: true }))
+  await sleep(200)
+  doc().querySelector('[data-action="set-expense-category"][data-value="tools"]')?.click()
+  await sleep(200)
+  const activeCat = doc().querySelector('[data-action="set-expense-category"].is-active')
+  check('recherche : les catégories restent cliquables après une recherche', activeCat?.dataset.value === 'tools', activeCat?.dataset.value || 'aucune')
+  doc().querySelector('[data-action="clear-expenses-search"]')?.click()
+  await sleep(200)
 }
 
 /* Le bouton d'ajout générique reste une porte de secours : il ouvre la
@@ -390,8 +458,11 @@ async function landingBench() {
   const title = text(doc().querySelector('#screen-title'))
   check('défaut : la barre haute nomme Recettes', /recettes/i.test(title), title || 'titre vide')
 
-  const active = doc().querySelector('.expense-tab.is-active')
-  check('défaut : l\'onglet dépenses existe', Boolean(doc().querySelector('[data-action="set-expense-tab"][data-value="expenses"]')), 'onglet dans le rail')
+  /* L'ouverture est Recettes ; la Dépenses reste à un appui dans le rail.
+     (Cette vérification interrogeait les onglets internes de Dépenses sur
+     l'écran Recettes : elle ne pouvait pas passer.) */
+  const expensesLink = doc().querySelector('.rail-link[href="#/depenses"]')
+  check('défaut : le rail mène aux dépenses', Boolean(expensesLink), expensesLink ? text(expensesLink) : 'lien absent')
   const revenueTab = doc().querySelector('[data-action="set-expense-tab"][data-value="revenues"]')
   check('défaut : les recettes n\'ont plus d\'onglet dans dépenses', !revenueTab, revenueTab ? text(revenueTab) : 'onglet absent')
 
@@ -560,6 +631,8 @@ async function run() {
     await formBench()
     log('recherche…')
     await searchBench()
+    log('factures dans les dépenses…')
+    await billsBench()
     log('repli…')
     await fallbackBench()
     log('transfert…')

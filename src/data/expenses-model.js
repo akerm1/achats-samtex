@@ -17,6 +17,12 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
 
 export const CATEGORY_KEYS = DEFAULT_EXPENSE_CATEGORIES.map((c) => c.id)
 
+/** Catégorie virtuelle « Factures » : elle raspe la somme des factures du shop
+    dans les dépenses, sans double-comptabilisation (les factures ont leur
+    propre écran). Elle n'est pas modifiable : ni son icône, ni son libellé. */
+export const BILLS_CATEGORY_ID = 'bills'
+export const BILLS_CATEGORY_META = { id: BILLS_CATEGORY_ID, label: 'Factures', icon: 'receipt', color: '#f59e0b', isDefault: true }
+
 /** Normalise une catégorie (tolérant aux données existantes). */
 export function normalizeCategory(raw = {}) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
@@ -328,6 +334,36 @@ export function expensesByDate(expenses) {
 
 export function categoryLabel(categories, categoryId) {
   return categories.find((c) => c.id === categoryId)?.label || categoryId
+}
+
+/** Somme des factures, optionnellement filtrées par statut.
+    `bills` est la liste brute (elle a déjà été normalisée par `billView`).
+    Renvoie { total, paid, pending } en DA. */
+export function sumBillsView(bills, { status = 'all' } = {}) {
+  let total = 0
+  let paid = 0
+  let pending = 0
+  for (const bill of bills || []) {
+    const amount = toNumber(bill?.amount)
+    if (amount === null || amount <= 0) continue
+    total += amount
+    if (bill.status === 'paid') paid += amount
+    else pending += amount
+  }
+  return { total: round2(total), paid: round2(paid), pending: round2(pending) }
+}
+
+/** Filtre les factures par statut, pour la catégorie virtuelle « Factures ».
+    Même logique que `filterBills` du modèle factures, ici sans dépendance. */
+export function filterBillsView(bills, { status = 'all', query = '' } = {}) {
+  const needle = String(query ?? '').trim().toLowerCase()
+  return (bills || []).filter((bill) => {
+    if (status === 'paid' && bill.status !== 'paid') return false
+    if (status === 'pending' && bill.status !== 'pending') return false
+    if (!needle) return true
+    const haystack = [bill?.supplier, bill?.note].join(' ').toLowerCase()
+    return needle.split(/\s+/).every((token) => haystack.includes(token))
+  })
 }
 
 export function categoryIcon(categories, categoryId) {
