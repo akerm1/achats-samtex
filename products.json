@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:41:03.248Z",
+  "updatedAt": "2026-11-19T14:42:23.350Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4144,6 +4144,17 @@
         "id": "exp_1795099263197",
         "createdAt": "2026-11-19T14:41:03.197Z",
         "updatedAt": "2026-11-19T14:41:03.197Z"
+      },
+      {
+        "categoryId": "tools",
+        "amount": 286025,
+        "date": "2026-11-19",
+        "note": "Matériel et électricité et autres dépenses non remboursable",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1795099343299",
+        "createdAt": "2026-11-19T14:42:23.299Z",
+        "updatedAt": "2026-11-19T14:42:23.299Z"
       }
     ],
     "investments": [],
