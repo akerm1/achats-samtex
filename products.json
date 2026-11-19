@@ -1,13 +1,13 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:51:38.613Z",
+  "updatedAt": "2026-11-19T14:55:39.718Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
     "category": "all",
     "sort": "recent",
-    "layout": "mosaic"
+    "layout": "card"
   },
   "products": [],
   "bills": [],
