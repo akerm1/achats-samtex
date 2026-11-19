@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:42:42.216Z",
+  "updatedAt": "2026-11-19T14:44:49.377Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4166,6 +4166,17 @@
         "id": "exp_1795099362163",
         "createdAt": "2026-11-19T14:42:42.163Z",
         "updatedAt": "2026-11-19T14:42:42.163Z"
+      },
+      {
+        "categoryId": "car",
+        "amount": 251150,
+        "date": "2026-11-19",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1795099395701",
+        "createdAt": "2026-11-19T14:43:15.701Z",
+        "updatedAt": "2026-11-19T14:43:15.701Z"
       }
     ],
     "investments": [],
