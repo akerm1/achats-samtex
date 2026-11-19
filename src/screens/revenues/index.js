@@ -10,7 +10,7 @@
 /* pose à plat, et les trie par date ou par montant.                    */
 /* ------------------------------------------------------------------ */
 
-import { esc, formatDate, formatMoney } from '../../core/utils.js'
+import { esc, formatDate, formatMoney, periodLabel, periodRange } from '../../core/utils.js'
 import { icon } from '../../ui/icons.js'
 import { toolbarHtml, bindToolbar } from '../../ui/toolbar.js'
 import * as expModel from '../../data/expenses-model.js'
@@ -22,10 +22,13 @@ const SORTS = [
   { value: 'amount', label: 'Montant élevé' },
 ]
 
-const COMPARE_MODES = [
-  { value: 'single', label: 'Comparer 2 dates' },
-  { value: 'range',   label: 'Plage complète' },
+const COMPARE_UNITS = [
+  { value: 'day', label: 'Jour' },
+  { value: 'week', label: 'Semaine' },
+  { value: 'month', label: 'Mois' },
 ]
+
+const COMPARE_UNIT_LABEL = Object.fromEntries(COMPARE_UNITS.map((unit) => [unit.value, unit.label]))
 
 const LAYOUTS = [
   { value: 'days', label: 'Par jour', icon: 'calendar' },
@@ -40,18 +43,12 @@ let layout = 'days'
 let startDate = ''
 let endDate = ''
 let compareMode = false
-let compareDates = [] /* dates en AAAA-MM-JJ */
+let compareUnit = 'day' /* « day », « week » ou « month » */
+let comparePeriods = [] /* périodes ajoutées : { unit, date } */
 
 /** Une date « AAAA-MM-JJ » reste locale : midi évite le décalage de fuseau. */
 function dayLabel(date) {
   return formatDate(`${String(date || '')}T12:00:00`)
-}
-
-/* Compare revenue between selected dates */
-function compareLabel(dates) {
-  if (dates.length === 0) return ''
-  if (dates.length === 1) return `Comparer : ${dates[0]}`
-  return `Comparer ${dates.length} dates`
 }
 
 function todayKey() {
@@ -81,21 +78,44 @@ function groupByDate(revenues) {
   return [...groups.values()]
 }
 
+/** Une ligne par période comparée : bornes, total, part visuelle, écart. */
+function compareRows(revenues) {
+  const rows = comparePeriods.map((period) => {
+    const range = periodRange(period.unit, period.date)
+    let total = 0
+    let count = 0
+    for (const revenue of revenues) {
+      if (revenue.date < range.start || revenue.date > range.end) continue
+      total += revenue.amount || 0
+      count += 1
+    }
+    const from = new Date(`${range.start}T12:00:00`)
+    const to = new Date(`${range.end}T12:00:00`)
+    return {
+      unit: period.unit,
+      label: periodLabel(period.unit, period.date),
+      total,
+      count,
+      days: Math.round((to - from) / 86400000) + 1,
+    }
+  })
+  const max = rows.reduce((peak, row) => Math.max(peak, row.total), 0)
+  const reference = rows[0]?.total || 0
+  return rows.map((row, index) => ({
+    ...row,
+    share: max > 0 ? Math.round((row.total / max) * 100) : 0,
+    delta: index === 0 || reference <= 0 ? null : ((row.total - reference) / reference) * 100,
+  }))
+}
+
 function header() {
   const { revenues, settings } = expStore.getExpenses()
   const today = todayKey()
   const total = expModel.totalRevenues(revenues)
   const todayTotal = expModel.totalRevenues(revenues, { startDate: today, endDate: today })
   const days = new Set(revenues.map((revenue) => revenue.date)).size
-
-  // Calcul des revenus pour les dates comparées
-  let compareTotals = 0
-  if (compareMode && compareDates.length > 0) {
-    compareDates.forEach(d => {
-      const revs = revenues.filter((r) => r.date === d)
-      compareTotals += revs.reduce((a, r) => a + (r.amount || 0), 0)
-    })
-  }
+  const comparison = compareMode ? compareRows(revenues) : []
+  const compareTotal = comparison.reduce((sum, row) => sum + row.total, 0)
 
   return `
     <header class="screen-head">
@@ -116,10 +136,10 @@ function header() {
           <span class="stat-label">Total · ${days} jour${days > 1 ? 's' : ''}</span>
           <span class="stat-value">${formatMoney(total, settings.currency)}</span>
         </div>
-        ${compareMode && compareDates.length > 0
+        ${compareMode && comparison.length > 0
           ? `<div class="stat">
               <span class="stat-label">Comparaison</span>
-              <span class="stat-value text-primary">${formatMoney(compareTotals, settings.currency)}</span>
+              <span class="stat-value text-primary">${formatMoney(compareTotal, settings.currency)}</span>
             </div>`
           : ''
         }
@@ -143,25 +163,13 @@ function toolbar() {
     sortOptions: SORTS,
     layout,
     layouts: LAYOUTS,
+    compareUnits: COMPARE_UNITS,
     compareMode,
-    compareModes: COMPARE_MODES,
-    compareDates,
+    compareUnit,
+    comparePeriods,
     dateFilter: true,
-    startDate: startDate,
-    endDate: endDate,
-    onCompareModeChange: (value) => {
-      compareMode = value
-      if (!value) compareDates = []
-      paint()
-    },
-    onCompareDateAdd: (date) => {
-      if (!compareDates.includes(date)) compareDates = [...compareDates, date].sort()
-      paint()
-    },
-    onCompareDateRemove: (date) => {
-      compareDates = compareDates.filter((d) => d !== date)
-      paint()
-    },
+    startDate,
+    endDate,
   })
 }
 
@@ -240,52 +248,48 @@ function emptyState() {
 
 function results() {
   const { revenues, settings } = expStore.getExpenses()
+  if (compareMode) return compareHtml(compareRows(revenues), settings)
   /* « Du » et « Au » filtrent la liste ; vides, ils ne retirent rien. */
   const period = revenues.filter(
     (revenue) => (!startDate || revenue.date >= startDate) && (!endDate || revenue.date <= endDate),
   )
-  /* Si on est en mode comparaison, on filtre les dates sélectionnées */
-  const comparePeriod = compareMode && compareDates.length > 0
-    ? revenues.filter((revenue) => compareDates.includes(revenue.date))
-    : []
-  if (!period.length && !comparePeriod.length) {
+  if (!period.length) {
     return emptyState()
   }
   const sorted = sortedRevenues(period)
-  /* En mode comparaison, on affiche les dates sélectionnées avec leurs totaux */
-  if (compareMode && compareDates.length > 0) {
-    return compareHtml(
-      compareDates.map(d => {
-        const revs = revenues.filter((r) => r.date === d)
-        return {
-          date: d,
-          total: revs.reduce((a, r) => a + (r.amount || 0), 0),
-          count: revs.length,
-          label: dayLabel(d),
-        }
-      }),
-      settings,
-    )
-  }
   return layout === 'list' ? listHtml(sorted, settings) : daysHtml(sorted, settings)
 }
 
-function compareHtml(compareData, settings) {
+function compareHtml(rows, settings) {
+  if (!rows.length) {
+    return `
+      <div class="compare-empty">
+        <span class="compare-empty-mark">${icon('chart', 28)}</span>
+        <strong>Aucune période à comparer</strong>
+        <p>Choisissez un jour, une semaine ou un mois dans la barre au-dessus, puis <strong>Ajouter</strong>.</p>
+      </div>`
+  }
+  const total = rows.reduce((sum, row) => sum + row.total, 0)
   return `
     <div class="compare-view">
-      ${compareData.map((item) => `
-        <article class="card revenue-card" style="margin-bottom: 12px;">
-          <div class="card-body">
-            <div class="card-top">
-              <h4 class="card-name">${esc(item.label)}</h4>
-              <span class="card-amount text-success">${formatMoney(item.total, settings.currency)}</span>
+      <div class="compare-grid">
+        ${rows.map((row) => `
+          <article class="compare-card">
+            <div class="compare-card-top">
+              <span class="compare-card-kind">${esc(COMPARE_UNIT_LABEL[row.unit] || 'Période')}</span>
+              ${row.delta === null
+                ? `<span class="compare-delta compare-delta--ref">Référence</span>`
+                : `<span class="compare-delta ${row.delta >= 0 ? 'is-up' : 'is-down'}">${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1).replace('.', ',')} %</span>`}
             </div>
-            <div class="card-meta">${item.count} entrée${item.count > 1 ? 's' : ''}</div>
-          </div>
-        </article>`
-      ).join('')}
-      <div class="compare-total">
-        <strong>Total comparaison : ${formatMoney(compareData.reduce((a, i) => a + i.total, 0), settings.currency)}</strong>
+            <strong class="compare-card-label">${esc(row.label)}</strong>
+            <span class="compare-card-total">${formatMoney(row.total, settings.currency)}</span>
+            <span class="compare-card-meta">${row.count} entrée${row.count > 1 ? 's' : ''}${row.days > 1 ? ` · ${formatMoney(row.total / row.days, settings.currency)} / jour` : ''}</span>
+            <div class="compare-track" role="img" aria-label="${esc(row.label)} : ${row.share} % du maximum"><span style="width:${row.share}%"></span></div>
+          </article>`).join('')}
+      </div>
+      <div class="compare-summary">
+        <span>Total des ${rows.length} période${rows.length > 1 ? 's' : ''}</span>
+        <strong>${formatMoney(total, settings.currency)}</strong>
       </div>
     </div>`
 }
@@ -324,15 +328,19 @@ function paint() {
     },
     onCompareModeChange: (value) => {
       compareMode = value
-      if (!value) compareDates = []
       paint()
     },
-    onCompareDateAdd: (date) => {
-      if (!compareDates.includes(date)) compareDates = [...compareDates, date].sort()
+    onCompareUnitChange: (value) => {
+      compareUnit = value === 'week' || value === 'month' ? value : 'day'
       paint()
     },
-    onCompareDateRemove: (date) => {
-      compareDates = compareDates.filter((d) => d !== date)
+    onComparePeriodAdd: (date) => {
+      if (comparePeriods.some((period) => period.unit === compareUnit && period.date === date)) return
+      comparePeriods = [...comparePeriods, { unit: compareUnit, date }]
+      paint()
+    },
+    onComparePeriodRemove: (index) => {
+      comparePeriods = comparePeriods.filter((_, i) => i !== index)
       paint()
     },
   })

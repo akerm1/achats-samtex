@@ -1640,21 +1640,20 @@
   gap: 8px;
 }
 
-/* Header card - standalone card with rounded top corners */
+/* Header card - standalone card */
 .settings-section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 14px 16px;
-  background: var(--surface-3);
-  border: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-2);
   margin: 0;
@@ -1666,10 +1665,10 @@
 }
 
 .settings-section-title:hover {
-  background: var(--surface-2);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-accent);
+  background: var(--surface);
   border-color: var(--accent-line);
+  box-shadow: var(--shadow-accent);
+  transform: translateY(-2px);
 }
 
 /* Toggle icon */
@@ -1678,6 +1677,7 @@
   align-items: center;
   transition: transform 0.2s ease;
   color: var(--ink-3);
+  font-size: 14px;
 }
 
 /* Rotated when expanded */
@@ -2428,3 +2428,331 @@ input.color-box::-webkit-color-swatch {
     padding: 18px 24px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Comparaison de recettes — jour, semaine, mois                       */
+/* ------------------------------------------------------------------ */
+
+.compare-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Ouvert, le bloc prend sa propre ligne sous le tri. */
+.compare-block.is-open {
+  flex: 1 1 100%;
+  display: block;
+}
+
+.compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+
+.compare-toggle:hover {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.compare-toggle.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  box-shadow: var(--shadow-accent);
+}
+
+/* Panneau de réglage de la comparaison ----------------------------- */
+
+.compare-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.compare-builder {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.compare-units {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.compare-units button {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-3);
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.compare-units button:hover {
+  color: var(--ink);
+}
+
+.compare-units button.is-active {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  box-shadow: var(--shadow-accent);
+}
+
+.compare-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+}
+
+.compare-pick .date-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 38px;
+}
+
+.compare-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.compare-hint strong {
+  color: var(--ink-2);
+}
+
+.compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px 4px 11px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.compare-chip-x {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  color: inherit;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.compare-chip-x:hover {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+}
+
+/* Résultat de la comparaison --------------------------------------- */
+
+.compare-view {
+  display: grid;
+  gap: 14px;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.compare-card {
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.compare-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compare-card-kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.compare-card-label {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.compare-card-total {
+  font-family: var(--font-head);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--success);
+}
+
+.compare-card-meta {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.compare-track {
+  height: 8px;
+  margin-top: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.compare-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-grad);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.compare-delta {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.compare-delta.is-up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.compare-delta.is-down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.compare-delta--ref {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+.compare-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--accent-grad);
+  color: var(--ink-on-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow-accent-lg);
+}
+
+.compare-summary strong {
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  font-weight: 800;
+}
+
+.compare-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 32px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  text-align: center;
+  color: var(--ink-3);
+}
+
+.compare-empty-mark {
+  color: var(--accent);
+}
+
+.compare-empty strong {
+  color: var(--ink);
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+}
+
+.compare-empty p {
+  margin: 0;
+  max-width: 36ch;
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 720px) {
+  .compare-units {
+    flex: 1 1 100%;
+  }
+
+  .compare-units button {
+    flex: 1 1 0;
+    min-height: 40px;
+  }
+
+  .compare-pick {
+    flex: 1 1 100%;
+  }
+
+  .compare-pick .date-input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .compare-pick .btn {
+    min-height: 44px;
+  }
+
+  .compare-toggle {
+    min-height: 40px;
+  }
+}
+

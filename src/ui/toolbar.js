@@ -6,15 +6,11 @@
 /* Maintenant prise en charge : mode comparaison de dates.             */
 /* ------------------------------------------------------------------ */
 
-import { esc, formatDate } from '../../core/utils.js'
+import { esc, dayKey, periodLabel } from '../core/utils.js'
 import { icon } from './icons.js'
 
 export const LAYOUT_GRID = { value: 'cards', label: 'Grille', icon: 'grid' }
 export const LAYOUT_LIST = { value: 'list', label: 'Liste', icon: 'list' }
-
-function dayLabel(date) {
-  return formatDate(`${String(date || '')}T12:00:00`)
-}
 
 export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
 
@@ -30,11 +26,9 @@ export const CARD_LIST_LAYOUTS = [LAYOUT_LIST, LAYOUT_GRID]
  * @param {string} options.startDate date de début
  * @param {string} options.endDate date de fin
  * @param {boolean} options.compareMode mode comparaison actif
- * @param {Array<string>} options.compareDates dates sélectionnées en AAAA-MM-JJ
- * @param {Array<{value:string,label:string}>} options.compareModes modes de comparaison disponibles
- * @param {function} options.onCompareModeChange appelé quand le mode de comparaison change
- * @param {function} options.onCompareDateAdd appelé quand une date est ajoutée à la comparaison
- * @param {function} options.onCompareDateRemove appelé quand une date est retirée de la comparaison
+ * @param {string} options.compareUnit période comparée : « day », « week » ou « month »
+ * @param {Array<{unit:string,date:string}>} options.comparePeriods périodes ajoutées
+ * @param {Array<{value:string,label:string}>} options.compareUnits périodes proposées
  */
 export function toolbarHtml({
   id,
@@ -47,11 +41,9 @@ export function toolbarHtml({
   startDate = '',
   endDate = '',
   compareMode = false,
-  compareDates = [],
-  compareModes = [],
-  onCompareModeChange,
-  onCompareDateAdd,
-  onCompareDateRemove,
+  compareUnit = 'day',
+  comparePeriods = [],
+  compareUnits = [],
 }) {
   /* HTML du filtre de date */
   const dateHtml = dateFilter
@@ -69,31 +61,42 @@ export function toolbarHtml({
       </div>`
     : ''
 
-  /* HTML du mode comparaison */
-  const compareHtml = compareModes && compareModes.length > 0
+  /* HTML du mode comparaison — jour, semaine ou mois */
+  const compareHtml = compareUnits.length > 0
     ? `
-      <div class="compare-toggle-row" role="region" aria-label="Mode comparaison">
-        <button type="button" class="${compareMode ? 'is-active' : ''}"
+      <div class="compare-block ${compareMode ? 'is-open' : ''}">
+        <button type="button" class="compare-toggle ${compareMode ? 'is-active' : ''}"
                 data-action="${prefix}-compare-mode"
-                aria-pressed="${compareMode ? 'true' : 'false'}"
-                aria-label="${compareMode ? 'Mode comparaison actif' : 'Mode comparaison'}">
-          ${icon(compareMode ? 'check' : 'plus', 18)}
-          ${compareMode ? ' Comparaison' : ' Comparer'}
+                aria-pressed="${compareMode ? 'true' : 'false'}">
+          ${icon('chart', 16)} Comparer
         </button>
         ${compareMode
-          ? `
-            <div class="compare-dates-row">
-              <span>Dates :</span>
-              ${compareDates.map((d, i) => `
-                <span class="compare-date" data-index="${i}" data-action="${prefix}-compare-date-remove" title="Retirer">${dayLabel(d)}</span>
-              `).join(' ')}
-              <span class="compare-date-add">
-                <input type="date" class="compare-date-input" data-action="${prefix}-compare-date-add">
-                <button type="button" class="btn btn--plain btn--tiny" data-action="${prefix}-compare-date-add-submit">${icon('check', 14)}</button>
-              </span>
+          ? `<div class="compare-panel">
+              <div class="compare-builder">
+                <div class="compare-units" role="group" aria-label="Comparer par période">
+                  ${compareUnits.map((unit) => `
+                    <button type="button" class="${compareUnit === unit.value ? 'is-active' : ''}"
+                            data-action="${prefix}-compare-unit" data-value="${esc(unit.value)}"
+                            aria-pressed="${compareUnit === unit.value ? 'true' : 'false'}">${esc(unit.label)}</button>`).join('')}
+                </div>
+                <div class="compare-pick">
+                  <input type="date" class="date-input" data-action="${prefix}-compare-date"
+                         value="${dayKey(new Date())}" aria-label="Date à comparer">
+                  <button type="button" class="btn btn--primary btn--sm" data-action="${prefix}-compare-add">${icon('plus', 14)} Ajouter</button>
+                </div>
+              </div>
+              ${comparePeriods.length
+                ? `<div class="compare-chips">
+                    ${comparePeriods.map((period, index) => `
+                      <span class="compare-chip">
+                        ${esc(periodLabel(period.unit, period.date))}
+                        <button type="button" class="compare-chip-x" data-action="${prefix}-compare-remove"
+                                data-index="${index}" aria-label="Retirer ${esc(periodLabel(period.unit, period.date))}">${icon('x', 11)}</button>
+                      </span>`).join('')}
+                  </div>`
+                : `<p class="compare-hint">Choisissez une date, puis <strong>Ajouter</strong> — le jour, la semaine ou le mois.</p>`}
             </div>`
           : ''}
-        <span class="compare-dates-total text-primary">${compareDates.length} ${compareDates.length === 1 ? 'date' : 'dates'}</span>
       </div>`
     : ''
 
@@ -145,9 +148,9 @@ export function toolbarHtml({
  *
  * @param {HTMLElement|null} root conteneur de la barre
  * @param {string} prefix préfixe d'action de la barre
- * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDateChange?: (string)=>void, onEndDateChange?: (string)=>void, onCompareModeChange?: (boolean)=>void, onCompareDateAdd?: (string)=>void, onCompareDateRemove?: (string)=>void, onSearch?: (string)=>void, onClearSearch?: ()=>void}} handlers
+ * @param {{onSort?: (value:string)=>void, onLayout?: (value:string)=>void, onStartDateChange?: (string)=>void, onEndDateChange?: (string)=>void, onCompareModeChange?: (boolean)=>void, onCompareUnitChange?: (string)=>void, onComparePeriodAdd?: (string)=>void, onComparePeriodRemove?: (number)=>void, onSearch?: (string)=>void, onClearSearch?: ()=>void}} handlers
  */
-export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange, onEndDateChange, onCompareModeChange, onCompareDateAdd, onCompareDateRemove, onSearch, onClearSearch }) {
+export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange, onEndDateChange, onCompareModeChange, onCompareUnitChange, onComparePeriodAdd, onComparePeriodRemove, onSearch, onClearSearch }) {
   const select = root?.querySelector(`[data-action="${prefix}-sort"]`)
   select?.addEventListener('change', () => {
     const value = select.value
@@ -167,42 +170,35 @@ export function bindToolbar(root, prefix, { onSort, onLayout, onStartDateChange,
   root?.querySelector(`[data-action="${prefix}-end-date"]`)?.addEventListener('change', (event) => {
     onEndDateChange?.(event.target.value)
   })
-  // Handle compare mode toggle
+  /* Mode comparaison : bascule, choix de la période, ajout et retrait. */
   root?.querySelector(`[data-action="${prefix}-compare-mode"]`)?.addEventListener('click', (event) => {
-    event.target.blur()
-    const newMode = !event.target.classList.contains('is-active')
-    event.target.classList.toggle('is-active', newMode)
-    onCompareModeChange?.(newMode)
+    const button = event.currentTarget
+    button.blur()
+    onCompareModeChange?.(!button.classList.contains('is-active'))
   })
-  // Handle compare date add input
-  const compareDateInput = root?.querySelector(`[data-action="${prefix}-compare-date-add"]`)
-  if (compareDateInput) {
-    compareDateInput.addEventListener('change', (event) => {
-      const date = event.target.value
-      if (date && onCompareDateAdd) {
-        onCompareDateAdd(date)
-        compareDateInput.value = ''
-      }
+  root?.querySelectorAll(`[data-action="${prefix}-compare-unit"]`).forEach((button) => {
+    button.addEventListener('click', () => {
+      button.blur()
+      onCompareUnitChange?.(button.dataset.value)
     })
-    // Also handle enter key
-    compareDateInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.target.blur()
-        if (onCompareDateAdd) {
-          onCompareDateAdd(compareDateInput.value)
-          compareDateInput.value = ''
-        }
-      }
-    })
+  })
+  const compareDateInput = root?.querySelector(`[data-action="${prefix}-compare-date"]`)
+  const addComparePeriod = () => {
+    const date = compareDateInput?.value
+    if (!date) return
+    onComparePeriodAdd?.(date)
+    if (compareDateInput) compareDateInput.value = ''
   }
-  // Handle compare date remove buttons
-  root?.querySelectorAll(`[data-action="${prefix}-compare-date-remove"]`).forEach((button) => {
-    button.addEventListener('click', (event) => {
-      event.target.blur()
-      const index = parseInt(button.dataset.index, 10)
-      if (onCompareDateRemove) {
-        onCompareDateRemove(compareDates[index])
-      }
+  root?.querySelector(`[data-action="${prefix}-compare-add"]`)?.addEventListener('click', addComparePeriod)
+  compareDateInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    addComparePeriod()
+  })
+  root?.querySelectorAll(`[data-action="${prefix}-compare-remove"]`).forEach((button) => {
+    button.addEventListener('click', () => {
+      button.blur()
+      onComparePeriodRemove?.(Number(button.dataset.index))
     })
   })
   // Handle search input
