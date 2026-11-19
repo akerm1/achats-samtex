@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T11:23:43.263Z",
+  "updatedAt": "2026-11-19T11:23:46.221Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4057,6 +4057,17 @@
   "expenses": {
     "categories": [
       {
+        "id": "gas",
+        "label": "Gaz",
+        "icon": "flame",
+        "color": "#fb8c00",
+        "defaultAmount": 0,
+        "isDefault": false,
+        "order": 999,
+        "createdAt": "2026-11-13T12:57:35.061Z",
+        "updatedAt": "2026-11-16T17:32:41.866Z"
+      },
+      {
         "id": "rent",
         "label": "Loyer",
         "icon": "home",
@@ -4072,17 +4083,6 @@
         "label": "Main d'œuvre",
         "icon": "users",
         "color": "#1e88e5",
-        "defaultAmount": 0,
-        "isDefault": false,
-        "order": 999,
-        "createdAt": "2026-11-13T12:57:35.061Z",
-        "updatedAt": "2026-11-16T17:32:41.866Z"
-      },
-      {
-        "id": "gas",
-        "label": "Gaz",
-        "icon": "flame",
-        "color": "#fb8c00",
         "defaultAmount": 0,
         "isDefault": false,
         "order": 999,
