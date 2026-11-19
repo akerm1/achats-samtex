@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T14:42:23.350Z",
+  "updatedAt": "2026-11-19T14:42:42.216Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -4155,6 +4155,17 @@
         "id": "exp_1795099343299",
         "createdAt": "2026-11-19T14:42:23.299Z",
         "updatedAt": "2026-11-19T14:42:23.299Z"
+      },
+      {
+        "categoryId": "labor",
+        "amount": 660500,
+        "date": "2026-11-19",
+        "note": "",
+        "isTransfer": false,
+        "linkedInvestmentId": null,
+        "id": "exp_1795099362163",
+        "createdAt": "2026-11-19T14:42:42.163Z",
+        "updatedAt": "2026-11-19T14:42:42.163Z"
       }
     ],
     "investments": [],
