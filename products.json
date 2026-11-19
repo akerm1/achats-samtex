@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.2.0",
-  "updatedAt": "2026-11-19T22:16:37.878Z",
+  "updatedAt": "2026-11-19T22:17:36.302Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -10,19 +10,7 @@
     "layout": "card"
   },
   "products": [],
-  "bills": [
-    {
-      "supplier": "test",
-      "amount": 10000,
-      "photo": "",
-      "note": "",
-      "status": "paid",
-      "id": "bill-mwo40zpv-y20q91",
-      "paidAt": "2026-11-19T22:16:37.843Z",
-      "createdAt": "2026-11-19T22:16:37.843Z",
-      "updatedAt": "2026-11-19T22:16:37.843Z"
-    }
-  ],
+  "bills": [],
   "analysis": {
     "sales": [
       {
@@ -8267,6 +8255,7 @@
     "exp.revenues|rev_1794852601472": 1794852610390,
     "bills|bill-mwgcdsc5-wz3unq": 1794914914545,
     "bills|bill-murkjzhi-qu1vtw": 1794914918965,
-    "bills|bill-mwkpzhpy-sm0fh0": 1795090233973
+    "bills|bill-mwkpzhpy-sm0fh0": 1795090233973,
+    "bills|bill-mwo40zpv-y20q91": 1795126656282
   }
 }
