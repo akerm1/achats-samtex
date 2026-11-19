@@ -2700,6 +2700,48 @@ input.color-box::-webkit-color-swatch {
   font-weight: 800;
 }
 
+/* Écart dernière − première période : vert si ça monte, rouge si ça baisse. */
+.compare-gap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.compare-gap.is-up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.compare-gap.is-down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.compare-gap-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compare-gap-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.compare-gap strong {
+  margin-left: auto;
+  font-family: var(--font-head);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .compare-empty {
   display: grid;
   justify-items: center;

@@ -318,6 +318,31 @@ export function revenuePeriods(revenues, periods) {
   return rows
 }
 
+/** Écart entre la dernière et la première période de chaque groupe (un mois
+    ou un jour comparé sur plusieurs années). `rows` doit venir de
+    `revenuePeriods` : les années y sont déjà croissantes dans chaque groupe.
+    Renvoie null si aucun groupe ne couvre au moins deux années. */
+export function revenueComparisonGap(rows) {
+  const groups = new Map()
+  for (const row of rows || []) {
+    const key = `${row.unit}:${row.key}`
+    const list = groups.get(key) || []
+    list.push(row)
+    groups.set(key, list)
+  }
+  let first = 0
+  let last = 0
+  let pairs = 0
+  for (const list of groups.values()) {
+    if (list.length < 2) continue
+    first += list[0].total
+    last += list[list.length - 1].total
+    pairs += 1
+  }
+  if (!pairs) return null
+  return { gap: round2(last - first), first: round2(first), last: round2(last), pairs }
+}
+
 export function expensesByDate(expenses) {
   const map = new Map()
   for (const exp of expenses || []) {

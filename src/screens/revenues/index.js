@@ -264,6 +264,8 @@ function compareHtml(rows, settings) {
       </div>`
   }
   const total = rows.reduce((sum, row) => sum + row.total, 0)
+  /* Écart dernière − première année de chaque période comparée. */
+  const gap = expModel.revenueComparisonGap(rows)
   return `
     <div class="compare-view">
       <div class="compare-grid">
@@ -281,6 +283,15 @@ function compareHtml(rows, settings) {
             <div class="compare-track" role="img" aria-label="${esc(row.label)} : ${row.share} % du maximum"><span style="width:${row.share}%"></span></div>
           </article>`).join('')}
       </div>
+      ${gap ? `
+      <div class="compare-gap ${gap.gap >= 0 ? 'is-up' : 'is-down'}" data-role="compare-gap">
+        ${icon(gap.gap >= 0 ? 'trendingUp' : 'trendingDown', 16)}
+        <span class="compare-gap-label">
+          Dernière − première période${gap.pairs > 1 ? ` (${gap.pairs})` : ''}
+          <span class="compare-gap-sub">${formatMoney(gap.first, settings.currency)} → ${formatMoney(gap.last, settings.currency)}</span>
+        </span>
+        <strong>${gap.gap >= 0 ? '+' : '−'}${formatMoney(Math.abs(gap.gap), settings.currency)}</strong>
+      </div>` : ''}
       <div class="compare-summary">
         <span>Total des ${rows.length} période${rows.length > 1 ? 's' : ''}</span>
         <strong>${formatMoney(total, settings.currency)}</strong>

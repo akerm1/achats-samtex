@@ -6,7 +6,7 @@
 /* ------------------------------------------------------------------ */
 
 import fs from 'node:fs'
-import { revenuePeriods } from '../src/data/expenses-model.js'
+import { revenueComparisonGap, revenuePeriods } from '../src/data/expenses-model.js'
 import { periodLabel } from '../src/core/format.js'
 import { toolbarHtml } from '../src/ui/toolbar.js'
 
@@ -44,6 +44,29 @@ expect('1er janv. 2026', jan1[0]?.year, '2026')
 
 expect('libellé jour', periodLabel('day', '11-13'), '13 nov.')
 expect('libellé mois', periodLabel('month', '11'), 'novembre')
+
+/* Écart dernière − première année : positif en hausse, négatif en baisse. */
+const aprilGap = revenueComparisonGap(april)
+expect('écart avril', money(aprilGap?.gap), money(16000))
+expect('écart avril : première année', money(aprilGap?.first), money(704000))
+expect('écart avril : dernière année', money(aprilGap?.last), money(720000))
+expect('écart avril : une période', aprilGap?.pairs, 1)
+expect('une seule année : pas d’écart', revenueComparisonGap(november), null)
+
+const falling = revenueComparisonGap([
+  { unit: 'month', key: '05', year: '2025', total: 500 },
+  { unit: 'month', key: '05', year: '2026', total: 300 },
+])
+expect('écart négatif', falling?.gap, -200)
+
+const twoGroups = revenueComparisonGap([
+  { unit: 'month', key: '04', year: '2025', total: 100 },
+  { unit: 'month', key: '04', year: '2026', total: 150 },
+  { unit: 'month', key: '05', year: '2025', total: 200 },
+  { unit: 'month', key: '05', year: '2026', total: 180 },
+])
+expect('deux périodes : écart cumulé', twoGroups?.gap, 30)
+expect('deux périodes : comptées', twoGroups?.pairs, 2)
 
 /* Le sélecteur suit l'unité : un mois propose des mois, pas des jours. */
 const toolbar = toolbarHtml({
