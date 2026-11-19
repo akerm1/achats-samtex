@@ -1,7 +1,7 @@
 {
   "version": 7,
-  "client": "10.1.2",
-  "updatedAt": "2026-11-19T22:07:58.616Z",
+  "client": "10.2.0",
+  "updatedAt": "2026-11-19T22:16:37.878Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -10,7 +10,19 @@
     "layout": "card"
   },
   "products": [],
-  "bills": [],
+  "bills": [
+    {
+      "supplier": "test",
+      "amount": 10000,
+      "photo": "",
+      "note": "",
+      "status": "paid",
+      "id": "bill-mwo40zpv-y20q91",
+      "paidAt": "2026-11-19T22:16:37.843Z",
+      "createdAt": "2026-11-19T22:16:37.843Z",
+      "updatedAt": "2026-11-19T22:16:37.843Z"
+    }
+  ],
   "analysis": {
     "sales": [
       {
