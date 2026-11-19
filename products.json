@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.1.2",
-  "updatedAt": "2026-11-19T15:48:29.258Z",
+  "updatedAt": "2026-11-19T15:48:42.996Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -8162,6 +8162,14 @@
         "id": "rev_1795103308703",
         "createdAt": "2026-11-19T15:48:28.703Z",
         "updatedAt": "2026-11-19T15:48:28.703Z"
+      },
+      {
+        "date": "2026-11-09",
+        "amount": 18000,
+        "note": "",
+        "id": "rev_1795103322495",
+        "createdAt": "2026-11-19T15:48:42.495Z",
+        "updatedAt": "2026-11-19T15:48:42.495Z"
       }
     ],
     "settings": {
