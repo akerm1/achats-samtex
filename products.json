@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.2.2",
-  "updatedAt": "2026-11-20T08:00:08.532Z",
+  "updatedAt": "2026-11-20T08:00:44.145Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -9,28 +9,7 @@
     "sort": "recent",
     "layout": "card"
   },
-  "products": [
-    {
-      "name": "",
-      "photo": "",
-      "receipt": "",
-      "note": "",
-      "type": "autre",
-      "color": "",
-      "colorRgb": null,
-      "supplier": "",
-      "qty": 1,
-      "unit": "piece",
-      "price": 13619895,
-      "priority": "normale",
-      "id": "local-mwoove2i-w5enb0",
-      "status": "todo",
-      "boughtAt": null,
-      "receiptAt": null,
-      "createdAt": "2026-11-20T08:00:08.443Z",
-      "updatedAt": "2026-11-20T08:00:08.443Z"
-    }
-  ],
+  "products": [],
   "bills": [],
   "analysis": {
     "sales": [
@@ -8277,6 +8256,7 @@
     "bills|bill-mwgcdsc5-wz3unq": 1794914914545,
     "bills|bill-murkjzhi-qu1vtw": 1794914918965,
     "bills|bill-mwkpzhpy-sm0fh0": 1795090233973,
-    "bills|bill-mwo40zpv-y20q91": 1795126656282
+    "bills|bill-mwo40zpv-y20q91": 1795126656282,
+    "products|local-mwoove2i-w5enb0": 1795161644111
   }
 }
