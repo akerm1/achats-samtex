@@ -217,9 +217,9 @@ function safeSheetName(name, index, used) {
 /**
  * Construit un classeur Excel moderne avec plusieurs feuilles.
  * Chaque feuille peut avoir son propre type de données (produits, factures,
- * dépenses, analyse) et des colonnes adaptées.
+ * dépenses) et des colonnes adaptées.
  * @param {{name: string, columns: {key: string, label: string, width?: number}[],
- *   rows: object[][], type?: 'products'|'bills'|'expenses'|'analysis'}[]} sheets
+ *   rows: object[][], type?: 'products'|'bills'|'expenses'}[]} sheets
  * @returns {Uint8Array}
  */
 export function buildXlsx(sheets) {

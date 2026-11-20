@@ -25,9 +25,8 @@ const KEY = 'purchase-gros-deletions-v1'
 const KEEP_MS = 180 * 24 * 60 * 60 * 1000
 
 /* Un espace de noms par collection partagée. Produits et factures sont à
-   la racine du document ; dépenses et analyse sont imbriquées, d'où le
-   préfixe — sans lui, deux `investments` (dépenses et analyse) se
-   confondraient. */
+   la racine du document ; les dépenses sont imbriquées, d'où le préfixe -
+   sans lui, deux collections `investments` se confondraient. */
 export const DELETED = {
   products: 'products',
   bills: 'bills',
@@ -35,11 +34,6 @@ export const DELETED = {
   expenses: 'exp.expenses',
   expenseInvestments: 'exp.investments',
   revenues: 'exp.revenues',
-  sales: 'ana.sales',
-  purchases: 'ana.purchases',
-  analysisInvestments: 'ana.investments',
-  holdings: 'ana.holdings',
-  places: 'ana.places',
 }
 
 const keyOf = (collection, id) => `${collection}|${id}`

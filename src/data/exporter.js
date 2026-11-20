@@ -14,7 +14,6 @@ import { buildXlsx } from './xlsx.js'
 import { buildSheets, scopeShort } from './export-tables.js'
 import { getProducts, getBills } from './store.js'
 import { getExpenses } from './expenses-store.js'
-import { getAnalysis } from './analysis-store.js'
 import { downloadBlob } from '../core/utils.js'
 
 export const EXPORT_FORMATS = [
@@ -30,7 +29,6 @@ export function exportSnapshot() {
     products: getProducts(),
     bills: getBills(),
     expenses: getExpenses(),
-    analysis: getAnalysis(),
   }
 }
 

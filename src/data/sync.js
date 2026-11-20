@@ -9,8 +9,8 @@
 /*   - `worker`  : un lien privé Cloudflare, lecture + écriture,         */
 /*                 sans jeton ni expiration.                             */
 /*                                                                      */
-/* Les deux portent le même document complet : liste, factures, analyse */
-/* et dépenses.                                                          */
+/* Les deux portent le même document complet : liste, factures et         */
+/* dépenses.                                                            */
 /*                                                                      */
 /* Le dépôt par défaut d'un appareil neuf reste GitHub : il est public  */
 /* et lisible sans configuration, ce qui permet d'ouvrir le lien de la  */
@@ -49,15 +49,15 @@ export function fetchRemoteList(config) {
     : github.fetchRemoteList(config)
 }
 
-export function putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted) {
+export function putRemoteList(config, list, sha, settings, bills, expenses, deleted) {
   /* Le document porte TOUT le partage, chez les deux fournisseurs : liste,
-     factures, analyse et dépenses. Chaque argument doit être transmis ici :
-     un seul oubli et la collection concernée reste sur l'appareil sans que
-     rien ne le dise — c'est exactement ce qui est arrivé aux dépenses entre
-     la 9.6 et la 9.6.5, l'aiguillage n'ayant que six paramètres. */
+     factures et dépenses. Chaque argument doit être transmis ici : un seul
+     oubli et la collection concernée reste sur l'appareil sans que rien ne
+     le dise — c'est exactement ce qui est arrivé aux dépenses entre la 9.6
+     et la 9.6.5, l'aiguillage n'ayant que six paramètres. */
   return providerOf(config) === PROVIDER_WORKER
-    ? worker.putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted)
-    : github.putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted)
+    ? worker.putRemoteList(config, list, sha, settings, bills, expenses, deleted)
+    : github.putRemoteList(config, list, sha, settings, bills, expenses, deleted)
 }
 
 export function testConnection(config) {

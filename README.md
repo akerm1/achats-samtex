@@ -562,7 +562,7 @@ la mise en page.
 - **Les réglages ne sont plus un onglet** : ils vivent dans le pied du rail et dans la
   barre haute. Le dock garde quatre cibles larges, lisibles sans tasser les libellés.
 - **Un bouton qui sait ce qu'il ajoute** : le FAB ouvre un produit sur la Liste, une
-  facture sur les Factures, une dépense sur les Dépenses, une recette sur l'Analyse.
+  facture sur les Factures, une dépense sur les Dépenses.
   Il disparaît sur les Réglages.
 - **Des en-têtes qui informent** : chaque écran ouvre sur un sur-titre, un titre, une
   phrase de contexte et deux statistiques (à acheter / total estimé, en attente / total…).
@@ -628,9 +628,9 @@ carnet. Deux changements d'usage, aucune fonction perdue.
   lieu de la Liste. L'icône installée sur le téléphone ouvre aussi `#/depenses`
   (`start_url` du manifeste). Les autres écrans restent à un appui, et le raccourci
   `#/liste` continue de fonctionner.
-- **Le dinar algérien partout** : Liste, Factures, Dépenses, Recettes et Analyse
+- **Le dinar algérien partout** : Liste, Factures, Dépenses et Recettes
   affichent « 1 234 DA ». `formatMoney` prend `DZD` par défaut et écrit le sigle à la
-  main (l'API `Intl` ne connaît que « DZD »), comme le faisait déjà l'écran Analyse.
+  main (l'API `Intl` ne connaît que « DZD »).
 - **Les anciennes données suivent** : une devise `MAD` enregistrée est relue en `DZD` à
   l'ouverture (`normalizeExpenseSettings`) ; tout code invalide retombe sur le dinar.
   Aucun montant n'est réécrit — seule l'étiquette change.
@@ -880,7 +880,6 @@ contrôlée dans les quatre cas (d'accord, en écart, Worker v5, aucun lien priv
 | **Liste** | Les articles à acheter, groupés par catégorie avec sous-totaux : rechercher, filtrer (à acheter / achetés / tous, catégories), ajouter, cocher, modifier, supprimer, trier et choisir la présentation (fiche / mosaïque / liste) |
 | **Factures** | Tickets et factures fournisseurs : photo, fournisseur, montant, note, bascule payée, recherche et filtres de statut |
 | **Dépenses** | Écran d'ouverture, section **Recettes** : total, jours et cartes par date ; un appui sur « Dépenses » montre les cases de catégorie et la liste, avec filtres ; onglets Catégories / Investissements / Recettes |
-| **Analyse** | Sommaire, fiche mensuelle, comparaison et feuille Générale (recettes, investissements, achats, possession) |
 | **Réglages** | Thème (sombre/clair/système), présentation de la liste, configuration GitHub, export/import, vidage complet, installation PWA, informations et raccourcis |
 
 Formulaire produit (ajout **et** modification) : photo (caméra ou galerie, compressée en
@@ -942,9 +941,7 @@ src/
   data/
     products-model.js       catégories, unités, priorités, couleurs RGB, normalisation, statistiques
     bills-model.js          factures : statuts, tri, filtres, totaux
-    analysis-model.js       calculs de l'écran Analyse (ventes, exercices, comparaisons)
     expenses-model.js       calculs des dépenses (catégories, transferts, recettes)
-    analysis-store.js       état et sauvegarde locale de l'analyse
     expenses-store.js       état et sauvegarde locale des dépenses
     colors.js               ~160 noms de couleurs français (+ palette et détection automatique)
     github.js               client API GitHub (lecture, écriture, test, conflits)
@@ -953,14 +950,13 @@ src/
     store.js                état global, rafraîchissement, actions métier, préférences
     photo-store.js          photos en IndexedDB (hors localStorage)
     backup.js               export/import JSON et CSV, fusion
-    export-tables.js        tables du fichier tableur (13 feuilles : ventes, achats, analyse…)
+    export-tables.js        tables du fichier tableur (une feuille par collection)
     exporter.js             fichier .xlsx / .csv et écriture dans un fichier choisi
     xlsx.js                 classeur Excel minimal (ZIP « stored » + XML)
     export-handle.js        fichier de destination mémorisé (IndexedDB)
   screens/
     list/                   index.js (écran) · card.js (carte) · form.js (fiche produit)
     bills/                  index.js (écran) · form.js (fiche facture)
-    analysis/index.js       écran Analyse (une seule feuille, volontairement)
     expenses/               index.js · state.js · header.js · filters.js · cards.js
                             expenses-tab.js · categories-tab.js · investments-tab.js · forms/*.js
     revenues/               index.js ( écran Recettes, ouvert par défaut )
@@ -1006,7 +1002,7 @@ case : la 8.1 passait les vérifications automate *et* ces deux défauts.
 
 ## Synchronisation : le lien privé
 
-La liste, les factures, l'analyse, **les dépenses** (catégories, dépenses, investissements,
+La liste, les factures, **les dépenses** (catégories, dépenses, investissements,
 recettes) **et les réglages partagés** (thème, tri, filtres) sont enregistrés dans votre
 **lien privé** (Cloudflare Worker). Les appareils qui ouvrent la même page relisent ce lien
 **à chaque rafraîchissement de la page** (ou d'un clic sur le bouton « Synchroniser ») — il
@@ -1043,7 +1039,7 @@ sinon la version distante remplace la liste locale.
 
 Un appareil neuf, tant qu'aucune configuration n'est enregistrée, lit silencieusement le dépôt
 public (`sync-defaults.json` indique propriétaire/dépôt/branche) pour afficher le partage —
-sans configuration ni clic. Ce document porte désormais tout : liste, factures, analyse et
+sans configuration ni clic. Ce document porte désormais tout : liste, factures et
 dépenses. Sans jeton, il reste en **lecture seule** ; les Réglages permettent d'ajouter un
 jeton pour publier, ou de basculer sur un lien privé.
 
@@ -1112,15 +1108,6 @@ en arrière-plan (bandeau « Recharger »).
       "updatedAt": "2026-11-01T10:00:00.000Z"
     }
   ],
-  "analysis": {
-    "sales": [],
-    "purchases": [],
-    "investments": [],
-    "holdings": [],
-    "places": [],
-    "settings": {},
-    "holderLabels": {}
-  },
   "expenses": {
     "categories": [{ "id": "cat-food", "name": "Nourriture", "color": "#f59e0b" }],
     "expenses": [
@@ -1138,7 +1125,7 @@ Unités : `piece`, `metre`, `rouleau`. Priorités : `haute`, `normale`, `basse`.
 `colorRgb` est une table 0-255.
 `settings` contient les réglages partagés entre appareils (thème, tri, filtres) ; le jeton de
 connexion n'y figure jamais.
-`bills` porte les factures (photo du ticket comprise), `analysis` l'état complet de l'Analyse,
+`bills` porte les factures (photo du ticket comprise),
 `expenses` les catégories, dépenses, investissements, recettes et réglages de dépense.
 `client` nomme la version de l'application qui a écrit le fichier : c'est ainsi qu'un appareil
 resté en arrière se repère sans rien demander. Une collection absente d'un ancien document

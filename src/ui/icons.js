@@ -62,8 +62,6 @@ export const icons = {
   chart: S(
     '<path d="M3 3v18h18"/><rect width="4" height="8" x="7" y="11" rx="1"/><rect width="4" height="12" x="14" y="7" rx="1"/>',
   ),
-  /* Analyse : la courbe de l'exercice (vue #/analyse). */
-  analysis: S('<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>'),
   chevronLeft: S('<path d="m15 18-6-6 6-6"/>'),
   chevronRight: S('<path d="m9 18 6-6-6-6"/>'),
   chevronDown: S('<path d="m6 9 6 6 6-6"/>'),

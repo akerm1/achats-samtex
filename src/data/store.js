@@ -7,7 +7,7 @@
 /*   - `worker` : un lien privé Cloudflare, sans jeton ni expiration.  */
 /*                                                                      */
 /* Les deux fournisseurs portent le même document complet : produits,        */
-/* factures, analyse et dépenses. `products.json` n'est qu'un nom de        */
+/* factures et dépenses. `products.json` n'est qu'un nom de                 */
 /* fichier historique ; il contient tout ce qui est partagé.                 */
 /*                                                                          */
 /* Mécanisme de synchronisation, volontairement simple :                     */
@@ -38,7 +38,6 @@ import {
   READ_ONLY_MESSAGE,
 } from './sync.js'
 import { mergeBills, mergeProducts } from './backup.js'
-import * as analysisStore from './analysis-store.js'
 import * as photoStore from './photo-store.js'
 import * as expensesStore from './expenses-store.js'
 import * as deletions from './deletions.js'
@@ -70,16 +69,6 @@ export const DEFAULT_PREFS = {
   layout: 'card',
   installHidden: false,
 }
-
-/* L'analyse partage le drapeau « modifications non poussées » des
-   factures : une saisie dans l'Analyse marque `dirty` puis publie, avec
-   la même mécanique que `touchBills()` + `push()`. Le module d'analyse
-   n'importe pas ce store — le branchement se fait ici, à sens unique. */
-analysisStore.onAnalysisChange(() => {
-  markChanged()
-  emit()
-  push()
-})
 
 /* Les dépenses partagent le même drapeau : toute modification pousse. */
 expensesStore.subscribe(() => {
@@ -394,7 +383,7 @@ export function saveConfig(input) {
     switched &&
     providerOf(next) === PROVIDER_GITHUB &&
     canWrite(next) &&
-    Boolean(products.length || bills.length || analysisStore.hasData() || expensesStore.hasData())
+    Boolean(products.length || bills.length || expensesStore.hasData())
 
   config = next
   if (config) storage.set(CONFIG_KEY, config)
@@ -774,7 +763,7 @@ async function syncWithRemote() {
 
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
-    if (state.dirty || products.length || bills.length || analysisStore.hasData()) return push({ force: true })
+    if (state.dirty || products.length || bills.length || expensesStore.hasData()) return push({ force: true })
     return markReady(cleaned)
   }
   if (state.dirty) return push()
@@ -804,9 +793,6 @@ async function syncWithRemote() {
       changed = true
     }
   }
-  /* `analysis: null` = document écrit avant l'analyse (Worker v4) : on
-     garde alors l'analyse locale, exactement comme pour les factures. */
-  if (analysisStore.applyRemoteAnalysis(remote.analysis)) changed = true
   /* `expenses: null` = document écrit avant les dépenses : on garde les locales. */
   if (remote.expenses) {
     const localHasData = expensesStore.hasData()
@@ -856,7 +842,7 @@ async function syncWithRemote() {
 
 /**
  * Applique au local les pierres tombales connues (produits, factures,
- * dépenses, analyse).
+ * dépenses).
  * @returns {boolean} vrai si un élément a été retiré.
  */
 function learnDeletions() {
@@ -875,7 +861,6 @@ function learnDeletions() {
     changed = true
   }
   if (expensesStore.applyDeletions(map)) changed = true
-  if (analysisStore.applyDeletions(map)) changed = true
   return changed
 }
 
@@ -941,15 +926,14 @@ async function connectDefault() {
   deletions.absorb(remote.deleted)
   products = normalizeList(deletions.without(deletions.snapshot(), DELETED.products, remote.list || []))
   await queuePersist()
-  /* Le document par défaut porte tout le partage : factures, analyse et
-     dépenses aussi. Les ignorer ici donnerait un appareil neuf qui voit la
-     liste mais pas le reste — exactement le symptôme d'un partage à moitié
+  /* Le document par défaut porte tout le partage : factures et dépenses
+     aussi. Les ignorer ici donnerait un appareil neuf qui voit la liste
+     mais pas le reste — exactement le symptôme d'un partage à moitié
      chargé. */
   if (Array.isArray(remote.bills)) {
     bills = normalizeBillList(deletions.without(deletions.snapshot(), DELETED.bills, remote.bills))
     await queuePersistBills()
   }
-  analysisStore.applyRemoteAnalysis(remote.analysis)
   expensesStore.applyRemoteExpenses(remote.expenses)
   remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
   if (applyRemoteSettings(remote.settings)) storage.set(PREFS_KEY, prefs)
@@ -1050,7 +1034,6 @@ async function pushNow() {
     sha,
     settingsSnapshot(),
     bills,
-    analysisStore.getSnapshot(),
     expensesStore.getSnapshot(),
     deletions.snapshot(),
   )
@@ -1084,8 +1067,6 @@ async function pushNow() {
         await queuePersistBills()
       }
     }
-    /* Idem pour l'analyse fusionnée par le 409 (objet, sinon `null`). */
-    analysisStore.applyRemoteAnalysis(result.analysis)
     /* Idem pour les dépenses fusionnées par le 409 (objet, sinon `null`). */
     expensesStore.applyRemoteExpenses(result.expenses)
     /* Ce que le serveur vient d'accepter, c'est ce que l'appareil a envoyé
@@ -1150,14 +1131,13 @@ export async function importFromGithub() {
   const list = normalizeList(remote.list || [])
   /* Les produits viennent de GitHub, les factures restent locales : on ne
      copie que ce que GitHub sait porter. Sans cela, la copie viderait les
-     factures d'un appareil qui en a — l'analyse fait de même. */
+     factures d'un appareil qui en a. */
   const result = await putRemoteList(
     config,
     list,
     null,
     remote.settings,
     bills,
-    analysisStore.getSnapshot(),
     expensesStore.getSnapshot(),
     deletions.snapshot(),
   )

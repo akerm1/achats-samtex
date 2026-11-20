@@ -9,9 +9,8 @@
   Ce qu'il défend :
 
     1. RIEN NE MANQUE. Chaque collection a sa feuille, avec l'identifiant
-       et les dates de création/modification ; l'Analyse (ventes, achats,
-       investissements, possessions, lieux, paramètres) en a six. Un
-       export « complet » qui oublie une collection est un export faux.
+       et les dates de création/modification. Un export « complet » qui
+       oublie une collection est un export faux.
 
     2. LES CHIFFRES SONT JUSTES. Les totaux du fichier sont recalculés à
        partir des lignes exportées, puis comparés aux calculs de
@@ -125,22 +124,6 @@
     }),
   )
 
-  localStorage.setItem(
-    'purchase-gros-analysis-v1',
-    JSON.stringify({
-      sales: [
-        { id: '2026-11-13', date: '2026-11-13', kind: 'amount', amount: 4500 },
-        { id: '2026-11-14', date: '2026-11-14', kind: 'aid', amount: null },
-      ],
-      purchases: [{ id: 'ap1', date: '2026-11-04', amount: 9000, note: 'Tissu' }],
-      investments: [{ id: 'ai1', name: 'Surjeteuse', amount: 78000 }],
-      holdings: [{ id: 'ah1', holder: 'moh', amount: 15000, note: 'Avance' }],
-      places: [{ id: 'ap1', label: 'Atelier', amount: 22000 }],
-      settings: { divisorA: 3, divisorB: 4, deduction: 1500000, openingRevenue: 0, openingPurchases: 0 },
-      holderLabels: { moi: 'Moi', moh: 'Moh', hakima: 'Hakima', autre: 'Autre' },
-    }),
-  )
-
   localStorage.setItem('purchase-gros-github-optout-v1', 'true')
 
   /* --- Modules de l'application ------------------------------------- */
@@ -156,7 +139,7 @@
   const byName = (name) => sheets.find((sheet) => sheet.name === name)
 
   /* --- 1. Complétude ------------------------------------------------ */
-  check('feuilles : quinze, résumé compris', sheets.length === 15, sheets.map((sheet) => sheet.name).join(', '))
+  check('feuilles : neuf, résumé compris', sheets.length === 9, sheets.map((sheet) => sheet.name).join(', '))
   check(
     'feuilles : une par collection',
     [
@@ -169,12 +152,6 @@
       'Investissements (dépenses)',
       'Catégories',
       'Factures',
-      'Analyse · Ventes',
-      'Analyse · Achats',
-      'Analyse · Investissements',
-      'Analyse · Possessions',
-      'Analyse · Lieux',
-      'Analyse · Paramètres',
     ].every((name) => Boolean(byName(name))),
     '',
   )
@@ -211,21 +188,6 @@
     byName('Catégories').rows.length === snapshot.expenses.categories.length,
     `${byName('Catégories').rows.length} / ${snapshot.expenses.categories.length}`,
   )
-  check(
-    'analyse : ventes, achats, possessions, lieux',
-    byName('Analyse · Ventes').rows.length === snapshot.analysis.sales.length &&
-      byName('Analyse · Achats').rows.length === snapshot.analysis.purchases.length &&
-      byName('Analyse · Possessions').rows.length === snapshot.analysis.holdings.length &&
-      byName('Analyse · Lieux').rows.length === snapshot.analysis.places.length,
-    [
-      byName('Analyse · Ventes').rows.length,
-      byName('Analyse · Achats').rows.length,
-      byName('Analyse · Possessions').rows.length,
-      byName('Analyse · Lieux').rows.length,
-    ].join('/'),
-  )
-  check('analyse : paramètres exportés', byName('Analyse · Paramètres').rows.length >= 5, byName('Analyse · Paramètres').rows.length)
-
   /* --- 2. Exactitude : les totaux du fichier et ceux de l'app ------- */
   const expenseRows = byName('Dépenses').rows
   const revenueRows = byName('Recettes').rows

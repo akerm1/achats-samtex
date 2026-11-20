@@ -4,38 +4,35 @@
 
 import { normalizeList } from './products-model.js'
 import { normalizeBillList } from './bills-model.js'
-import { mergeAnalysis as mergeAnalysisState, normalizeAnalysis } from './analysis-model.js'
 import { mergeExpenses as mergeExpensesState, normalizeExpenses } from './expenses-model.js'
 import { DELETED, without } from './deletions.js'
 import { downloadText } from '../core/utils.js'
 
-/* v1 : produits seuls · v2 : + factures · v3 : + analyse · v4 : + dépenses */
-export const BACKUP_VERSION = 4
+/* v1 : produits seuls · v2 : + factures · v4 : + dépenses
+   (v3 portait l'analyse, retirée de l'application en 10.3.0). */
+export const BACKUP_VERSION = 5
 
 /**
- * La sauvegarde emporte factures, analyse ET dépenses avec les produits : c'est le
+ * La sauvegarde emporte factures ET dépenses avec les produits : c'est le
  * seul endroit où tout sort du navigateur en un fichier. Le partage (GitHub ou
  * lien privé) les porte aussi, mais une sauvegarde reste le filet en cas de perte
  * d'appareil ou de compte. Le CSV reste produits seul.
  */
-export function buildBackup(products, bills, analysis = null, expenses = null) {
+export function buildBackup(products, bills, expenses = null) {
   return {
     app: 'mes-achats',
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     products: products || [],
     bills: bills || [],
-    analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis)
-      ? normalizeAnalysis(analysis)
-      : null,
     expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses)
       ? normalizeExpenses(expenses)
       : null,
   }
 }
 
-export function toJSON(products, bills, analysis = null, expenses = null) {
-  return JSON.stringify(buildBackup(products, bills, analysis, expenses), null, 2)
+export function toJSON(products, bills, expenses = null) {
+  return JSON.stringify(buildBackup(products, bills, expenses), null, 2)
 }
 
 export function backupFilename(extension, prefix = 'mes-achats') {
@@ -43,10 +40,7 @@ export function backupFilename(extension, prefix = 'mes-achats') {
   return `${prefix}-${stamp}.${extension}`
 }
 
-/* Colonnes CSV "tout-en-un" : produits + factures + dépenses + analyse.
-   Chaque ligne affiche toutes les dates (createdAt, updatedAt, date de la ligne)
-   et toutes les autres champs, triés par collection pour une lecture claire. */
-/* Colonnes CSV "tout-en-un" : produits + factures + dépenses + analyse.
+/* Colonnes CSV "tout-en-un" : produits + factures + dépenses.
    Chaque ligne affiche toutes les dates (createdAt, updatedAt, date de la ligne)
    et toutes les autres champs, triés par collection pour une lecture claire. */
 const CSV_COLUMNS = {
@@ -108,38 +102,6 @@ const CSV_COLUMNS = {
       ['updatedAt', 'modifié_le'],
     ],
   },
-  /* Analyse */
-  analysis: {
-    sales: [
-      ['id', 'id'],
-      ['date', 'date'],
-      ['amount', 'montant'],
-      ['kind', 'type'],
-    ],
-    purchases: [
-      ['id', 'id'],
-      ['date', 'date'],
-      ['amount', 'montant'],
-    ],
-    investments: [
-      ['id', 'id'],
-      ['name', 'nom_inv'],
-      ['amount', 'montant'],
-      ['remaining', 'restant'],
-      ['date', 'date'],
-    ],
-    holdings: [
-      ['id', 'id'],
-      ['name', 'nom_holding'],
-      ['amount', 'montant'],
-      ['date', 'date'],
-    ],
-    places: [
-      ['id', 'id'],
-      ['name', 'nom_place'],
-      ['date', 'date'],
-    ],
-  },
 }
 
 /* Rend la bonne ligne d'en-tête selon le type de donnée. */
@@ -177,7 +139,7 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`
 }
 
-/* Génère une ligne CSV à partir d'un objet produit/facture/dépense/analyse.
+/* Génère une ligne CSV à partir d'un objet produit/facture/dépense.
    Utilise les colonnes définies dans CSV_COLUMNS selon le type d'élément. */
 function csvItemRow(item, type, subtype) {
   const columns = csvHeaderFor(type, subtype)
@@ -192,8 +154,8 @@ function csvBlockHeader(type, subtype) {
   return columns.map(([, header]) => header).join(';')
 }
 
-/* Exporte toutes les collections (produits, factures, dépenses, analyse) en CSV. */
-export function toCSV(products, bills, analysis = null, expenses = null) {
+/* Exporte toutes les collections (produits, factures, dépenses) en CSV. */
+export function toCSV(products, bills, expenses = null) {
   const lines = []
   /* En-têtes globaux */
   let headerWritten = false
@@ -277,105 +239,37 @@ export function toCSV(products, bills, analysis = null, expenses = null) {
     }
   }
 
-  /* --- Analyse --- */
-  if (analysis && typeof analysis === 'object' && !Array.isArray(analysis)) {
-    const ana = analysis
-    /* Ventes */
-    if (ana.sales && Array.isArray(ana.sales)) {
-      const h = csvBlockHeader('analysis', 'sales')
-      if (h) {
-        if (!headerWritten) lines.push(h)
-        headerWritten = true
-      }
-      for (const s of ana.sales) {
-        const row = csvItemRow(s, 'analysis', 'sales')
-        if (row) lines.push(row)
-      }
-    }
-    /* Achats */
-    if (ana.purchases && Array.isArray(ana.purchases)) {
-      const h = csvBlockHeader('analysis', 'purchases')
-      if (h) {
-        if (!headerWritten) lines.push(h)
-        headerWritten = true
-      }
-      for (const p of ana.purchases) {
-        const row = csvItemRow(p, 'analysis', 'purchases')
-        if (row) lines.push(row)
-      }
-    }
-    /* Investissements */
-    if (ana.investments && Array.isArray(ana.investments)) {
-      const h = csvBlockHeader('analysis', 'investments')
-      if (h) {
-        if (!headerWritten) lines.push(h)
-        headerWritten = true
-      }
-      for (const inv of ana.investments) {
-        const row = csvItemRow(inv, 'analysis', 'investments')
-        if (row) lines.push(row)
-      }
-    }
-    /* Positions */
-    if (ana.holdings && Array.isArray(ana.holdings)) {
-      const h = csvBlockHeader('analysis', 'holdings')
-      if (h) {
-        if (!headerWritten) lines.push(h)
-        headerWritten = true
-      }
-      for (const hd of ana.holdings) {
-        const row = csvItemRow(hd, 'analysis', 'holdings')
-        if (row) lines.push(row)
-      }
-    }
-    /* Endroits */
-    if (ana.places && Array.isArray(ana.places)) {
-      const h = csvBlockHeader('analysis', 'places')
-      if (h) {
-        if (!headerWritten) lines.push(h)
-        headerWritten = true
-      }
-      for (const pl of ana.places) {
-        const row = csvItemRow(pl, 'analysis', 'places')
-        if (row) lines.push(row)
-      }
-    }
-  }
-
   /* BOM pour qu'Excel reconnaisse l'UTF-8. */
   return `\uFEFF${lines.join('\r\n')}`
 }
 
 /**
  * Analyse un fichier de sauvegarde JSON (accepte les anciens formats :
- * tableau nu v1, objet sans factures v2, objet sans analyse v3).
- * @returns {{ok:boolean, products:Array, bills:Array, analysis:object|null, message?:string}}
+ * tableau nu v1, objet sans factures v2 ; un éventuel bloc `analysis` des
+ * sauvegardes v3 est simplement ignoré).
+ * @returns {{ok:boolean, products:Array, bills:Array, message?:string}}
  */
 export function parseBackup(text) {
   let parsed
   try {
     parsed = JSON.parse(String(text || ''))
   } catch {
-    return { ok: false, products: [], bills: [], analysis: null, message: 'Fichier JSON illisible.' }
+    return { ok: false, products: [], bills: [], message: 'Fichier JSON illisible.' }
   }
   const raw = Array.isArray(parsed) ? parsed : parsed?.products
   if (!Array.isArray(raw)) {
-    return { ok: false, products: [], bills: [], analysis: null, message: 'Ce fichier ne contient pas de liste de produits.' }
+    return { ok: false, products: [], bills: [], message: 'Ce fichier ne contient pas de liste de produits.' }
   }
   const products = normalizeList(raw).filter(
     (product) => product.name || product.photo || product.colorRgb || product.note,
   )
   const bills = normalizeBillList(Array.isArray(parsed?.bills) ? parsed.bills : [])
-  const analysis =
-    parsed?.analysis && typeof parsed.analysis === 'object' && !Array.isArray(parsed.analysis)
-      ? normalizeAnalysis(parsed.analysis)
-      : null
   const expenses =
     parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
       ? normalizeExpenses(parsed.expenses)
       : null
-  if (!products.length) return { ok: false, products: [], bills: [], analysis: null, expenses: null, message: 'Aucun produit valide dans ce fichier.' }
-  return { ok: true, products, bills, analysis, expenses }
+  if (!products.length) return { ok: false, products: [], bills: [], expenses: null, message: 'Aucun produit valide dans ce fichier.' }
+  return { ok: true, products, bills, expenses }
 }
 
 /**
@@ -390,11 +284,6 @@ export function mergeProducts(current, incoming, deleted = null) {
 /** Même fusion pour les factures : le conflit se joue aussi par `id`. */
 export function mergeBills(current, incoming, deleted = null) {
   return mergeById(current, incoming, DELETED.bills, deleted)
-}
-
-/** L'analyse suit la même règle « incoming wins » (v3 + conflit 409). */
-export function mergeAnalysis(current, incoming, deleted = null) {
-  return mergeAnalysisState(current, incoming, deleted)
 }
 
 /** Les dépenses suivent la même règle « incoming wins ». */
@@ -436,14 +325,14 @@ function mergeById(current, incoming, collection, deleted = null) {
 }
 
 /**
- * Sauvegarde JSON : produits, factures, analyse ET dépenses.
+ * Sauvegarde JSON : produits, factures ET dépenses.
  *
- * Le quatrième argument doit être transmis — un `toJSON` à trois paramètres
+ * Le troisième argument doit être transmis — un `toJSON` à deux paramètres
  * produisait un fichier parfaitement valide, simplement sans les dépenses,
  * et personne ne s'en apercevait avant d'en avoir besoin.
  */
-export function exportJSON(products, bills, analysis = null, expenses = null) {
-  downloadText(backupFilename('json'), toJSON(products, bills, analysis, expenses), 'application/json')
+export function exportJSON(products, bills, expenses = null) {
+  downloadText(backupFilename('json'), toJSON(products, bills, expenses), 'application/json')
 }
 
 export function exportCSV(products) {

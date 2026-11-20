@@ -30,9 +30,6 @@ import {
 import { scopeLabel } from '../data/export-tables.js'
 import { formatOf } from '../data/exporter.js'
 import {
-  getAnalysis,
-} from '../data/analysis-store.js'
-import {
   getExpenses,
 } from '../data/expenses-store.js'
 import { openProductForm } from '../screens/list/form.js'
@@ -249,9 +246,9 @@ export const ACTIONS = {
   },
   'disconnect-github': () => handleDisconnect(),
   'export-json': () => {
-    /* Factures, analyse ET dépenses voyagent avec la sauvegarde : c'est le
+    /* Factures ET dépenses voyagent avec la sauvegarde : c'est le
        seul endroit où ces collections sortent du navigateur. */
-    exportJSON(getProducts(), getBills(), getAnalysis(), getExpenses())
+    exportJSON(getProducts(), getBills(), getExpenses())
     toast('Sauvegarde JSON générée.', { type: 'ok' })
   },
   'export-csv': () => {

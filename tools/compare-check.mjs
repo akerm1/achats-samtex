@@ -10,8 +10,17 @@ import { monthRange, revenueComparisonGap, revenuePeriods, totalRevenues } from 
 import { periodLabel } from '../src/core/format.js'
 import { toolbarHtml } from '../src/ui/toolbar.js'
 
-const { sales } = JSON.parse(fs.readFileSync('analysis.json', 'utf8'))
-const revenues = sales.map((sale) => ({ date: sale.date, amount: sale.amount || 0 }))
+/* Source : le relevé de recettes collé depuis le classeur (TSV). Il reste
+   des lignes à 0 DA : elles représentent les jours sans recette. */
+const TSV = 'data/recettes-2025-04_2026-10.tsv'
+const revenues = fs
+  .readFileSync(TSV, 'utf8')
+  .split(/\r?\n/)
+  .slice(1)
+  .filter(Boolean)
+  .map((line) => line.split('\t'))
+  .filter((cells) => /^\d{4}-\d{2}-\d{2}$/.test(cells[0]))
+  .map(([date, , , amount]) => ({ date, amount: Number(String(amount).replace(/[^\d.-]/g, '')) || 0 }))
 const money = (n) => new Intl.NumberFormat('fr-FR').format(n)
 
 let failed = 0

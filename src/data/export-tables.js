@@ -3,10 +3,8 @@
 /*                                                                     */
 /* Règle : rien ne manque. Chaque collection de l'application a sa      */
 /* feuille, avec l'identifiant et les dates de création/modification    */
-/* pour pouvoir recouper avec une sauvegarde JSON. L'Analyse (ventes,   */
-/* achats, investissements, possessions, lieux, paramètres) a les       */
-/* siennes : elle vit dans un store à part et n'était exportée nulle    */
-/* part — un export « complet » qui l'oublie est un export faux.        */
+/* pour pouvoir recouper avec une sauvegarde JSON. Il n'y a donc rien   */
+/* à oublier : chaque collection partagée a sa feuille.                 */
 /*                                                                     */
 /* Une seule définition sert les deux formats : chaque table est une    */
 /* feuille du classeur, et une section du CSV. Les montants restent des */
@@ -20,7 +18,6 @@
 
 import { CATEGORIES, PRIORITIES, UNITS } from './products-model.js'
 import { categoryLabel } from './expenses-model.js'
-import { HOLDER_KEYS } from './analysis-model.js'
 
 export const EXPORT_SCOPES = [
   { value: 'all', label: 'Toutes les données', short: 'tout' },
@@ -327,76 +324,6 @@ function monthlySheet(rows) {
   }
 }
 
-/* --- Analyse ------------------------------------------------------- */
-
-const SALE_KIND_LABEL = { amount: 'Recette', aid: 'Férié', closed: 'Fermé' }
-
-function analysisSaleRows(analysis) {
-  return (analysis?.sales || [])
-    .slice()
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-    .map((sale) => ({
-      id: sale.id,
-      date: day(sale.date),
-      kind: SALE_KIND_LABEL[sale.kind] || 'Recette',
-      amount: money(sale.amount),
-      updatedAt: stamp(sale.updatedAt),
-    }))
-}
-
-function analysisPurchaseRows(analysis) {
-  return (analysis?.purchases || [])
-    .slice()
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-    .map((purchase) => ({
-      id: purchase.id,
-      date: day(purchase.date),
-      amount: money(purchase.amount),
-      note: purchase.note || '',
-      createdAt: stamp(purchase.createdAt),
-      updatedAt: stamp(purchase.updatedAt),
-    }))
-}
-
-function analysisInvestmentRows(analysis) {
-  return (analysis?.investments || []).map((item) => ({
-    id: item.id,
-    name: item.name || '',
-    amount: money(item.amount),
-  }))
-}
-
-function analysisHoldingRows(analysis) {
-  const labels = analysis?.holderLabels || {}
-  return (analysis?.holdings || []).map((item) => ({
-    id: item.id,
-    holder: labels[item.holder] || item.holder || HOLDER_KEYS[0],
-    amount: money(item.amount),
-    note: item.note || '',
-  }))
-}
-
-function analysisPlaceRows(analysis) {
-  return (analysis?.places || []).map((item) => ({
-    id: item.id,
-    label: item.label || '',
-    amount: money(item.amount),
-  }))
-}
-
-function analysisSettingsRows(analysis) {
-  const settings = analysis?.settings || {}
-  const divisors = analysis?.holderLabels || {}
-  return [
-    { label: 'Diviseur A (moi + moh)', value: settings.divisorA ?? '' },
-    { label: 'Diviseur B (avec hakima)', value: settings.divisorB ?? '' },
-    { label: 'Déduction', value: money(settings.deduction) ?? 0 },
-    { label: 'Report de recette', value: money(settings.openingRevenue) ?? 0 },
-    { label: 'Report d’achats', value: money(settings.openingPurchases) ?? 0 },
-    ...HOLDER_KEYS.map((key) => ({ label: `Libellé « ${key} »`, value: divisors[key] || key })),
-  ]
-}
-
 /* --- Colonnes ------------------------------------------------------ */
 
 const PRODUCT_COLUMNS = [
@@ -479,47 +406,6 @@ const BILL_COLUMNS = [
   { key: 'updatedAt', label: 'Modifiée le', width: 17 },
 ]
 
-const SALE_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 14 },
-  { key: 'date', label: 'Date', width: 12 },
-  { key: 'kind', label: 'Type', width: 12 },
-  { key: 'amount', label: 'Montant', width: 12 },
-  { key: 'updatedAt', label: 'Modifiée le', width: 17 },
-]
-
-const PURCHASE_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 22 },
-  { key: 'date', label: 'Date', width: 12 },
-  { key: 'amount', label: 'Montant', width: 12 },
-  { key: 'note', label: 'Note', width: 32 },
-  { key: 'createdAt', label: 'Saisi le', width: 17 },
-  { key: 'updatedAt', label: 'Modifié le', width: 17 },
-]
-
-const ANALYSIS_INVESTMENT_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 22 },
-  { key: 'name', label: 'Nom', width: 26 },
-  { key: 'amount', label: 'Montant', width: 12 },
-]
-
-const HOLDING_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 22 },
-  { key: 'holder', label: 'Détenteur', width: 18 },
-  { key: 'amount', label: 'Montant', width: 12 },
-  { key: 'note', label: 'Note', width: 32 },
-]
-
-const PLACE_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 22 },
-  { key: 'label', label: 'Lieu', width: 26 },
-  { key: 'amount', label: 'Montant', width: 12 },
-]
-
-const SETTINGS_COLUMNS = [
-  { key: 'label', label: 'Paramètre', width: 30 },
-  { key: 'value', label: 'Valeur', width: 20 },
-]
-
 /* --- Résumé -------------------------------------------------------- */
 
 /**
@@ -536,8 +422,6 @@ function summarySheet(tables, currency) {
   const investments = tables.investments.rows
   const categories = tables.categories.rows
   const bills = tables.bills.rows
-  const sales = tables.sales.rows
-  const purchases = tables.analysisPurchases.rows
   const daily = tables.daily.rows
 
   const pending = products.filter((row) => row.status === 'À acheter')
@@ -581,14 +465,6 @@ function summarySheet(tables, currency) {
     { label: 'Factures — total', value: sumColumn(bills, 'amount') },
     { label: 'Factures — impayées', value: bills.filter((row) => row.status === 'En attente').length },
 
-    { label: 'Analyse — recettes saisies', value: sales.filter((row) => row.kind === 'Recette').length },
-    { label: 'Analyse — total des recettes', value: sumColumn(sales, 'amount') },
-    { label: 'Analyse — achats', value: purchases.length },
-    { label: 'Analyse — total des achats', value: sumColumn(purchases, 'amount') },
-    { label: 'Analyse — investissements', value: tables.analysisInvestments.rows.length },
-    { label: 'Analyse — possessions', value: tables.holdings.rows.length },
-    { label: 'Analyse — lieux', value: tables.places.rows.length },
-
     { label: 'Note', value: 'Les photos ne sont pas dans ce fichier (une cellule ne contient pas d’image) : la sauvegarde JSON les emporte.' },
   ]
 
@@ -606,13 +482,12 @@ function summarySheet(tables, currency) {
 
 /**
  * Construit les feuilles (ou sections CSV) demandées.
- * @param {{products?: Array, bills?: Array, expenses?: object, analysis?: object}} snapshot
+ * @param {{products?: Array, bills?: Array, expenses?: object}} snapshot
  * @param {string} scope `all` ou une collection
  */
 export function buildSheets(snapshot, scope = 'all') {
   const data = snapshot || {}
   const expensesState = data.expenses || {}
-  const analysis = data.analysis || {}
   const categories = expensesState.categories || []
   const currency = expensesState.settings?.currency || 'DZD'
   const daily = dailyActivity(expensesState.expenses, expensesState.revenues, categories)
@@ -625,12 +500,6 @@ export function buildSheets(snapshot, scope = 'all') {
     categories: { name: 'Catégories', columns: CATEGORY_COLUMNS, rows: categoryRows(categories, expensesState.expenses) },
     bills: { name: 'Factures', columns: BILL_COLUMNS, rows: billRows(data.bills) },
     daily: activityDailySheet(daily.rows, daily.categoryColumns),
-    sales: { name: 'Analyse · Ventes', columns: SALE_COLUMNS, rows: analysisSaleRows(analysis) },
-    analysisPurchases: { name: 'Analyse · Achats', columns: PURCHASE_COLUMNS, rows: analysisPurchaseRows(analysis) },
-    analysisInvestments: { name: 'Analyse · Investissements', columns: ANALYSIS_INVESTMENT_COLUMNS, rows: analysisInvestmentRows(analysis) },
-    holdings: { name: 'Analyse · Possessions', columns: HOLDING_COLUMNS, rows: analysisHoldingRows(analysis) },
-    places: { name: 'Analyse · Lieux', columns: PLACE_COLUMNS, rows: analysisPlaceRows(analysis) },
-    analysisSettings: { name: 'Analyse · Paramètres', columns: SETTINGS_COLUMNS, rows: analysisSettingsRows(analysis) },
   }
 
   if (scope === 'products') return [tables.products]
@@ -648,11 +517,5 @@ export function buildSheets(snapshot, scope = 'all') {
     tables.investments,
     tables.categories,
     tables.bills,
-    tables.sales,
-    tables.analysisPurchases,
-    tables.analysisInvestments,
-    tables.holdings,
-    tables.places,
-    tables.analysisSettings,
   ]
 }

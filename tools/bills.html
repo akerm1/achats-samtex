@@ -357,17 +357,15 @@ async function deletionBench() {
 }
 
 /* Le second chemin du même bogue : la lecture distante ne se contente pas de
-   fusionner, elle REMPLACE les collections de dépenses et d'analyse. Sans
-   filtre par les pierres tombales, chaque rafraîchissement réinstallait la
-   ligne supprimée — « je supprime, je recharge, c'est revenu ». */
+   fusionner, elle REMPLACE les collections de dépenses. Sans filtre par les
+   pierres tombales, chaque rafraîchissement réinstallait la ligne supprimée
+   — « je supprime, je recharge, c'est revenu ». */
 async function remoteDeletionBench() {
   const exp = await import('/src/data/expenses-store.js')
-  const ana = await import('/src/data/analysis-store.js')
   const { DELETED, mark, clear } = await import('/src/data/deletions.js')
   const now = Date.now()
   const iso = (ms) => new Date(ms).toISOString()
   const beforeExpenses = exp.getSnapshot()
-  const beforeAnalysis = ana.getSnapshot()
   try {
     mark(DELETED.expenses, 'e-ghost', now)
     exp.applyRemoteExpenses({
@@ -384,20 +382,6 @@ async function remoteDeletionBench() {
       'lecture : une dépense supprimée ne revient pas',
       expenses.includes('e-keep') && !expenses.includes('e-ghost'),
       expenses.join(', ') || 'aucune',
-    )
-
-    mark(DELETED.analysisInvestments, 'inv-ghost', now)
-    ana.applyRemoteAnalysis({
-      investments: [
-        { id: 'inv-keep', amount: 100, updatedAt: iso(now - 120000) },
-        { id: 'inv-ghost', amount: 500, updatedAt: iso(now - 120000) },
-      ],
-    })
-    const analysis = ana.getSnapshot().investments.map((item) => item.id)
-    check(
-      'lecture : un investissement supprimé ne revient pas',
-      analysis.includes('inv-keep') && !analysis.includes('inv-ghost'),
-      analysis.join(', ') || 'aucun',
     )
 
     /* Deux données que le document distant peut porter et qui battaient la
@@ -427,7 +411,6 @@ async function remoteDeletionBench() {
        de dépôt modifié pour les essais suivants. */
     clear()
     exp.applyRemoteExpenses(beforeExpenses)
-    ana.applyRemoteAnalysis(beforeAnalysis)
   }
 }
 
@@ -467,7 +450,6 @@ async function routerBench() {
       '0',
       null,
       [],
-      null,
       EXPENSES,
     )
     check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 7, put.message || `version ${put.docVersion}`)
@@ -488,10 +470,10 @@ async function routerBench() {
   }
 }
 
-/* GitHub porte désormais TOUT le partage — liste, factures, analyse et
-   dépenses. On simule l'API « contents » (base64 + SHA) pour vérifier
-   l'aller-retour ET la fusion en cas de conflit, sans toucher au réseau.
-   Un fichier v3 existant doit être promu en v6, pas ignoré. */
+/* GitHub porte désormais TOUT le partage — liste, factures et dépenses. On
+   simule l'API « contents » (base64 + SHA) pour vérifier l'aller-retour ET
+   la fusion en cas de conflit, sans toucher au réseau.
+   Un fichier v3 existant doit être promu en v7, pas ignoré. */
 async function githubBench() {
   const github = await import('/src/data/github.js')
   const sync = await import('/src/data/sync.js')
@@ -547,7 +529,6 @@ async function githubBench() {
       'sha-1',
       null,
       [{ id: 'b1', supplier: 'Marché', amount: 42 }],
-      { rows: [{ id: 'a1' }] },
       EXPENSES,
     )
     check('github : la publication écrit la version 7', first.ok && first.docVersion === 7, first.message || `version ${first.docVersion}`)
@@ -559,9 +540,9 @@ async function githubBench() {
       `${stored.products?.length ?? 0} produit(s), ${stored.bills?.length ?? 0} facture(s)`,
     )
     check(
-      'github : le fichier porte l’analyse et les dépenses',
-      stored.analysis?.rows?.[0]?.id === 'a1' && stored.expenses?.expenses?.[0]?.id === 'e1',
-      `${stored.analysis ? 'analyse' : 'rien'} · ${stored.expenses?.expenses?.length ?? 0} dépense(s)`,
+      'github : le fichier porte les dépenses',
+      stored.expenses?.expenses?.[0]?.id === 'e1',
+      `${stored.expenses?.expenses?.length ?? 0} dépense(s)`,
     )
     check('github : l’appareil qui écrit est nommé', typeof stored.client === 'string' && stored.client.length > 0, String(stored.client))
 
@@ -585,7 +566,6 @@ async function githubBench() {
       'sha-2',
       null,
       [{ id: 'b1', supplier: 'Marché', amount: 42 }],
-      { rows: [{ id: 'a1' }] },
       { ...EXPENSES, expenses: [...EXPENSES.expenses, { id: 'e-local', categoryId: 'rent', amount: 30 }] },
     )
     check('github : un conflit fusionne au lieu d’écraser', merged.ok, merged.message || 'ok')
@@ -620,7 +600,7 @@ async function backupBench() {
   /* Les dépenses doivent sortir dans la sauvegarde : c'est le seul filet si
      un appareil est perdu. Un `exportJSON` à trois paramètres produisait un
      fichier valide mais sans elles, et rien ne le signalait. */
-  const withExpenses = backup.parseBackup(backup.toJSON([{ id: 'p1', name: 'Ruban' }], [], null, EXPENSES))
+  const withExpenses = backup.parseBackup(backup.toJSON([{ id: 'p1', name: 'Ruban' }], [], EXPENSES))
   check(
     'sauvegarde : les dépenses sortent dans le fichier JSON',
     withExpenses.ok && withExpenses.expenses?.expenses?.[0]?.id === 'e1',

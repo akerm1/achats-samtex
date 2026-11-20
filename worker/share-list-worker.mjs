@@ -14,11 +14,11 @@
 /* origine (GitHub Pages). Qui possède le lien peut écrire — c'est le */
 /* compromis « aucun mot de passe », assumé et documenté.               */
 /*                                                                     */
-/* Le document échangé porte `products`, `bills` (factures, photo    */
-/* du ticket comprise), `analysis` (recettes, achats, possession) et */
-/* `expenses` (catégories, dépenses, investissements, recettes).     */
-/* C'est ici, et seulement ici, que factures, analyse et dépenses se */
-/* synchronisent : la voie GitHub reste produits seule.              */
+/* Le document échangé porte `products`, `bills` (factures, photo      */
+/* du ticket comprise) et `expenses` (catégories, dépenses,            */
+/* investissements, recettes). `analysis` n'est plus accepté ni gardé : */
+/* l'analyse a été retirée de l'application en 10.3.0, et un appareil   */
+/* resté sur une version antérieure ne doit pas la réinstaller.        */
 /*                                                                   */
 /* v6 ajoute `expenses`. Un Worker v5 le recevait puis l'ignorait :   */
 /* l'application envoyait les dépenses, le serveur ne les gardait     */
@@ -60,12 +60,7 @@ function pathKey(url) {
   return url.pathname.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
-/** `analysis` : objet = l'analyse voyage ; `null` = document antérieur. */
-function analysisOf(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : null
-}
-
-/** `expenses` : même contrat que `analysis` (objet, sinon `null`). */
+/** `expenses` : objet = les dépenses voyagent ; `null` = document antérieur. */
 function expensesOf(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : null
 }
@@ -118,9 +113,8 @@ async function handleGet(env) {
        sur cette différence pour ne pas effacer les factures locales quand
        ce Worker n'a pas encore été redéployé. */
     bills: Array.isArray(raw.bills) ? raw.bills : null,
-    /* Même contrat pour `analysis` : `null` = document écrit avant
-       l'analyse (Worker v4), l'appareil garde alors la sienne. */
-    analysis: analysisOf(raw.analysis),
+    /* L'analyse a été retirée de l'application : `null` pour toujours. */
+    analysis: null,
     /* Idem pour `expenses` : `null` = document écrit avant la v6, et
        l'appareil garde alors ses dépenses locales. */
     expenses: expensesOf(raw.expenses),
@@ -168,9 +162,8 @@ async function handlePut(request, env) {
            pourrait pas fusionner et repartirait avec une liste de factures
            vide — la fusion doit porter sur les deux collections. */
         bills: Array.isArray(current?.bills) ? current.bills : null,
-        /* Idem pour l'analyse : c'est ce document que le client fusionne
-           par `id` avant de retenter l'écriture. */
-        analysis: analysisOf(current?.analysis),
+        /* L'analyse n'existe plus côté client : toujours `null`. */
+        analysis: null,
         /* Idem pour les dépenses : sans elles, la fusion par `id` n'aurait
            rien à fusionner et l'écriture suivante les écraserait. */
         expenses: expensesOf(current?.expenses),
@@ -196,8 +189,9 @@ async function handlePut(request, env) {
     /* Un tableau vide est conservé tel quel : c'est « aucune facture », pas
        « ce document ignore les factures ». */
     bills: Array.isArray(payload.bills) ? payload.bills : null,
-    /* Idem pour l'analyse : objet publié, `null` = envoyée sans elle. */
-    analysis: analysisOf(payload.analysis),
+    /* L'analyse a été retirée : on ne la stocke plus, même si un appareil
+       resté sur une version antérieure en envoie encore. */
+    analysis: null,
     /* Une écriture sans `expenses` (application antérieure à la v6) ne doit
        pas effacer celles déjà publiées : on garde alors le document courant.
        Un objet vide, lui, reste une suppression volontaire et s'applique. */

@@ -21,7 +21,6 @@ import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
 import { EXPORT_FORMATS, formatOf } from '../../data/exporter.js'
 import { EXPORT_SCOPES } from '../../data/export-tables.js'
 import { EXPORT_PERIODS, getAutoExport, isDue, nextRunAt, supportsDestination } from '../../app/autoexport.js'
-import { importAnalysis } from '../../data/analysis-store.js'
 import { getExpenses, importExpenses } from '../../data/expenses-store.js'
 import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, testConnection } from '../../data/sync.js'
 import { CARD_LAYOUTS } from '../../data/products-model.js'
@@ -224,8 +223,8 @@ function shareTile() {
   const expenses = getExpenses().expenses.length
   const description =
     selected === 'worker'
-      ? 'La liste, les factures, l\'analyse et les dépenses sont enregistrées dans votre <strong>lien privé</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
-      : 'La liste, les factures, l\'analyse et les dépenses sont enregistrées dans le fichier <code>products.json</code> d\'un <strong>dépôt GitHub</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+      ? 'La liste, les factures et les dépenses sont enregistrées dans votre <strong>lien privé</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+      : 'La liste, les factures et les dépenses sont enregistrées dans le fichier <code>products.json</code> d\'un <strong>dépôt GitHub</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
   const connection =
     config?.provider === 'worker'
       ? 'Connecté à votre lien privé.'
@@ -687,14 +686,12 @@ async function handleImport(event) {
   const mode = host.querySelector('[data-role="import-mode"]')?.value || 'merge'
   const result = importProducts(parsed.products, { mode })
   const billResult = importBills(parsed.bills, { mode })
-  const analysisResult = importAnalysis(parsed.analysis, { mode })
   const expensesResult = importExpenses(parsed.expenses, { mode })
   const details = [
     mode === 'replace'
       ? `${parsed.products.length} produit(s)`
       : `${result.added} produit(s) ajouté(s), ${result.updated} mis à jour`,
     parsed.bills.length ? `${billResult.added + billResult.updated} facture(s)` : '',
-    parsed.analysis ? `${analysisResult.added + analysisResult.updated} ligne(s) d'analyse` : '',
     parsed.expenses ? `${expensesResult.added + expensesResult.updated} dépense(s)/investissement(s)/recette(s)` : '',
   ].filter(Boolean)
   toast(`${details.join(' · ')}.`, { type: 'ok' })

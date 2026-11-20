@@ -186,35 +186,34 @@ async function diskChecks() {
   results.push({
     name: 'aiguillage : dépenses et suppressions transmises aux deux fournisseurs',
     pass:
-      params.length === 8 &&
+      params.length === 7 &&
       /\bdeleted\b/.test(params.join(',')) &&
       /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\)/.test(sync) &&
       /github\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\)/.test(sync),
     detail:
-      params.length === 8
-        ? 'huit arguments transmis au lien privé et à GitHub'
+      params.length === 7
+        ? 'sept arguments transmis au lien privé et à GitHub'
         : `${params.length} argument(s) — une collection est perdue`,
   })
 
-  /* GitHub porte maintenant le document complet. Une signature à quatre
-     paramètres écrivait un fichier valide mais sans factures, analyse ni
-     dépenses — la même perte silencieuse que la sauvegarde. */
+  /* GitHub porte maintenant le document complet. Une signature trop courte
+     écrivait un fichier valide mais sans factures ni dépenses — la même
+     perte silencieuse que la sauvegarde. */
   const githubSource = fs.readFileSync(path.join(ROOT, 'src/data/github.js'), 'utf8')
   const writer = githubSource.match(/export async function putRemoteList\(([^)]*)\)/)
   const writerParams = writer ? writer[1].split(',').map((p) => p.trim()) : []
   results.push({
-    name: 'github : le fichier porte les quatre collections',
+    name: 'github : le fichier porte les collections',
     pass:
-      writerParams.length === 8 &&
+      writerParams.length === 7 &&
       /version:\s*DOC_VERSION/.test(githubSource) &&
       /\bproducts:\s*outList/.test(githubSource) &&
       /\bbills:\s*outBills/.test(githubSource) &&
-      /\banalysis:\s*outAnalysis/.test(githubSource) &&
       /\bexpenses:\s*outExpenses/.test(githubSource) &&
       /\bdeleted:\s*outDeleted/.test(githubSource),
     detail:
-      writerParams.length === 8
-        ? 'liste, factures, analyse, dépenses, suppressions'
+      writerParams.length === 7
+        ? 'liste, factures, dépenses, suppressions'
         : `${writerParams.length} argument(s) — collections perdues`,
   })
 
@@ -226,8 +225,8 @@ async function diskChecks() {
   const exportParams = exporter ? exporter[1].split(',').map((p) => p.trim()) : []
   results.push({
     name: 'sauvegarde : les dépenses sortent dans le fichier JSON',
-    pass: exportParams.length === 4 && /toJSON\([^)]*\bexpenses\b[^)]*\)/.test(backup),
-    detail: exportParams.length === 4 ? 'produits, factures, analyse, dépenses' : `${exportParams.length} argument(s) — « expenses » perdu`,
+    pass: exportParams.length === 3 && /toJSON\([^)]*\bexpenses\b[^)]*\)/.test(backup),
+    detail: exportParams.length === 3 ? 'produits, factures, dépenses' : `${exportParams.length} argument(s) — « expenses » perdu`,
   })
 
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))

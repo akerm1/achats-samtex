@@ -24,8 +24,7 @@ const money = new Intl.NumberFormat('fr-FR', {
 
 /* Le dinar algérien s'écrit « DA » dans l'application — `Intl` ne connaît
    que le code « DZD », moins lisible pour un montant courant. On garde donc
-   le nombre au format français et on ajoute le sigle à la main, comme
-   `formatDA` le fait pour l'écran Analyse. */
+   le nombre au format français et on ajoute le sigle à la main. */
 const dzdNumber = new Intl.NumberFormat('fr-FR', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,

@@ -7,13 +7,13 @@
 /*   - un jeton expiré ne casse donc plus la lecture : il est ignoré  */
 /*     et l'application bascule en lecture seule.                      */
 /*                                                                     */
-/* Le fichier porte TOUT le partage — liste, factures, analyse et      */
-/* dépenses — exactement comme le document du lien privé. Un conflit   */
+/* Le fichier porte TOUT le partage - liste, factures et dépenses -     */
+/* exactement comme le document du lien privé. Un conflit              */
 /* d'écriture fusionne chaque collection par `id` avant de retenter :   */
 /* aucune modification concurrente n'est écrasée en silence.            */
 /* ------------------------------------------------------------------ */
 
-import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
@@ -143,10 +143,6 @@ async function readContents(response) {
     /* `null` = collection absente du fichier (document d'avant son
        existence) : l'appareil garde la sienne au lieu de la perdre. */
     bills: Array.isArray(parsed?.bills) ? parsed.bills : null,
-    analysis:
-      parsed?.analysis && typeof parsed.analysis === 'object' && !Array.isArray(parsed.analysis)
-        ? parsed.analysis
-        : null,
     expenses:
       parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
         ? parsed.expenses
@@ -162,12 +158,12 @@ async function readContents(response) {
 }
 
 /**
- * Lit le document distant (liste, factures, analyse, dépenses + réglages).
+ * Lit le document distant (liste, factures, dépenses + réglages).
  *
  * Si GitHub refuse le jeton (401 « Bad credentials », cas d'un jeton expiré),
  * on réessaie une seule fois en anonyme : si le dépôt est public, la lecture
  * reste possible et l'application continue de fonctionner.
- * @returns {Promise<{ok:boolean, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, settings:object|null, sha:string|null, docVersion:number, status:string, message?:string, tokenRejected?:boolean}>}
+ * @returns {Promise<{ok:boolean, list:Array|null, bills:Array|null, expenses:object|null, settings:object|null, sha:string|null, docVersion:number, status:string, message?:string, tokenRejected?:boolean}>}
  */
 export async function fetchRemoteList(config) {
   if (!config) return { ok: false, list: null, sha: null, status: 'config' }
@@ -199,7 +195,7 @@ export async function fetchRemoteList(config) {
     if (reachable === null) {
       return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
     }
-    return { ok: true, list: null, bills: null, analysis: null, expenses: null, deleted: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
+    return { ok: true, list: null, bills: null, expenses: null, deleted: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
   }
 
   if (response.status === 401 && canWrite(config)) {
@@ -243,14 +239,13 @@ export async function fetchRemoteList(config) {
 /**
  * Écrit le document distant (crée le fichier au besoin, retente en cas de conflit).
  * `settings` (réglages partagés) est inclus dans le même fichier quand fourni.
- * Factures, analyse et dépenses suivent le même chemin, chacune avec sa propre
+ * Factures et dépenses suivent le même chemin, chacune avec sa propre
  * fusion par `id` en cas de conflit (l'état distant gagne).
  * @param {Array|null} bills factures à publier, `null` pour ne rien changer
- * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
  * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
- * @returns {Promise<{ok:boolean, sha:string|null, docVersion:number, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, status:string, message?:string}>}
+ * @returns {Promise<{ok:boolean, sha:string|null, docVersion:number, list:Array|null, bills:Array|null, expenses:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted = null) {
+export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   /* Sans jeton (ou jeton refusé), GitHub refusera l'écriture : inutile
      d'envoyer la requête, et l'utilisateur garde sa liste locale intacte. */
@@ -269,13 +264,10 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
 
   let outList = list
   let outBills = bills ?? null
-  let outAnalysis =
-    analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null
   let outExpenses =
     expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null
   let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
-  let mergedAnalysis = null
   let mergedExpenses = null
   let mergedDeleted = null
 
@@ -290,7 +282,6 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
         settings: settings || null,
         products: outList,
         bills: outBills,
-        analysis: outAnalysis,
         expenses: outExpenses,
         deleted: outDeleted,
       },
@@ -322,7 +313,6 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     docVersion: DOC_VERSION,
     list: outList === list ? null : outList,
     bills: mergedBills,
-    analysis: mergedAnalysis,
     expenses: mergedExpenses,
     deleted: mergedDeleted,
   })
@@ -394,10 +384,6 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     if (Array.isArray(fresh.bills)) {
       mergedBills = mergeBills(outBills || [], fresh.bills, outDeleted).list
       outBills = mergedBills
-    }
-    if (fresh.analysis && typeof fresh.analysis === 'object') {
-      mergedAnalysis = mergeAnalysis(outAnalysis || {}, fresh.analysis, outDeleted).analysis
-      outAnalysis = mergedAnalysis
     }
     if (fresh.expenses && typeof fresh.expenses === 'object') {
       mergedExpenses = mergeExpenses(outExpenses || {}, fresh.expenses, outDeleted).expenses

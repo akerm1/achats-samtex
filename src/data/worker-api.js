@@ -15,7 +15,7 @@
 /* que ce qu'elle a déjà publié (KV est cohérent à terme).             */
 /* ------------------------------------------------------------------ */
 
-import { mergeAnalysis, mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
@@ -66,10 +66,6 @@ function parseDocument(payload) {
   return {
     list: Array.isArray(payload?.products) ? payload.products : [],
     bills: Array.isArray(payload?.bills) ? payload.bills : null,
-    analysis:
-      payload?.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)
-        ? payload.analysis
-        : null,
     expenses:
       payload?.expenses && typeof payload.expenses === 'object' && !Array.isArray(payload.expenses)
         ? payload.expenses
@@ -126,14 +122,14 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, bills: null, analysis: null, expenses: null, deleted: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, expenses: null, deleted: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings, bills, analysis, expenses, deleted) {
+function buildBody(list, settings, bills, expenses, deleted) {
   return JSON.stringify({
     version: 7,
     /* Quelle application écrit : le serveur le garde, ce qui permet de
@@ -144,7 +140,6 @@ function buildBody(list, settings, bills, analysis, expenses, deleted) {
     settings: settings || null,
     products: list,
     bills: bills ?? null,
-    analysis: analysis && typeof analysis === 'object' && !Array.isArray(analysis) ? analysis : null,
     expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null,
     deleted: deleted && typeof deleted === 'object' && !Array.isArray(deleted) ? deleted : null,
   })
@@ -160,7 +155,7 @@ const MAX_CONFLICT_ATTEMPTS = 4
 /**
  * Publie la liste. En cas de conflit (révision plus récente que celle
  * que l'appareil a lue), on fusionne avec l'état distant puis on retente —
- * aucune modification n'est donc écrasée en silence. Factures, analyse et dépenses
+ * aucune modification n'est donc écrasée en silence. Factures et dépenses
  * suivent exactement le même chemin, chacune avec leur propre fusion par
  * `id` (l'état distant gagne), et les pierres tombales empêchent un élément
  * supprimé de revenir par la fusion.
@@ -171,43 +166,40 @@ const MAX_CONFLICT_ATTEMPTS = 4
  * croire à une déconnexion.
  *
  * @param {Array|null} bills factures à publier, `null` pour ne rien changer
- * @param {object|null} analysis état d'analyse à publier, `null` pour ne rien changer
  * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
  * @param {object|null} deleted registre des suppressions à publier
- * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, analysis:object|null, expenses:object|null, deleted:object|null, status:string, message?:string}>}
+ * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, expenses:object|null, deleted:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, analysis, expenses, deleted = null) {
+export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev, payloadBills, payloadAnalysis, payloadExpenses, payloadDeleted) =>
+  const send = (payload, rev, payloadBills, payloadExpenses, payloadDeleted) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings, payloadBills, payloadAnalysis, payloadExpenses, payloadDeleted),
+      body: buildBody(payload, settings, payloadBills, payloadExpenses, payloadDeleted),
     })
 
   let out = list
   let outBills = bills ?? null
-  let outAnalysis = analysis ?? null
   let outExpenses = expenses ?? null
   /* Le registre local rencontré dans un 409 s'y ajoute : la publication
      suivante doit emporter les deux, sinon les suppressions de l'autre
      appareil seraient oubliées. */
   let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
-  let mergedAnalysis = null
   let mergedExpenses = null
   let mergedDeleted = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev, outBills, outAnalysis, outExpenses, outDeleted)
+    response = await send(out, outRev, outBills, outExpenses, outDeleted)
   } catch (error) {
     return {
       ok: false,
@@ -231,17 +223,13 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
       mergedBills = mergeBills(outBills || [], current.bills, outDeleted).list
       outBills = mergedBills
     }
-    if (current.analysis && typeof current.analysis === 'object' && !Array.isArray(current.analysis)) {
-      mergedAnalysis = mergeAnalysis(outAnalysis || {}, current.analysis, outDeleted).analysis
-      outAnalysis = mergedAnalysis
-    }
     if (current.expenses && typeof current.expenses === 'object' && !Array.isArray(current.expenses)) {
       mergedExpenses = mergeExpenses(outExpenses || {}, current.expenses, outDeleted).expenses
       outExpenses = mergedExpenses
     }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev, outBills, outAnalysis, outExpenses, outDeleted)
+      response = await send(out, outRev, outBills, outExpenses, outDeleted)
     } catch (error) {
       return {
         ok: false,
@@ -284,7 +272,6 @@ export async function putRemoteList(config, list, sha, settings, bills, analysis
     docVersion,
     list: out === list ? null : out,
     bills: mergedBills,
-    analysis: mergedAnalysis,
     expenses: mergedExpenses,
     deleted: mergedDeleted,
     status: 'ok',
