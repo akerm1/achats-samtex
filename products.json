@@ -1,7 +1,7 @@
 {
   "version": 7,
   "client": "10.2.2",
-  "updatedAt": "2026-11-20T08:00:44.145Z",
+  "updatedAt": "2026-11-20T08:02:52.296Z",
   "settings": {
     "theme": "light",
     "filter": "todo",
@@ -10,7 +10,19 @@
     "layout": "card"
   },
   "products": [],
-  "bills": [],
+  "bills": [
+    {
+      "supplier": "Total achats",
+      "amount": 13619895,
+      "photo": "",
+      "note": "Total des achats sas faux frais",
+      "status": "paid",
+      "id": "bill-mwooywfx-yitqfr",
+      "paidAt": "2026-11-20T08:02:52.222Z",
+      "createdAt": "2026-11-20T08:02:52.222Z",
+      "updatedAt": "2026-11-20T08:02:52.222Z"
+    }
+  ],
   "analysis": {
     "sales": [
       {
