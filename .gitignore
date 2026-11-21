@@ -23,3 +23,7 @@ Thumbs.db
 worker/LIEN-PRIVE.txt
 worker/.wrangler/
 worker/node_modules/
+
+# Outil OpenFilm local : ne fait pas partie de l'application déployée.
+# (C'était un lien de sous-module orphelin qui cassait le build GitHub Pages.)
+openfilm/
