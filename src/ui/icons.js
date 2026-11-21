@@ -36,7 +36,9 @@ export const icons = {
 
   /* Navigation */
   home: S('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>'),
+  user: S('<circle cx="12" cy="7" r="4"/><path d="M5.5 20.5a7.5 7.5 0 0 1 13 0"/>'),
   send: S('<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>'),
+  wallet: S('<rect width="22" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/><path d="M6 19h12"/><circle cx="12" cy="16" r="1"/>'),
   trendingUp: S('<path d="M22 7 13.5 15.5a2 2 0 0 1-2.889.995L7 11 3 15"/>'),
   trendingDown: S('<path d="M22 17 13.5 8.5a2 2 0 0 0-2.889.995L7 13 3 9"/>'),
   tool: S('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),

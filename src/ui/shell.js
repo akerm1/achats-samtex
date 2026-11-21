@@ -14,10 +14,11 @@ import { icon } from './icons.js'
 import { getPrefs, getState, setPrefs, setSyncMessage, statusLabel } from '../data/store.js'
 import { getAutoExport, isDue, periodLabel } from '../app/autoexport.js'
 
-/* Les quatre écrans du dock et du rail. Les réglages vivent à part,
-   dans le pied du rail et dans la barre haute : cinq onglets égaux
+/* Les cinq écrans du dock et du rail. Les réglages vivent à part,
+   dans le pied du rail et dans la barre haute : six onglets égaux
    tassaient les libellés sur téléphone. */
 export const NAV_ITEMS = [
+  { route: 'caisse', label: 'Caisse', short: 'Caisse', icon: 'wallet' },
   { route: 'recettes', label: 'Recettes', short: 'Recettes', icon: 'trendingUp' },
   { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
   { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
@@ -28,6 +29,7 @@ const SETTINGS_ITEM = { route: 'reglages', label: 'Réglages', short: 'Réglages
 
 /* Le bouton flottant suit l'écran : il ajoute ce que l'on regarde. */
 const FAB_CONFIG = {
+  caisse: { label: 'Transfert', icon: 'send' },
   recettes: { label: 'Ajouter une recette', icon: 'plus' },
   depenses: { label: 'Ajouter une dépense', icon: 'plus' },
   liste: { label: 'Ajouter un produit', icon: 'plus' },

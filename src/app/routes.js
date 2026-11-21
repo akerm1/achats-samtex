@@ -11,10 +11,12 @@ import { billsView } from '../screens/bills/index.js'
 import { revenuesView } from '../screens/revenues/index.js'
 import { expensesView } from '../screens/expenses/index.js'
 import { settingsView } from '../screens/settings/index.js'
+import { cashflowView } from '../screens/cashflow/index.js'
 import { openProductForm } from '../screens/list/form.js'
 
 export const VIEWS = {
   recettes: revenuesView,
+  caisse: cashflowView,
   depenses: expensesView,
   liste: listView,
   factures: billsView,

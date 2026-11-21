@@ -1577,6 +1577,108 @@
   }
 }
 
+/* Caisse ----------------------------------------------------------- */
+
+.view--cashflow {
+  gap: clamp(16px, 2.4vw, 24px);
+}
+
+.screen-stats {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  min-width: 100px;
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.stat-value {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.transfer-card .badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.badge--accent {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.transfer-between {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  margin: 8px 0;
+}
+
+.transfer-dater {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+.person-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.person-card .card-amount.text-success {
+  color: var(--success);
+}
+
+.person-card .card-amount.text-danger {
+  color: var(--danger);
+}
+
+.group-title {
+  font-family: var(--font-head);
+  font-size: var(--text-md);
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
 /* Sélecteurs d'icône et de couleur -------------------------------- */
 
 .icon-picker,

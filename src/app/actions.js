@@ -32,9 +32,11 @@ import { formatOf } from '../data/exporter.js'
 import {
   getExpenses,
 } from '../data/expenses-store.js'
+import { getCashFlow, addPerson, updatePerson, deletePerson, addTransfer, updateTransfer, deleteTransfer } from '../data/cashflow-store.js'
 import { openProductForm } from '../screens/list/form.js'
 import { openBillForm } from '../screens/bills/form.js'
 import { openColorPreview, openPhotoPreview, openReceiptPreview } from '../ui/preview.js'
+import { openPersonForm, openTransferForm } from '../screens/cashflow/index.js'
 import {
   canPromptInstall,
   dismissExportNotice,
@@ -82,6 +84,7 @@ export const ACTIONS = {
     if (route === 'factures') return openBillForm()
     if (route === 'depenses') return openExpenseForm()
     if (route === 'recettes') return openRevenueForm()
+    if (route === 'caisse') return openTransferForm()
     return openProductForm()
   },
   'set-sort': (node) => setPrefs({ sort: node.value }),
@@ -186,6 +189,10 @@ export const ACTIONS = {
     }
     openExpenseForm(null, prefill)
   },
+  /* CashFlow */
+  'open-person-form': () => openPersonForm(),
+  'open-transfer-form': () => openTransferForm(),
+
   /* Une case de catégorie de l'écran : la dépense s'ouvre déjà catégorisée. */
   'quick-expense': (node) => {
     const categoryId = node?.dataset?.category || ''
