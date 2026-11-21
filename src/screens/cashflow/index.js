@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* Écran Caisse — suivi des flux d'argent entre personnes                */
 /*                                                                      */
-/* Affiche le cash disponible (recettes - factures payées - dépenses)    */
+/* Affiche le cash disponible (recettes + investissements - dépenses - factures) */
 /* et les soldes de chaque personne. Permet les transferts et l'ajout    */
 /* de nouvelles personnes.                                               */
 /* ------------------------------------------------------------------ */
