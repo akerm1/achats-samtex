@@ -14,27 +14,23 @@
 /*                                                                     */
 /*   1. Sur disque — chaque module `src/` est analysé, et `version.json`  */
 /*      est comparé à `APP_VERSION` (le repère de mise à jour).         */
-/*   2. Dans un vrai navigateur — `tools/check-page.html` importe les    */
-/*      modules de l'application, rend les cartes, clique, et renvoie   */
+/*   2. Dans un vrai navigateur — `tools/bills.html` importe les        */
+/*      modules de l'application, rend les cartes, clique, et renvoie     */
 /*      les mesures de mise en page. Les mesures comptent : on ne peut  */
 /*      pas juger une largeur « pleine » à l'œil reliably.             */
 /*                                                                     */
-/*   3. Avec `--e2e`, `tools/e2e.html` va plus loin : il lance l'appli-  */
-  /*      cation elle-même dans un iframe, règle une présentation, et lit */
-  /*      son DOM. Une passe qui rend juste les composants ne prouve pas   */
-  /*      que le réglage atteint l'écran.                                 */
-  /*                                                                     */
-  /*   4. `--only bills` lance `tools/bills.html`, dans une passe et un  */
-  /*      profil à part : le banc des factures partage le disque avec    */
-  /*      l'application qu'il pilote, et deux vues en mémoire du même    */
-  /*      stockage s'effacent l'une l'autre à chaque écriture.           */
-  /*   5. `--only expenses` lance `tools/expenses.html` : le formulaire   */
-  /*      de dépense (catégories en cases, montant, date) et la règle     */
-  /*      qu'une dépense ordinaire ne touche jamais un investissement.    */
-  /*      Profil à part, pour les mêmes raisons.                          */
-  /*   6. `--only export` lance `tools/export-check.html` : il construit  */
-  /*      le classeur et le CSV avec les vraies données, puis vérifie que */
-  /*      l'écran des Réglages mène bien au fichier.                      */
+/*   3. Avec `--only bills`, `tools/bills.html` va plus loin : il lance  */
+/*      l'application elle-même dans un iframe, règle une présentation, */
+/*      et lit son DOM. Une passe qui rend juste les composants ne prouve */
+/*      pas que le réglage atteint l'écran.                             */
+/*                                                                     */
+/*   4. `--only expenses` lance `tools/expenses.html` : le formulaire   */
+/*      de dépense (catégories en cases, montant, date) et la règle     */
+/*      qu'une dépense ordinaire ne touche jamais un investissement.    */
+/*      Profil à part, pour les mêmes raisons.                          */
+/*   5. `--only export` lance `tools/export-check.html` : il construit  */
+/*      le classeur et le CSV avec les vraies données, puis vérifie que */
+/*      l'écran des Réglages mène bien au fichier.                      */
 /* ------------------------------------------------------------------ */
 
 import { spawn } from 'node:child_process'
@@ -177,7 +173,7 @@ async function diskChecks() {
   /* L'aiguillage du partage doit transmettre TOUTES les collections. Il n'en
      transmettait que six sur sept : les dépenses étaient perdues entre le
      store et le Worker, sans erreur et sans trace. La signature est donc
-     vérifiée ici, en plus du banc de bout en bout. Les suppressions
+     vérifiée ici, en plus du banc de bout en bas. Les suppressions
      (`deleted`) et la caisse (`cashflow`) suivent le même chemin. */
   const sync = fs.readFileSync(path.join(ROOT, 'src/data/sync.js'), 'utf8')
   const router = sync.match(/export function putRemoteList\(([^)]*)\)/)
@@ -218,16 +214,14 @@ async function diskChecks() {
         : `${writerParams.length} argument(s) — collections perdues`,
   })
 
-  /* Même piège à la sauvegarde : un `exportJSON` à trois paramètres écrit un
-     fichier valide mais sans les dépenses, et personne ne le voit avant d'en
-     avoir besoin. */
+  /* La sauvegarde exporte factures ET dépenses : pas de produit à trois paramètres. */
   const backup = fs.readFileSync(path.join(ROOT, 'src/data/backup.js'), 'utf8')
   const exporter = backup.match(/export function exportJSON\(([^)]*)\)/)
   const exportParams = exporter ? exporter[1].split(',').map((p) => p.trim()) : []
   results.push({
     name: 'sauvegarde : les dépenses sortent dans le fichier JSON',
-    pass: exportParams.length === 3 && /toJSON\([^)]*\bexpenses\b[^)]*\)/.test(backup),
-    detail: exportParams.length === 3 ? 'produits, factures, dépenses' : `${exportParams.length} argument(s) — « expenses » perdu`,
+    pass: exportParams.length === 2 && /toJSON\([^)]*\bexpenses\b[^)]*\)/.test(backup),
+    detail: exportParams.length === 2 ? 'factures, dépenses' : `${exportParams.length} argument(s) — « expenses » perdu`,
   })
 
   results.push(...(await Promise.all(jsFiles(path.join(ROOT, 'src')).map(checkSyntax))))
@@ -235,7 +229,7 @@ async function diskChecks() {
   /* Les bancs du navigateur sont du JavaScript Living dans du HTML : rien ne
      les vérifie, et une simple accolade en trop les laisse muets jusqu'à
      l'expiration du délai. On les analyse donc ici, avant le navigateur. */
-  for (const page of ['check-page.html', 'e2e.html', 'preview.html', 'bills.html', 'expenses.html', 'export-check.html']) {
+  for (const page of ['bills.html', 'expenses.html', 'export-check.html']) {
     const file = path.join(ROOT, 'tools', page)
     if (!fs.existsSync(file)) continue
     const html = fs.readFileSync(file, 'utf8')
@@ -344,7 +338,7 @@ const waitFor = async (file, deadline) => {
   return null
 }
 
-async function browserChecks(page = 'check-page.html', label = 'rendu') {
+async function browserChecks(page = 'bills.html', label = 'rendu') {
   const browser = findBrowser()
   const reportFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'check-')), 'report.json')
   const server = await serve(reportFile)
@@ -356,9 +350,9 @@ async function browserChecks(page = 'check-page.html', label = 'rendu') {
 
 /* Les bancs qui lancent la vraie application : ils ont besoin de minuteries
    réelles et d'un budget plus large que le rendu de composants. */
-const REAL_APP_PAGES = ['e2e.html', 'bills.html', 'expenses.html', 'export-check.html']
+  const REAL_APP_PAGES = ['bills.html', 'expenses.html', 'export-check.html']
 
-const args = [
+  const args = [
     '--headless=new',
     '--disable-gpu',
     '--no-sandbox',
@@ -383,7 +377,7 @@ const args = [
 
   const child = spawn(browser, args, { stdio: 'ignore' })
   /* L'application réelle démarre lentement (IndexedDB, lecture distante) :
-      quatre écrans à la suite demands plus de temps qu'un rendu de composants. */
+      quatre écrans à la suite demandent plus de temps qu'un rendu de composants. */
   const budget = REAL_APP_PAGES.includes(page) ? 150_000 : TIMEOUT_MS
   const deadline = Date.now() + budget
   const payload = await waitFor(reportFile, deadline)
@@ -444,7 +438,6 @@ if (ONLY === 'bills') {
   if (!answered) {
     console.log(red('\nImpossible de vérifier le rendu.'))
   }
-  if (E2E && ONLY !== 'render') await browserChecks('e2e.html', 'application réelle')
 }
 console.log(failures === 0 ? `\n${green('Tout passe.')}\n` : `\n${red(`${failures} échec(s).`)}\n`)
 process.exit(failures === 0 ? 0 : 1)

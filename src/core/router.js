@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/* Routeur — navigation par hash (#/liste, #/reglages, …)             */
+/* Routeur — navigation par hash (#/recettes, #/caisse, …)             */
 /* ------------------------------------------------------------------ */
 
 const listeners = new Set()

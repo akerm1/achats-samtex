@@ -4,21 +4,18 @@
 /* L'ordre de `VIEWS` est aussi l'ordre des raccourcis clavier 1…5.    */
 /* ------------------------------------------------------------------ */
 
-import { navigate, startRouter } from '../core/router.js'
+import { startRouter } from '../core/router.js'
 import { setActiveRoute } from '../ui/shell.js'
-import { listView } from '../screens/list/index.js'
 import { billsView } from '../screens/bills/index.js'
 import { revenuesView } from '../screens/revenues/index.js'
 import { expensesView } from '../screens/expenses/index.js'
 import { settingsView } from '../screens/settings/index.js'
 import { cashflowView } from '../screens/cashflow/index.js'
-import { openProductForm } from '../screens/list/form.js'
 
 export const VIEWS = {
   recettes: revenuesView,
   caisse: cashflowView,
   depenses: expensesView,
-  liste: listView,
   factures: billsView,
   reglages: settingsView,
 }
@@ -29,8 +26,8 @@ export const ROUTE_ORDER = Object.keys(VIEWS)
     sur les recettes : c'est le premier chiffre du shop. */
 export const DEFAULT_ROUTE = 'recettes'
 
-/** Anciennes adresses (Accueil, Marché) : on bascule sur la liste. */
-const REDIRECT = { accueil: 'liste', marche: 'liste' }
+/** Anciennes adresses (Accueil, Marché) : on bascule sur les recettes. */
+const REDIRECT = { accueil: DEFAULT_ROUTE, marche: DEFAULT_ROUTE }
 
 let activeRoute = DEFAULT_ROUTE
 let viewHost = null
@@ -47,13 +44,5 @@ export function showRoute(route) {
 
 export function initRouting(host) {
   viewHost = host
-  startRouter((route) => {
-    /* Raccourci PWA : #/ajouter ouvre directement le formulaire produit. */
-    if (route === 'ajouter') {
-      navigate(DEFAULT_ROUTE, { replace: true })
-      openProductForm()
-      return
-    }
-    showRoute(route)
-  })
+  startRouter((route) => showRoute(route))
 }

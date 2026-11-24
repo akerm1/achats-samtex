@@ -14,7 +14,7 @@ import { toast, confirmAction } from '../../core/feedback.js'
 import * as cashflowModel from '../../data/cashflow-model.js'
 import * as cashflowStore from '../../data/cashflow-store.js'
 import * as expStore from '../../data/expenses-store.js'
-import { getBills, getProducts } from '../../data/store.js'
+import { getBills } from '../../data/store.js'
 
 /* ------------------------------------------------------------------ */
 /* State                                                              */
@@ -46,16 +46,21 @@ function header() {
   const availableCash = cashflowModel.calculateAvailableCash(revenues, bills, expenseList, expenses.investments)
   const personsWithBalances = cashflowModel.calculatePersonBalances(persons, transfers)
   const totalPersonBalances = cashflowModel.totalPersonBalances(personsWithBalances)
-  
+  /* Ce qui reste vraiment une fois les soldes des personnes honorés. */
+  const remaining = Math.round((availableCash - totalPersonBalances) * 100) / 100
+  const remainingClass = remaining >= 0 ? 'text-success' : 'text-danger'
+  const totalBalancesClass = totalPersonBalances > 0 ? 'text-success' : totalPersonBalances < 0 ? 'text-danger' : ''
+
   return `
     <header class="screen-head">
       <div class="screen-head-main">
         <span class="screen-eyebrow">Caisse &amp; Flux</span>
         <h1 class="screen-title">Caisse</h1>
         <p class="screen-sub">
-          <span class="screen-total text-${availableCash >= 0 ? 'success' : 'danger'}">
-            ${formatMoney(availableCash, settings.currency)} disponible
+          <span class="screen-total ${remainingClass}">
+            ${formatMoney(remaining, settings.currency)} reste disponible
           </span>
+          · ${formatMoney(availableCash, settings.currency)} de cash libre
           ${totalPersonBalances ? ` · ${formatMoney(totalPersonBalances, settings.currency)} avec les personnes` : ''}
         </p>
       </div>
@@ -66,7 +71,11 @@ function header() {
         </div>
         <div class="stat">
           <span class="stat-label">Soldes personnes</span>
-          <span class="stat-value">${formatMoney(totalPersonBalances, settings.currency)}</span>
+          <span class="stat-value ${totalBalancesClass}">${formatMoney(totalPersonBalances, settings.currency)}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Reste disponible</span>
+          <span class="stat-value ${remainingClass}">${formatMoney(remaining, settings.currency)}</span>
         </div>
       </div>
     </header>`

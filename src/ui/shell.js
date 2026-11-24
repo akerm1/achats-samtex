@@ -21,7 +21,6 @@ export const NAV_ITEMS = [
   { route: 'caisse', label: 'Caisse', short: 'Caisse', icon: 'wallet' },
   { route: 'recettes', label: 'Recettes', short: 'Recettes', icon: 'trendingUp' },
   { route: 'depenses', label: 'Dépenses', short: 'Dépenses', icon: 'creditCard' },
-  { route: 'liste', label: 'Liste', short: 'Liste', icon: 'cart' },
   { route: 'factures', label: 'Factures', short: 'Factures', icon: 'imagePlus' },
 ]
 
@@ -32,12 +31,11 @@ const FAB_CONFIG = {
   caisse: { label: 'Transfert', icon: 'send' },
   recettes: { label: 'Ajouter une recette', icon: 'plus' },
   depenses: { label: 'Ajouter une dépense', icon: 'plus' },
-  liste: { label: 'Ajouter un produit', icon: 'plus' },
   factures: { label: 'Ajouter une facture', icon: 'plus' },
 }
 
 const shell = {
-  activeRoute: 'liste',
+  activeRoute: 'recettes',
   installEvent: null,
   updateAvailable: false,
   offlineReady: false,
@@ -74,14 +72,11 @@ function railLink(item) {
 
 function dockTab(item) {
   const active = item.route === shell.activeRoute
-  const { pendingCount } = getState()
-  const badge =
-    item.route === 'liste' && pendingCount ? `<span class="tab-badge">${pendingCount}</span>` : ''
   return `
     <a class="tab ${active ? 'is-active' : ''}" href="#/${item.route}"
        aria-current="${active ? 'page' : 'false'}" aria-label="${esc(item.label)}">
       <span class="tab-icon">${icon(item.icon, 21)}</span>
-      <span class="tab-label">${esc(item.short || item.label)}</span>${badge}
+      <span class="tab-label">${esc(item.short || item.label)}</span>
     </a>`
 }
 
@@ -151,9 +146,6 @@ function renderFab() {
       railAdd.title = label
       const text = $('#rail-add-label')
       if (text) text.textContent = label
-      /* « N » n'ouvre un produit que sur la Liste. */
-      const kbd = railAdd.querySelector('kbd')
-      if (kbd) kbd.hidden = shell.activeRoute !== 'liste'
     }
   }
 
@@ -184,10 +176,10 @@ const PILL_CLASSES = {
 function syncTitle() {
   const { isConfigured, lastSyncAt, message } = getState()
   return [
-    isConfigured ? 'Liste partagée via GitHub' : 'Liste locale — configurez GitHub dans Réglages',
+    isConfigured ? 'Données partagées via GitHub' : 'Données locales — configurez le partage dans Réglages',
     message ? `⚠ ${message}` : '',
     lastSyncAt ? `Dernier rafraîchissement : ${formatRelative(lastSyncAt)}` : '',
-    'Cliquez pour actualiser la liste depuis GitHub',
+    'Cliquez pour actualiser les données depuis GitHub',
   ]
     .filter(Boolean)
     .join(' · ')
@@ -202,7 +194,7 @@ export function renderSyncPill() {
   if (card) {
     card.className = `sync-card ${stateClass}`
     card.innerHTML = `<span class="sync-card-head">${esc(statusLabel(status))}</span>
-      <small>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : 'Liste locale'}</small>`
+      <small>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : 'Données locales'}</small>`
     card.title = title
   }
 
@@ -303,7 +295,7 @@ export function showInstallHelp() {
         <h2>${icon('download', 18)} Installer l’application</h2>
         <p class="u-muted" style="font-size:13px;line-height:1.6">${esc(subscript)}</p>
         <p class="u-muted" style="font-size:12px;line-height:1.55">
-          Une fois installée, la liste est disponible comme une vraie application : sans navigateur,
+          Une fois installée, l’application est disponible comme une vraie application : sans navigateur,
           avec icône sur l’écran, et elle reste consultable hors-ligne. Vos données restent liées à
           votre compte GitHub.
         </p>
@@ -389,7 +381,7 @@ export function renderBanners() {
     html.push(`
       <aside class="banner banner--ok">
         <span class="banner-mark">${icon('wifiOff', 15)}</span>
-        <div class="banner-text"><strong>Disponible hors-ligne</strong><span>La liste reste consultable sans connexion.</span></div>
+        <div class="banner-text"><strong>Disponible hors-ligne</strong><span>Les données restent consultables sans connexion.</span></div>
         <button type="button" class="icon-btn icon-btn--plain" data-action="hide-offline" aria-label="Masquer">${icon('x', 14)}</button>
       </aside>`)
   }

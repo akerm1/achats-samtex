@@ -13,7 +13,7 @@
 /* aucune modification concurrente n'est écrasée en silence.            */
 /* ------------------------------------------------------------------ */
 
-import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeBills, mergeExpenses } from './backup.js'
 import { mergeCashFlow } from './cashflow-model.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
@@ -391,7 +391,6 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
     if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 80 + attempt * 120))
     outDeleted = mergeMaps(outDeleted, fresh.deleted)
     mergedDeleted = outDeleted
-    outList = mergeProducts(outList, fresh.list, outDeleted).list
     if (Array.isArray(fresh.bills)) {
       mergedBills = mergeBills(outBills || [], fresh.bills, outDeleted).list
       outBills = mergedBills

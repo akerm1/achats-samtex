@@ -12,7 +12,7 @@
 
 import { buildXlsx } from './xlsx.js'
 import { buildSheets, scopeShort } from './export-tables.js'
-import { getProducts, getBills } from './store.js'
+import { getBills } from './store.js'
 import { getExpenses } from './expenses-store.js'
 import { downloadBlob } from '../core/utils.js'
 
@@ -26,7 +26,6 @@ export const formatOf = (value) => EXPORT_FORMATS.find((item) => item.value === 
 /** Photo de toutes les collections au moment de l'export. */
 export function exportSnapshot() {
   return {
-    products: getProducts(),
     bills: getBills(),
     expenses: getExpenses(),
   }

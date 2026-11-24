@@ -18,7 +18,7 @@
 /* `src/core/update.js`).                                              */
 /* ------------------------------------------------------------------ */
 
-const VERSION = 'mes-achats-v10.4.0'
+const VERSION = 'mes-achats-v10.5.0'
 
 /* Repli hors-ligne : juste de quoi afficher l'écran d'attente. */
 const FALLBACK_URLS = [
@@ -93,7 +93,7 @@ async function offlinePage() {
     '<!doctype html><meta charset="utf-8"><title>Hors ligne</title>' +
       '<body style="font:16px system-ui;padding:2rem;max-width:32rem;margin:auto">' +
       '<h1>Hors ligne</h1><p>Connectez-vous à Internet, puis rechargez la page : ' +
-      'vos produits sont conservés sur cet appareil.</p>',
+      'vos données sont conservées sur cet appareil.</p>',
     { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
   )
 }

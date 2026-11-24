@@ -17,23 +17,18 @@ import { $, esc, formatDate, formatRelative, readableBytes } from '../../core/ut
 import { THEMES, getThemePreference } from '../../core/theme.js'
 import { isPersisted, storage } from '../../core/storage.js'
 import { toast } from '../../core/feedback.js'
-import { exportCSV, exportJSON, parseBackup } from '../../data/backup.js'
+import { exportJSON, parseBackup } from '../../data/backup.js'
 import { EXPORT_FORMATS, formatOf } from '../../data/exporter.js'
 import { EXPORT_SCOPES } from '../../data/export-tables.js'
 import { EXPORT_PERIODS, getAutoExport, isDue, nextRunAt, supportsDestination } from '../../app/autoexport.js'
 import { getExpenses, importExpenses } from '../../data/expenses-store.js'
 import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, testConnection } from '../../data/sync.js'
-import { CARD_LAYOUTS } from '../../data/products-model.js'
 import {
   getBills,
   getConfig,
   getLastSyncAt,
-  getProducts,
   getState,
-  getPrefs,
   importBills,
-  importFromGithub,
-  importProducts,
   isLoaded,
   saveConfig,
   setPrefs,
@@ -107,24 +102,6 @@ function themeTile() {
       ).join('')}
     </div>`,
     { iconName: 'sun' },
-  )
-}
-
-function layoutTile() {
-  const prefs = getPrefs()
-  const current = CARD_LAYOUTS.find((item) => item.value === prefs.layout) || CARD_LAYOUTS[0]
-  return tile(
-    'Présentation de la liste',
-    esc(current.hint),
-    `<div class="segmented" role="group" aria-label="Présentation de la liste">
-      ${CARD_LAYOUTS.map(
-        (item) => `
-        <button type="button" data-layout-choice="${item.value}" class="${item.value === current.value ? 'is-active' : ''}">
-          ${icon(item.icon, 15)} ${esc(item.label)}
-        </button>`,
-      ).join('')}
-    </div>`,
-    { iconName: 'grid' },
   )
 }
 
@@ -223,8 +200,8 @@ function shareTile() {
   const expenses = getExpenses().expenses.length
   const description =
     selected === 'worker'
-      ? 'La liste, les factures et les dépenses sont enregistrées dans votre <strong>lien privé</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
-      : 'La liste, les factures et les dépenses sont enregistrées dans le fichier <code>products.json</code> d\'un <strong>dépôt GitHub</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+      ? 'Les factures, les dépenses et la caisse sont enregistrées dans votre <strong>lien privé</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
+      : 'Les factures, les dépenses et la caisse sont enregistrées dans le fichier <code>products.json</code> d\'un <strong>dépôt GitHub</strong> : les mêmes données s\'affichent sur tous vos appareils, au rafraîchissement de la page ou d\'un clic sur « Synchroniser ».'
   const connection =
     config?.provider === 'worker'
       ? 'Connecté à votre lien privé.'
@@ -244,11 +221,6 @@ function shareTile() {
           ${selected === 'worker' ? workerFields(config) : githubFields(config)}
           <div class="u-row u-wrap">
             <span class="form-message${messageKind ? ` is-${messageKind}` : ''}" data-role="github-status">${message ? esc(message) : ''}</span>
-            ${
-              config?.provider === 'worker'
-                ? `<button type="button" class="btn btn--secondary btn--sm" data-action="import-from-github">${icon('download', 13)} Importer depuis GitHub</button>`
-                : ''
-            }
             <button type="button" class="btn btn--ghost btn--sm" data-action="test-share">${icon('link', 13)} Tester la connexion</button>
             <button type="submit" class="btn btn--primary btn--sm">${icon('save', 13)} Enregistrer</button>
             ${
@@ -268,10 +240,6 @@ function shareTile() {
           <div class="kv-item">
             <small>Dernière synchro</small>
             <strong>${lastSyncAt ? esc(formatRelative(lastSyncAt)) : '—'}</strong>
-          </div>
-          <div class="kv-item">
-            <small>Produits</small>
-            <strong>${getProducts().length}</strong>
           </div>
           <div class="kv-item">
             <small>Factures</small>
@@ -294,15 +262,14 @@ function shareTile() {
 
 function dataTile() {
   return tile(
-    'Sauvegarde & export',
-    'Enregistrez la liste dans un fichier, à ouvrir ensuite dans Excel (CSV) ou à réimporter dans l\'application (JSON). L\'import en mode « fusion » met à jour les produits existants et ajoute les nouveaux.',
+    'Sauvegarde & import',
+    'Enregistrez les factures et les dépenses dans un fichier JSON, à réimporter ensuite dans l\'application. L\'import en mode « fusion » met à jour les éléments existants et ajoute les nouveaux.',
     `<div class="u-row u-wrap">
       <button type="button" class="btn btn--secondary btn--sm" data-action="export-json">${icon('save', 13)} Sauvegarde JSON</button>
-      <button type="button" class="btn btn--secondary btn--sm" data-action="export-csv">${icon('download', 13)} Export CSV</button>
       <button type="button" class="btn btn--secondary btn--sm" data-action="import-json">${icon('upload', 13)} Importer</button>
       <select class="select" data-role="import-mode" aria-label="Mode d'import">
-        <option value="merge">Fusionner avec la liste</option>
-        <option value="replace">Remplacer toute la liste</option>
+        <option value="merge">Fusionner avec les données</option>
+        <option value="replace">Remplacer toutes les données</option>
       </select>
       <input type="file" accept=".json,application/json" data-role="import-file" hidden>
     </div>`,
@@ -353,7 +320,7 @@ function exportTile() {
 
   return tile(
     'Export Excel & CSV',
-    `Un fichier pour le tableur, avec une feuille par table (produits, dépenses, recettes,
+    `Un fichier pour le tableur, avec une feuille par table (dépenses, recettes,
      investissements, catégories, factures) et un résumé des chiffres. Le CSV suit la
      convention française : point-virgule et virgule décimale.`,
     `<div class="export-panel">
@@ -404,11 +371,10 @@ function exportTile() {
 }
 
 function dangerTile() {
-  const products = getProducts().length
   const bills = getBills().length
-  const what = [`${products} produit${products > 1 ? 's' : ''}`, `${bills} facture${bills > 1 ? 's' : ''}`].join(' et ')
+  const what = `${bills} facture${bills > 1 ? 's' : ''}`
   return tile(
-    'Vider la liste',
+    'Vider les factures',
     `Supprime ${what} de cet appareil${getConfig() ? ' et du fichier de partage' : ''}. Pensez à exporter une sauvegarde avant.`,
     `<button type="button" class="btn btn--danger btn--sm" data-action="clear-all">${icon('trash', 13)} Tout supprimer</button>`,
     { iconName: 'trash' },
@@ -461,9 +427,8 @@ function aboutTile() {
   const state = getState()
   const { bytes = 0, photos = 0, photoBytes = 0, separated = false } = state.usage || {}
   /* Les tickets de facture sont déjà comptés dans `photos` (le store mesure
-     les deux collections) : les compter une fois de plus ferait annoncer un
+     les factures) : les compter une fois de plus ferait annoncer un
      stockage plus lourd qu'il ne l'est. */
-  const products = state.products?.length || 0
   const bills = state.bills?.length || 0
   const full = Boolean(state.storageFull)
   const hasPhotos = photos > 0
@@ -477,7 +442,7 @@ function aboutTile() {
       full
         ? `<div class="form-message is-error" data-role="storage-warning">
              <strong>Stockage du navigateur plein.</strong> Vos photos ne sont plus enregistrées sur cet appareil :
-             la liste s'affiche encore, mais elle sera perdue à la fermeture.
+             les données s'affichent encore, mais elles seront perdues à la fermeture.
              Exportez une sauvegarde JSON, puis retirez des photos.
            </div>`
         : ''
@@ -498,16 +463,16 @@ function aboutTile() {
     ${tile(
       'Stockage sur cet appareil',
       `<span data-role="storage-usage">
-         ${products} produit${products > 1 ? 's' : ''}${bills ? ` · ${bills} facture${bills > 1 ? 's' : ''}` : ''}
+         ${bills} facture${bills > 1 ? 's' : ''}
          · ${photos} photo${photos > 1 ? 's' : ''}
-         ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors de la liste' : `${photoShare} % du poids`})` : ''}
+         ${hasPhotos ? ` (${separated ? readableBytes(photoBytes) + ' hors du stockage texte' : `${photoShare} % du poids`})` : ''}
        </span>
        <span class="setting-sub" data-role="storage-quota">Espace accordé par le navigateur : mesure en cours…</span>
        <span class="setting-sub" data-role="storage-detail">
          ${
            separated
-             ? `Liste : ${readableBytes(bytes)}${hasPhotos ? ` · photos : ${readableBytes(photoBytes)} stockées à part, hors de la limite du navigateur.` : ''}`
-             : `Liste : ${readableBytes(bytes)} sur cet appareil${hasPhotos ? `, photos comprises.` : '.'} ${
+             ? `Données : ${readableBytes(bytes)}${hasPhotos ? ` · photos : ${readableBytes(photoBytes)} stockées à part, hors de la limite du navigateur.` : ''}`
+             : `Données : ${readableBytes(bytes)} sur cet appareil${hasPhotos ? `, photos comprises.` : '.'} ${
                  full ? '' : `Environ ${ceiling} % de marge restante.`
                }`
          }
@@ -518,8 +483,8 @@ function aboutTile() {
 
     ${tile(
       'Raccourcis clavier',
-      `<code>N</code> nouveau produit · <code>/</code> rechercher · <code>Échap</code> fermer une fenêtre ·
-       <code>1</code><code>2</code><code>3</code><code>4</code> changer de vue · <code>S</code> synchroniser.`,
+      `<code>/</code> rechercher dans les factures · <code>Échap</code> fermer une fenêtre ·
+       <code>1</code><code>2</code><code>3</code><code>4</code><code>5</code> changer de vue · <code>S</code> synchroniser.`,
       '',
       { wide: true, iconName: 'sparkles' },
     )}`
@@ -581,7 +546,7 @@ function template() {
         </div>
       </header>
 
-      ${group('Interface &amp; Affichage', themeTile() + layoutTile(), 'display', true)}
+      ${group('Interface &amp; Affichage', themeTile(), 'display', true)}
       ${group('Synchronisation &amp; Partage', shareTile(), 'sync')}
       ${group('Gestion des Données', dataTile() + exportTile() + dangerTile(), 'data')}
       ${group('Informations &amp; Assistance', installTile() + updateTile() + aboutTile(), 'info')}
@@ -659,14 +624,7 @@ async function handleTest() {
   setSyncMessage(result.message, result.ok ? 'ok' : 'error')
 }
 
-/** Migration en un clic : la liste GitHub (publique) vers le lien privé. */
-async function handleImportFromGithub() {
-  setSyncMessage('Copie de la liste publiée sur GitHub…')
-  const result = await importFromGithub()
-  setSyncMessage(result.message, result.ok ? 'ok' : 'error')
-  if (result.ok) toast(`${result.count} produit(s) copiés vers le lien privé.`, { type: 'ok' })
-}
-
+/** Import d'une sauvegarde : factures et dépenses. */
 async function handleImport(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -684,17 +642,15 @@ async function handleImport(event) {
     return
   }
   const mode = host.querySelector('[data-role="import-mode"]')?.value || 'merge'
-  const result = importProducts(parsed.products, { mode })
   const billResult = importBills(parsed.bills, { mode })
-  const expensesResult = importExpenses(parsed.expenses, { mode })
+  const expensesResult = parsed.expenses
+    ? importExpenses(parsed.expenses, { mode })
+    : { added: 0, updated: 0 }
   const details = [
-    mode === 'replace'
-      ? `${parsed.products.length} produit(s)`
-      : `${result.added} produit(s) ajouté(s), ${result.updated} mis à jour`,
     parsed.bills.length ? `${billResult.added + billResult.updated} facture(s)` : '',
     parsed.expenses ? `${expensesResult.added + expensesResult.updated} dépense(s)/investissement(s)/recette(s)` : '',
   ].filter(Boolean)
-  toast(`${details.join(' · ')}.`, { type: 'ok' })
+  toast(`${details.join(' · ') || 'Rien à importer'}.`, { type: 'ok' })
 }
 
 /**
@@ -734,20 +690,6 @@ function bind() {
     })
   })
 
-  host.querySelectorAll('[data-layout-choice]').forEach((button) => {
-    button.addEventListener('click', () => {
-      setPrefs({ layout: button.dataset.layoutChoice })
-      host.querySelectorAll('[data-layout-choice]').forEach((other) =>
-        other.classList.toggle('is-active', other === button),
-      )
-      /* Le texte d'aide décrit le mode choisi. On le remplace sur place :
-         redessiner la vue effacerait les saisies de la section suivante. */
-      const chosen = CARD_LAYOUTS.find((item) => item.value === button.dataset.layoutChoice)
-      const copy = button.closest('.setting')?.querySelector('.setting-copy p')
-      if (chosen && copy) copy.textContent = chosen.hint
-    })
-  })
-
   host.querySelectorAll('[data-provider-choice]').forEach((button) => {
     button.addEventListener('click', () => {
       readDraft()
@@ -778,7 +720,6 @@ function bind() {
   paintQuota()
 
   host.querySelector('[data-action="test-share"]')?.addEventListener('click', handleTest)
-  host.querySelector('[data-action="import-from-github"]')?.addEventListener('click', handleImportFromGithub)
   host.querySelector('[data-action="check-update"]')?.addEventListener('click', handleCheckUpdate)
   host.querySelector('[data-action="import-json"]')?.addEventListener('click', () =>
     host.querySelector('[data-role="import-file"]')?.click(),
@@ -811,7 +752,6 @@ function dataSignature() {
     state.loaded,
     state.status,
     state.lastSyncAt,
-    state.products.length,
     state.bills.length,
     getExpenses().expenses.length,
     state.isConfigured,
@@ -824,7 +764,7 @@ function dataSignature() {
     state.config?.branch || '',
     state.config?.endpoint || '',
     /* Le poids affiché et l'avertissement de quota doivent suivre les
-       enregistrements, pas seulement le nombre de produits. */
+       enregistrements, pas seulement le nombre de factures. */
     state.storageProblem || '',
     state.usage?.bytes || 0,
     state.usage?.photos || 0,

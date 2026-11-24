@@ -74,31 +74,7 @@
   /* --- Données de départ : un peu de tout, y compris les cas tordus --- */
   const NOTE_NEWLINE = 'Commande urgente\nà retirer samedi\tmatin'
 
-  localStorage.setItem(
-    'purchase-gros-list-v2',
-    JSON.stringify([
-      {
-        id: 'p1',
-        name: 'Ceinture satin ivoire',
-        type: 'ceinture',
-        color: 'ivoire',
-        colorRgb: '#efe3d3',
-        supplier: 'Bab Ezzouar',
-        qty: 25,
-        unit: 'piece',
-        price: 1.5,
-        priority: 'haute',
-        status: 'bought',
-        boughtAt: '2026-11-10',
-        photo: 'data:image/jpeg;base64,AAAA',
-        note: NOTE_NEWLINE,
-        createdAt: '2026-11-01T09:00:00.000Z',
-        updatedAt: '2026-11-10T18:00:00.000Z',
-      },
-      { id: 'p2', name: 'Tulle rose bébé', type: 'tulle', color: 'rose bébé', supplier: 'Tafna', qty: 4, unit: 'metre', price: 350, priority: 'normale' },
-      { id: 'p3', name: 'Fil noir', type: 'fil', qty: 2, unit: 'piece', price: null, priority: 'basse' },
-    ]),
-  )
+
 
   localStorage.setItem(
     'purchase-gros-bills-v1',
@@ -129,7 +105,6 @@
   /* --- Modules de l'application ------------------------------------- */
   const { buildExportFile, exportSnapshot } = await import('../src/data/exporter.js')
   const { buildSheets, sumColumn } = await import('../src/data/export-tables.js')
-  const productsModel = await import('../src/data/products-model.js')
   const expModel = await import('../src/data/expenses-model.js')
   const billsModel = await import('../src/data/bills-model.js')
   log('modules chargés')
@@ -139,14 +114,13 @@
   const byName = (name) => sheets.find((sheet) => sheet.name === name)
 
   /* --- 1. Complétude ------------------------------------------------ */
-  check('feuilles : neuf, résumé compris', sheets.length === 9, sheets.map((sheet) => sheet.name).join(', '))
+  check('feuilles : huit, résumé compris', sheets.length === 8, sheets.map((sheet) => sheet.name).join(', '))
   check(
     'feuilles : une par collection',
     [
       'Résumé',
       'Par jour',
       'Par mois',
-      'Produits',
       'Dépenses',
       'Recettes',
       'Investissements (dépenses)',
@@ -156,18 +130,6 @@
     '',
   )
 
-  check(
-    'produits : toutes les lignes',
-    byName('Produits').rows.length === snapshot.products.length,
-    `${byName('Produits').rows.length} / ${snapshot.products.length}`,
-  )
-  check(
-    'produits : identifiant et dates exportés',
-    byName('Produits').columns.some((column) => column.key === 'id') &&
-      byName('Produits').columns.some((column) => column.key === 'updatedAt') &&
-      byName('Produits').rows.every((row) => row.id),
-    '',
-  )
   check(
     'dépenses : toutes les lignes',
     byName('Dépenses').rows.length === snapshot.expenses.expenses.length,
@@ -193,7 +155,6 @@
   const revenueRows = byName('Recettes').rows
   const investmentRows = byName('Investissements (dépenses)').rows
   const billRows = byName('Factures').rows
-  const productRows = byName('Produits').rows
 
   check(
     'total dépenses = celui de l’application',
@@ -269,11 +230,6 @@
     `${money(sumColumn(billRows, 'amount'))} / ${money(billsModel.sumBills(snapshot.bills).total)}`,
   )
   check(
-    'valeur des produits = celle de l’application',
-    money(sumColumn(productRows, 'total')) === money(productsModel.sumTotal(snapshot.products.map(productsModel.productView)).total),
-    `${money(sumColumn(productRows, 'total'))} / ${money(productsModel.sumTotal(snapshot.products.map(productsModel.productView)).total)}`,
-  )
-  check(
     'transfert : le montant remonte dans la ligne d’investissement',
     investmentRows[0].transferred === 5000,
     investmentRows[0].transferred,
@@ -311,7 +267,7 @@
   const text = await csv.blob.text()
   check('csv : BOM UTF-8', csvHead[0] === 0xef && csvHead[1] === 0xbb && csvHead[2] === 0xbf, [...csvHead].join(','))
   check('csv : séparateur point-virgule', text.includes(';"'), '')
-  check('csv : accents intacts', text.includes('rose bébé'), '')
+  check('csv : accents intacts', text.includes('Outils'), '')
   check('csv : virgule décimale', text.includes('1200,75'), '')
   check('csv : identifiants exportés', text.includes('"Identifiant"'), '')
 
@@ -349,8 +305,8 @@
   const period = doc.querySelector('[data-action="set-export-period"]')
   check('rythme : quatre choix', [...period.options].map((option) => option.value).join(',') === 'off,day,week,month', '')
   check(
-    'contenu : cinq portées, dont « toutes les données »',
-    [...doc.querySelector('[data-action="set-export-scope"]').options].map((option) => option.value).join(',') === 'all,products,expenses,revenues,bills',
+    'contenu : quatre portées, dont « toutes les données »',
+    [...doc.querySelector('[data-action="set-export-scope"]').options].map((option) => option.value).join(',') === 'all,expenses,revenues,bills',
     '',
   )
 

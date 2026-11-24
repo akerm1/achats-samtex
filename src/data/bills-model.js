@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* Factures (Bills) — tickets et factures fournisseurs                 */
 /*                                                                     */
-/* Hors de la liste produits : une facture a son propre cycle          */
+/* Les factures ont leur propre cycle                                  */
 /* (en attente → payée) et ne voyage que par le lien privé Cloudflare. */
 /* ------------------------------------------------------------------ */
 

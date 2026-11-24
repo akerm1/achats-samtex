@@ -16,12 +16,10 @@
 /* voyagent par la sauvegarde JSON, qui est binaire-compatible.         */
 /* ------------------------------------------------------------------ */
 
-import { CATEGORIES, PRIORITIES, UNITS } from './products-model.js'
 import { categoryLabel } from './expenses-model.js'
 
 export const EXPORT_SCOPES = [
   { value: 'all', label: 'Toutes les données', short: 'tout' },
-  { value: 'products', label: 'Produits', short: 'produits' },
   { value: 'expenses', label: 'Dépenses', short: 'depenses' },
   { value: 'revenues', label: 'Recettes', short: 'recettes' },
   { value: 'bills', label: 'Factures', short: 'factures' },
@@ -38,9 +36,6 @@ const stamp = (value) => {
   const text = String(value || '')
   return text ? text.replace('T', ' ').slice(0, 16) : ''
 }
-const unitShort = (value) => UNITS.find((unit) => unit.value === value)?.short || value || ''
-const priorityLabel = (value) => PRIORITIES.find((item) => item.value === value)?.label || ''
-const categoryName = (value) => CATEGORIES[value]?.label || value || 'Autre'
 const yesNo = (value) => (value ? 'oui' : '')
 const money = (value) => (typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 100) / 100 : null)
 
@@ -56,39 +51,6 @@ export function sumColumn(rows, key) {
 
 /** Nombre de lignes réellement renseignées dans une colonne. */
 const filled = (rows, key) => (rows || []).filter((row) => row?.[key] !== null && row?.[key] !== undefined && row?.[key] !== '').length
-
-/* --- Produits ------------------------------------------------------ */
-
-/** Prix total d'une ligne, seulement quand le prix est connu. */
-function lineTotal(product) {
-  const price = Number(product.price)
-  if (!Number.isFinite(price) || price <= 0) return null
-  const qty = Number(product.qty) || 1
-  return Math.round(price * qty * 100) / 100
-}
-
-function productRows(products) {
-  return (products || []).map((product) => ({
-    id: product.id,
-    name: product.name || '(sans nom)',
-    category: categoryName(product.type),
-    color: product.color || '',
-    hex: product.colorRgb || '',
-    supplier: product.supplier || '',
-    qty: Number(product.qty) || 1,
-    unit: unitShort(product.unit),
-    price: money(product.price),
-    total: lineTotal(product),
-    priority: priorityLabel(product.priority),
-    status: product.status === 'bought' ? 'Acheté' : 'À acheter',
-    boughtAt: day(product.boughtAt),
-    photo: yesNo(product.photo),
-    receipt: yesNo(product.receipt),
-    note: product.note || '',
-    createdAt: stamp(product.createdAt),
-    updatedAt: stamp(product.updatedAt),
-  }))
-}
 
 /* --- Dépenses / Recettes / Investissements / Catégories ------------ */
 
@@ -326,27 +288,6 @@ function monthlySheet(rows) {
 
 /* --- Colonnes ------------------------------------------------------ */
 
-const PRODUCT_COLUMNS = [
-  { key: 'id', label: 'Identifiant', width: 22 },
-  { key: 'name', label: 'Nom', width: 30 },
-  { key: 'category', label: 'Catégorie', width: 16 },
-  { key: 'color', label: 'Couleur', width: 16 },
-  { key: 'hex', label: 'Teinte', width: 10 },
-  { key: 'supplier', label: 'Fournisseur', width: 22 },
-  { key: 'qty', label: 'Quantité', width: 10 },
-  { key: 'unit', label: 'Unité', width: 8 },
-  { key: 'price', label: 'Prix unitaire', width: 13 },
-  { key: 'total', label: 'Total', width: 12 },
-  { key: 'priority', label: 'Priorité', width: 12 },
-  { key: 'status', label: 'Statut', width: 11 },
-  { key: 'boughtAt', label: 'Acheté le', width: 12 },
-  { key: 'photo', label: 'Photo', width: 8 },
-  { key: 'receipt', label: 'Ticket', width: 8 },
-  { key: 'note', label: 'Détails', width: 32 },
-  { key: 'createdAt', label: 'Ajouté le', width: 17 },
-  { key: 'updatedAt', label: 'Modifié le', width: 17 },
-]
-
 const EXPENSE_COLUMNS = [
   { key: 'id', label: 'Identifiant', width: 22 },
   { key: 'date', label: 'Date', width: 12 },
@@ -416,7 +357,6 @@ const BILL_COLUMNS = [
  * banc de vérification le verrait.
  */
 function summarySheet(tables, currency) {
-  const products = tables.products.rows
   const expenses = tables.expenses.rows
   const revenues = tables.revenues.rows
   const investments = tables.investments.rows
@@ -424,7 +364,6 @@ function summarySheet(tables, currency) {
   const bills = tables.bills.rows
   const daily = tables.daily.rows
 
-  const pending = products.filter((row) => row.status === 'À acheter')
   const totalExpense = sumColumn(expenses, 'amount')
   const totalRevenue = sumColumn(revenues, 'amount')
   const totalInvested = sumColumn(investments, 'amount')
@@ -433,13 +372,6 @@ function summarySheet(tables, currency) {
   const rows = [
     { label: 'Exporté le', value: stamp(new Date().toISOString()) },
     { label: 'Devise', value: currency },
-
-    { label: 'Produits — lignes', value: products.length },
-    { label: 'Produits — à acheter', value: pending.length },
-    { label: 'Produits — achetés', value: products.filter((row) => row.status === 'Acheté').length },
-    { label: 'Produits — avec photo', value: filled(products, 'photo') },
-    { label: 'Produits — valeur estimée des achats à faire', value: sumColumn(pending, 'total') },
-    { label: 'Produits — valeur totale', value: sumColumn(products, 'total') },
 
     { label: 'Dépenses — lignes', value: expenses.length },
     { label: 'Dépenses — total', value: totalExpense },
@@ -482,7 +414,7 @@ function summarySheet(tables, currency) {
 
 /**
  * Construit les feuilles (ou sections CSV) demandées.
- * @param {{products?: Array, bills?: Array, expenses?: object}} snapshot
+ * @param {{bills?: Array, expenses?: object}} snapshot
  * @param {string} scope `all` ou une collection
  */
 export function buildSheets(snapshot, scope = 'all') {
@@ -493,7 +425,6 @@ export function buildSheets(snapshot, scope = 'all') {
   const daily = dailyActivity(expensesState.expenses, expensesState.revenues, categories)
 
   const tables = {
-    products: { name: 'Produits', columns: PRODUCT_COLUMNS, rows: productRows(data.products) },
     expenses: { name: 'Dépenses', columns: EXPENSE_COLUMNS, rows: expenseRows(expensesState.expenses, categories, expensesState.investments) },
     revenues: { name: 'Recettes', columns: REVENUE_COLUMNS, rows: revenueRows(expensesState.revenues) },
     investments: { name: 'Investissements (dépenses)', columns: INVESTMENT_COLUMNS, rows: investmentRows(expensesState.investments, expensesState.expenses) },
@@ -502,7 +433,6 @@ export function buildSheets(snapshot, scope = 'all') {
     daily: activityDailySheet(daily.rows, daily.categoryColumns),
   }
 
-  if (scope === 'products') return [tables.products]
   if (scope === 'expenses') return [expenseDailySheet(daily.rows, daily.categoryColumns), tables.expenses]
   if (scope === 'revenues') return [revenueDailySheet(daily.rows), tables.revenues]
   if (scope === 'bills') return [tables.bills]
@@ -511,7 +441,6 @@ export function buildSheets(snapshot, scope = 'all') {
     summarySheet(tables, currency),
     tables.daily,
     monthlySheet(daily.rows),
-    tables.products,
     tables.expenses,
     tables.revenues,
     tables.investments,

@@ -1,8 +1,7 @@
 /* ------------------------------------------------------------------ */
 /* Raccourcis clavier                                                  */
 /*                                                                     */
-/*   N        nouveau produit                                          */
-/*   /        chercher dans l'écran courant (liste ou factures)         */
+/*   /        chercher dans les factures                               */
 /*   S        synchroniser                                             */
 /*   1…5      aller à l'écran correspondant                            */
 /*                                                                     */
@@ -12,8 +11,6 @@
 
 import { isTyping } from '../core/dom.js'
 import { navigate } from '../core/router.js'
-import { openProductForm } from '../screens/list/form.js'
-import { listView } from '../screens/list/index.js'
 import { billsView } from '../screens/bills/index.js'
 import { ACTIONS } from './actions.js'
 import { ROUTE_ORDER, getActiveRoute } from './routes.js'
@@ -25,20 +22,10 @@ export function initShortcuts() {
     if (document.querySelector('dialog[open]')) return
     const key = event.key.toLowerCase()
 
-    if (key === 'n') {
-      event.preventDefault()
-      openProductForm()
-      return
-    }
-
     if (key === '/') {
       event.preventDefault()
-      const route = getActiveRoute()
-      if (route === 'factures') billsView.focusSearch()
-      else {
-        if (route !== 'liste') navigate('liste')
-        requestAnimationFrame(() => listView.focusSearch())
-      }
+      if (getActiveRoute() !== 'factures') navigate('factures')
+      requestAnimationFrame(() => billsView.focusSearch())
       return
     }
 

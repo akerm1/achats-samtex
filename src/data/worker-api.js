@@ -15,7 +15,7 @@
 /* que ce qu'elle a déjà publié (KV est cohérent à terme).             */
 /* ------------------------------------------------------------------ */
 
-import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeBills, mergeExpenses } from './backup.js'
 import { mergeCashFlow } from './cashflow-model.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
@@ -226,8 +226,7 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
     if (attempt > 0) await conflictDelay(attempt)
     outDeleted = mergeMaps(outDeleted, current.deleted)
     mergedDeleted = outDeleted
-    const merged = mergeProducts(out, current.products, outDeleted)
-    out = merged.list
+    /* Le document part toujours avec un tableau products vide : pas de fusion produit. */
     if (Array.isArray(current.bills)) {
       mergedBills = mergeBills(outBills || [], current.bills, outDeleted).list
       outBills = mergedBills
