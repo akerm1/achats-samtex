@@ -178,21 +178,21 @@ async function diskChecks() {
      transmettait que six sur sept : les dépenses étaient perdues entre le
      store et le Worker, sans erreur et sans trace. La signature est donc
      vérifiée ici, en plus du banc de bout en bout. Les suppressions
-     (`deleted`) suivent le même chemin : sans elles, un produit supprimé
-     revient à la fusion suivante. */
+     (`deleted`) et la caisse (`cashflow`) suivent le même chemin. */
   const sync = fs.readFileSync(path.join(ROOT, 'src/data/sync.js'), 'utf8')
   const router = sync.match(/export function putRemoteList\(([^)]*)\)/)
   const params = router ? router[1].split(',').map((p) => p.trim()) : []
   results.push({
-    name: 'aiguillage : dépenses et suppressions transmises aux deux fournisseurs',
+    name: 'aiguillage : dépenses, suppressions et caisse transmises aux deux fournisseurs',
     pass:
-      params.length === 7 &&
+      params.length === 8 &&
       /\bdeleted\b/.test(params.join(',')) &&
-      /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\)/.test(sync) &&
-      /github\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\)/.test(sync),
+      /\bcashflow\b/.test(params.join(',')) &&
+      /worker\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\bcashflow\b[^)]*\)/.test(sync) &&
+      /github\.putRemoteList\([^)]*\bexpenses\b[^)]*\bdeleted\b[^)]*\bcashflow\b[^)]*\)/.test(sync),
     detail:
-      params.length === 7
-        ? 'sept arguments transmis au lien privé et à GitHub'
+      params.length === 8
+        ? 'huit arguments transmis au lien privé et à GitHub'
         : `${params.length} argument(s) — une collection est perdue`,
   })
 
@@ -205,15 +205,16 @@ async function diskChecks() {
   results.push({
     name: 'github : le fichier porte les collections',
     pass:
-      writerParams.length === 7 &&
+      writerParams.length === 8 &&
       /version:\s*DOC_VERSION/.test(githubSource) &&
       /\bproducts:\s*outList/.test(githubSource) &&
       /\bbills:\s*outBills/.test(githubSource) &&
       /\bexpenses:\s*outExpenses/.test(githubSource) &&
+      /\bcashflow:\s*outCashflow/.test(githubSource) &&
       /\bdeleted:\s*outDeleted/.test(githubSource),
     detail:
-      writerParams.length === 7
-        ? 'liste, factures, dépenses, suppressions'
+      writerParams.length === 8
+        ? 'liste, factures, dépenses, caisse, suppressions'
         : `${writerParams.length} argument(s) — collections perdues`,
   })
 

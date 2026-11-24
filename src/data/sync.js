@@ -49,15 +49,16 @@ export function fetchRemoteList(config) {
     : github.fetchRemoteList(config)
 }
 
-export function putRemoteList(config, list, sha, settings, bills, expenses, deleted) {
+export function putRemoteList(config, list, sha, settings, bills, expenses, deleted, cashflow) {
   /* Le document porte TOUT le partage, chez les deux fournisseurs : liste,
-     factures et dépenses. Chaque argument doit être transmis ici : un seul
-     oubli et la collection concernée reste sur l'appareil sans que rien ne
-     le dise — c'est exactement ce qui est arrivé aux dépenses entre la 9.6
-     et la 9.6.5, l'aiguillage n'ayant que six paramètres. */
+     factures, dépenses, suppressions et caisse. Chaque argument doit être
+     transmis ici : un seul oubli et la collection concernée reste sur
+     l'appareil sans que rien ne le dise — c'est exactement ce qui est arrivé
+     aux dépenses entre la 9.6 et la 9.6.5, l'aiguillage n'ayant que six
+     paramètres. */
   return providerOf(config) === PROVIDER_WORKER
-    ? worker.putRemoteList(config, list, sha, settings, bills, expenses, deleted)
-    : github.putRemoteList(config, list, sha, settings, bills, expenses, deleted)
+    ? worker.putRemoteList(config, list, sha, settings, bills, expenses, deleted, cashflow)
+    : github.putRemoteList(config, list, sha, settings, bills, expenses, deleted, cashflow)
 }
 
 export function testConnection(config) {

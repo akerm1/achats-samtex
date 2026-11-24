@@ -110,6 +110,13 @@ const EXPENSES = {
   settings: { currency: 'DZD' },
 }
 
+/* État de caisse de référence : personnes, transferts, devise. */
+const CASHFLOW = {
+  persons: [{ id: 'person_a', name: 'Moh', balance: 100 }, { id: 'person_b', name: 'Salim', balance: 0 }],
+  transfers: [{ id: 'transfer_1', from: 'person_a', to: 'person_b', amount: 40 }],
+  settings: { currency: 'DZD' },
+}
+
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: !!pass, detail: detail ? String(detail) : '' })
   document.getElementById('log').insertAdjacentHTML('beforeend', `\n<p class="${pass ? 'ok' : 'non'}">${pass ? 'ok' : 'NON'} — ${name}${detail ? ` (${detail})` : ''}</p>`)
@@ -245,7 +252,7 @@ async function workerBench() {
   check('worker : un document vide ne prétend pas avoir des dépenses', 'expenses' in empty && empty.expenses === null, `expenses = ${JSON.stringify(empty.expenses)}`)
 
   const written = await (await call('PUT', { products: [{ id: 'p1' }], expenses: EXPENSES }, 2)).json()
-  check('worker : l’écriture annonce la version 7', written.version === 7, String(written.version))
+  check('worker : l’écriture annonce la version 8', written.version === 8, String(written.version))
   check('worker : l’écriture annonce que les dépenses passent', written.expenses === true, String(written.expenses))
 
   const withExpenses = await (await call('GET')).json()
@@ -273,7 +280,7 @@ async function workerBench() {
      sur `expenses: null`. */
   kv.set('doc', JSON.stringify({ version: 3, rev: 50, products: [{ id: 'vieux' }] }))
   const oldDoc = await (await call('GET')).json()
-  check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 7, `version = ${oldDoc.version}`)
+  check('worker : un vieux document ne fait pas passer le Worker pour périmé', oldDoc.version === 8, `version = ${oldDoc.version}`)
   check('worker : un vieux document ne prétend pas avoir des dépenses', oldDoc.expenses === null, JSON.stringify(oldDoc.expenses))
 
   /* L'appareil qui écrit se nomme : sans cela, un téléphone resté sur une
@@ -300,6 +307,24 @@ async function workerBench() {
     'worker : le conflit renvoie les suppressions à fusionner',
     deletedConflict.status === 409 && deletedBody.deleted?.['products|p-ghost'] === 1700000000000,
     `${deletedConflict.status} · ${JSON.stringify(deletedBody.deleted)}`,
+  )
+
+  /* La caisse suit le même contrat que les dépenses : elle doit revenir
+     intacte, et une écriture d'une application antérieure ne doit pas
+     l'effacer. */
+  await call('PUT', { products: [{ id: 'p1' }], cashflow: CASHFLOW }, 70)
+  const withCash = await (await call('GET')).json()
+  check(
+    'worker : la caisse publiée revient intacte',
+    withCash.cashflow?.persons?.[0]?.id === 'person_a' && withCash.cashflow?.transfers?.[0]?.id === 'transfer_1',
+    `${withCash.cashflow?.persons?.length ?? 0} personne(s), ${withCash.cashflow?.transfers?.length ?? 0} transfert(s)`,
+  )
+  await call('PUT', { products: [{ id: 'p1' }] }, 71)
+  const keptCash = await (await call('GET')).json()
+  check(
+    'worker : une écriture sans caisse la conserve',
+    keptCash.cashflow?.persons?.[0]?.id === 'person_a',
+    keptCash.cashflow ? 'caisse intacte' : 'caisse perdue',
   )
 }
 
@@ -353,6 +378,30 @@ async function deletionBench() {
     'fusion : une dépense supprimée ne revient pas',
     !xMerged.expenses.expenses.some((item) => item.id === 'e-ghost'),
     xMerged.expenses.expenses.map((item) => item.id).join(', ') || 'aucune',
+  )
+
+  /* Et pour la caisse : une personne ou un transfert supprimé ailleurs ne
+     doit pas revenir par la fusion. */
+  const cash = await import('/src/data/cashflow-model.js')
+  const cDeleted = {
+    [`${DELETED.cashPersons}|person_ghost`]: now,
+    [`${DELETED.cashTransfers}|transfer_ghost`]: now,
+  }
+  const cMerged = cash.mergeCashFlow(
+    { persons: [{ id: 'person_keep', name: 'Gardée', updatedAt: iso(now - 120000) }], transfers: [] },
+    {
+      persons: [
+        { id: 'person_keep', name: 'Gardée', updatedAt: iso(now - 120000) },
+        { id: 'person_ghost', name: 'Supprimée', updatedAt: iso(now - 120000) },
+      ],
+      transfers: [{ id: 'transfer_ghost', from: 'person_keep', to: 'person_ghost', amount: 5, updatedAt: iso(now - 120000) }],
+    },
+    cDeleted,
+  )
+  check(
+    'fusion : une personne et un transfert supprimés ne reviennent pas',
+    cMerged.persons.length === 1 && cMerged.persons[0].id === 'person_keep' && cMerged.transfers.length === 0,
+    `${cMerged.persons.map((item) => item.id).join(', ') || 'aucune'} · ${cMerged.transfers.length} transfert(s)`,
   )
 }
 
@@ -451,14 +500,21 @@ async function routerBench() {
       null,
       [],
       EXPENSES,
+      null,
+      CASHFLOW,
     )
-    check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 7, put.message || `version ${put.docVersion}`)
+    check('aiguillage : la publication par le lien privé réussit', put.ok && put.docVersion === 8, put.message || `version ${put.docVersion}`)
 
     const doc = await (await worker.fetch(new Request(endpoint), env)).json()
     check(
       'aiguillage : les dépenses traversent l’aiguillage du partage',
       doc.expenses?.expenses?.[0]?.id === 'e1',
       doc.expenses ? `${doc.expenses.expenses?.length ?? 0} dépense(s)` : 'aucune dépense reçue',
+    )
+    check(
+      'aiguillage : la caisse traverse aussi l’aiguillage',
+      doc.cashflow?.persons?.[0]?.id === 'person_a' && doc.cashflow?.transfers?.[0]?.id === 'transfer_1',
+      doc.cashflow ? `${doc.cashflow.persons?.length ?? 0} personne(s)` : 'aucune caisse reçue',
     )
     check(
       'aiguillage : catégories, investissements et recettes aussi',
@@ -530,8 +586,10 @@ async function githubBench() {
       null,
       [{ id: 'b1', supplier: 'Marché', amount: 42 }],
       EXPENSES,
+      null,
+      CASHFLOW,
     )
-    check('github : la publication écrit la version 7', first.ok && first.docVersion === 7, first.message || `version ${first.docVersion}`)
+    check('github : la publication écrit la version 8', first.ok && first.docVersion === 8, first.message || `version ${first.docVersion}`)
 
     const stored = JSON.parse(text)
     check(
@@ -544,12 +602,17 @@ async function githubBench() {
       stored.expenses?.expenses?.[0]?.id === 'e1',
       `${stored.expenses?.expenses?.length ?? 0} dépense(s)`,
     )
+    check(
+      'github : le fichier porte la caisse',
+      stored.cashflow?.persons?.[0]?.id === 'person_a',
+      `${stored.cashflow?.persons?.length ?? 0} personne(s)`,
+    )
     check('github : l’appareil qui écrit est nommé', typeof stored.client === 'string' && stored.client.length > 0, String(stored.client))
 
     const remote = await github.fetchRemoteList(config)
     check(
-      'github : la relecture rend les dépenses et la version 7',
-      remote.ok && remote.docVersion === 7 && remote.expenses?.expenses?.[0]?.id === 'e1',
+      'github : la relecture rend les dépenses et la version 8',
+      remote.ok && remote.docVersion === 8 && remote.expenses?.expenses?.[0]?.id === 'e1',
       remote.message || `version ${remote.docVersion}`,
     )
 

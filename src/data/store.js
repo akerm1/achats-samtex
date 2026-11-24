@@ -40,6 +40,7 @@ import {
 import { mergeBills, mergeProducts } from './backup.js'
 import * as photoStore from './photo-store.js'
 import * as expensesStore from './expenses-store.js'
+import * as cashflowStore from './cashflow-store.js'
 import * as deletions from './deletions.js'
 import { DELETED, without } from './deletions.js'
 
@@ -72,6 +73,13 @@ export const DEFAULT_PREFS = {
 
 /* Les dépenses partagent le même drapeau : toute modification pousse. */
 expensesStore.subscribe(() => {
+  markChanged()
+  emit()
+  push()
+})
+
+/* La caisse suit exactement la même règle. */
+cashflowStore.subscribe(() => {
   markChanged()
   emit()
   push()
@@ -284,6 +292,10 @@ export function getState() {
     /* Combien de dépenses le serveur en a : l'écran les affiche à côté des
        locales, pour que « rien n'est arrivé » se voie au lieu de se deviner. */
     expensesRemote: remoteExpensesCount,
+    /* Même chose pour la caisse : GitHub porte toujours le document v8, un
+       Worker v7 reçoit `cashflow` puis le jette. */
+    cashflowSync: Boolean(config) && carriesCashflow(),
+    cashflowSyncKnown: Boolean(config) && remoteDocVersion > 0,
   }
 }
 
@@ -736,6 +748,13 @@ function carriesExpenses() {
   return provider === PROVIDER_GITHUB
 }
 
+/** Le fournisseur peut-il transporter la caisse ? (Worker v8, GitHub toujours.) */
+function carriesCashflow() {
+  const provider = providerOf(config)
+  if (provider === PROVIDER_WORKER) return remoteDocVersion >= 8
+  return provider === PROVIDER_GITHUB
+}
+
 /**
  * Point d'entrée unique de la lecture distante : appelé au démarrage
  * (donc à chaque rafraîchissement de la page) et par `refresh()`.
@@ -763,7 +782,9 @@ async function syncWithRemote() {
 
   if (remote.list === null) {
     /* Aucun document publié pour l'instant : on publie la liste locale. */
-    if (state.dirty || products.length || bills.length || expensesStore.hasData()) return push({ force: true })
+    if (state.dirty || products.length || bills.length || expensesStore.hasData() || cashflowStore.hasData()) {
+      return push({ force: true })
+    }
     return markReady(cleaned)
   }
   if (state.dirty) return push()
@@ -825,7 +846,16 @@ async function syncWithRemote() {
   }
   /* Ce que le serveur porte vraiment, pour l'afficher à côté du local. */
   remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
-  if (applyRemoteSettings(remote.settings)) changed = true
+  /* `cashflow: null` = document écrit avant la caisse : on garde la locale.
+     Un document dont la caisse est VIDE ne doit pas effacer celle d'un
+     appareil qui en a : on la publie au lieu de l'adopter. */
+  if (remote.cashflow) {
+    const remoteCashCount = (remote.cashflow.persons?.length || 0) + (remote.cashflow.transfers?.length || 0)
+    if (cashflowStore.hasData() && remoteCashCount === 0) return push({ force: true })
+    if (cashflowStore.applyRemoteCashFlow(remote.cashflow)) changed = true
+  } else if (carriesCashflow() && cashflowStore.hasData()) {
+    return push({ force: true })
+  }  if (applyRemoteSettings(remote.settings)) changed = true
   /* Document écrit avant les dépenses (Worker < v6, ou products.json
      historique) : le partage sait maintenant les recevoir mais n'en a
      encore aucune. Un appareil qui ne fait que lire ne publierait jamais
@@ -861,6 +891,7 @@ function learnDeletions() {
     changed = true
   }
   if (expensesStore.applyDeletions(map)) changed = true
+  if (cashflowStore.applyDeletions(map)) changed = true
   return changed
 }
 
@@ -936,6 +967,7 @@ async function connectDefault() {
   }
   expensesStore.applyRemoteExpenses(remote.expenses)
   remoteExpensesCount = Array.isArray(remote.expenses?.expenses) ? remote.expenses.expenses.length : null
+  cashflowStore.applyRemoteCashFlow(remote.cashflow)
   if (applyRemoteSettings(remote.settings)) storage.set(PREFS_KEY, prefs)
   state.status = 'ready'
   state.lastSyncAt = Date.now()
@@ -1036,6 +1068,7 @@ async function pushNow() {
     bills,
     expensesStore.getSnapshot(),
     deletions.snapshot(),
+    cashflowStore.getSnapshot(),
   )
   state.pending = false
 
@@ -1069,6 +1102,8 @@ async function pushNow() {
     }
     /* Idem pour les dépenses fusionnées par le 409 (objet, sinon `null`). */
     expensesStore.applyRemoteExpenses(result.expenses)
+    /* Et pour la caisse fusionnée par le 409. */
+    cashflowStore.applyRemoteCashFlow(result.cashflow)
     /* Ce que le serveur vient d'accepter, c'est ce que l'appareil a envoyé
        (ou la fusion retenue) : la preuve affichée sur l'écran Dépenses est
        donc à jour sans attendre une relecture. */
@@ -1140,6 +1175,7 @@ export async function importFromGithub() {
     bills,
     expensesStore.getSnapshot(),
     deletions.snapshot(),
+    cashflowStore.getSnapshot(),
   )
   if (!result.ok) return { ok: false, message: result.message || 'Publication impossible.' }
 

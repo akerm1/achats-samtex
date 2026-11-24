@@ -28,9 +28,14 @@
 /* elles, un produit supprimé revenait dès qu'un autre appareil      */
 /* publiait sa liste (la fusion ne savait pas distinguer « jamais vu »*/
 /* de « supprimé »).                                                 */
+/*                                                                   */
+/* v8 ajoute `cashflow` : personnes et transferts de la caisse, pour  */
+/* que la section Caisse soit partagée comme les autres. Un Worker    */
+/* v7 reçoit le champ puis le jette — l'appareil le repère grâce au   */
+/* numéro de version et garde sa caisse locale.                       */
 /* ------------------------------------------------------------------ */
 
-const DOC_VERSION = 7
+const DOC_VERSION = 8
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -65,6 +70,11 @@ function expensesOf(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : null
 }
 
+/** `cashflow` : objet = la caisse voyage ; `null` = document antérieur. */
+function cashflowOf(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null
+}
+
 /**
  * `deleted` : pierres tombales `collection|id -> date (ms)`.
  * Un document antérieur à la v7 n'en a pas : `null`, et l'appareil garde
@@ -94,7 +104,7 @@ async function handleGet(env) {
   /* Pas encore de liste : on répond 200 avec une révision 0 et `empty`,
      ce qui demande à l'application de publier sa liste locale. */
   if (!raw) {
-    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null, deleted: null, client: null })
+    return json({ version: DOC_VERSION, rev: 0, empty: true, updatedAt: null, settings: null, products: null, bills: null, analysis: null, expenses: null, cashflow: null, deleted: null, client: null })
   }
   return json({
     /* `version` = version du Worker qui répond, pas celle du document
@@ -118,6 +128,8 @@ async function handleGet(env) {
     /* Idem pour `expenses` : `null` = document écrit avant la v6, et
        l'appareil garde alors ses dépenses locales. */
     expenses: expensesOf(raw.expenses),
+    /* `null` = document écrit avant la v8 : l'appareil garde sa caisse. */
+    cashflow: cashflowOf(raw.cashflow),
     /* `null` = document écrit avant la v7 : l'appareil garde ses pierres
        tombales locales et les publiera à sa prochaine écriture. */
     deleted: deletedOf(raw.deleted),
@@ -167,6 +179,8 @@ async function handlePut(request, env) {
         /* Idem pour les dépenses : sans elles, la fusion par `id` n'aurait
            rien à fusionner et l'écriture suivante les écraserait. */
         expenses: expensesOf(current?.expenses),
+        /* La caisse voyage aussi avec le conflit, pour la fusion par `id`. */
+        cashflow: cashflowOf(current?.cashflow),
         /* Les suppressions voyagent avec le conflit : sans elles, la fusion
            par `id` ferait revenir ce que l'autre appareil a supprimé. */
         deleted: deletedOf(current?.deleted),
@@ -196,6 +210,10 @@ async function handlePut(request, env) {
        pas effacer celles déjà publiées : on garde alors le document courant.
        Un objet vide, lui, reste une suppression volontaire et s'applique. */
     expenses: expensesOf(payload.expenses) ?? expensesOf(current?.expenses),
+    /* Une écriture sans `cashflow` (application antérieure à la v8) ne doit
+       pas effacer la caisse déjà publiée : on garde alors le document
+       courant. Un objet vide, lui, reste une suppression volontaire. */
+    cashflow: cashflowOf(payload.cashflow) ?? cashflowOf(current?.cashflow),
     /* Les suppressions s'ADDITIONNENT : un appareil resté sur une version
        qui ne les envoie pas ne doit pas effacer celles déjà connues, sinon
        les éléments supprimés reviendraient sur les autres appareils. */

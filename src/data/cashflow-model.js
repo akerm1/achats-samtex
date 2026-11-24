@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { round2, toNumber, uid } from '../core/utils.js'
+import { DELETED, without } from './deletions.js'
 
 /* ------------------------------------------------------------------ */
 /* Persons (partenaires,Collaborateurs)                                */
@@ -143,5 +144,25 @@ export function normalizeCashFlow(raw = {}) {
       ...emptyCashFlow().settings,
       ...(source.settings || {}),
     },
+  }
+}
+
+/**
+ * Fusion de deux états de caisse, par `id` : le distant gagne sur un même
+ * `id`, le local unique est conservé, et les pierres tombales écartent ce
+ * qu'un autre appareil a supprimé.
+ */
+export function mergeCashFlow(current, incoming, deletedMap = null) {
+  const local = normalizeCashFlow(current || {})
+  const remote = normalizeCashFlow(incoming || {})
+  const union = (a, b) => {
+    const byId = new Map(a.map((item) => [item.id, item]))
+    for (const item of b) byId.set(item.id, item)
+    return [...byId.values()]
+  }
+  return {
+    persons: without(deletedMap, DELETED.cashPersons, union(local.persons, remote.persons)),
+    transfers: without(deletedMap, DELETED.cashTransfers, union(local.transfers, remote.transfers)),
+    settings: { ...local.settings, ...remote.settings },
   }
 }

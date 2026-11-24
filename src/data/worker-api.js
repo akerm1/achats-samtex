@@ -16,6 +16,7 @@
 /* ------------------------------------------------------------------ */
 
 import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeCashFlow } from './cashflow-model.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
@@ -70,6 +71,11 @@ function parseDocument(payload) {
       payload?.expenses && typeof payload.expenses === 'object' && !Array.isArray(payload.expenses)
         ? payload.expenses
         : null,
+    /* `null` = document écrit avant la caisse : l'appareil garde la sienne. */
+    cashflow:
+      payload?.cashflow && typeof payload.cashflow === 'object' && !Array.isArray(payload.cashflow)
+        ? payload.cashflow
+        : null,
     /* Pierres tombales : `null` = document écrit avant la v7, donc aucune
        suppression connue du serveur. */
     deleted:
@@ -122,16 +128,16 @@ export async function fetchRemoteList(config) {
   }
   /* `empty: true` = aucun document publié pour l'instant. */
   if (payload.empty === true) {
-    return { ok: true, list: null, bills: null, expenses: null, deleted: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
+    return { ok: true, list: null, bills: null, expenses: null, cashflow: null, deleted: null, sha: '0', rev: 0, docVersion: 0, settings: null, status: 'ok', readOnly: false }
   }
 
   const contents = parseDocument(payload)
   return { ok: true, ...contents, status: 'ok', readOnly: false }
 }
 
-function buildBody(list, settings, bills, expenses, deleted) {
+function buildBody(list, settings, bills, expenses, deleted, cashflow) {
   return JSON.stringify({
-    version: 7,
+    version: 8,
     /* Quelle application écrit : le serveur le garde, ce qui permet de
        savoir — sans demander à personne — quel appareil publie encore avec
        une version qui ignore les dépenses. */
@@ -141,6 +147,7 @@ function buildBody(list, settings, bills, expenses, deleted) {
     products: list,
     bills: bills ?? null,
     expenses: expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null,
+    cashflow: cashflow && typeof cashflow === 'object' && !Array.isArray(cashflow) ? cashflow : null,
     deleted: deleted && typeof deleted === 'object' && !Array.isArray(deleted) ? deleted : null,
   })
 }
@@ -170,36 +177,38 @@ const MAX_CONFLICT_ATTEMPTS = 4
  * @param {object|null} deleted registre des suppressions à publier
  * @returns {Promise<{ok:boolean, sha:string|null, rev:number|null, list:Array|null, bills:Array|null, expenses:object|null, deleted:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null) {
+export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null, cashflow = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   if (!canWrite(config)) {
     return { ok: false, sha, status: 'config', message: 'Lien privé incomplet.' }
   }
 
-  const send = (payload, rev, payloadBills, payloadExpenses, payloadDeleted) =>
+  const send = (payload, rev, payloadBills, payloadExpenses, payloadDeleted, payloadCashflow) =>
     fetch(config.endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(rev === null || rev === undefined || rev === '' ? {} : { 'X-Rev': String(rev) }),
       },
-      body: buildBody(payload, settings, payloadBills, payloadExpenses, payloadDeleted),
+      body: buildBody(payload, settings, payloadBills, payloadExpenses, payloadDeleted, payloadCashflow),
     })
 
   let out = list
   let outBills = bills ?? null
   let outExpenses = expenses ?? null
+  let outCashflow = cashflow ?? null
   /* Le registre local rencontré dans un 409 s'y ajoute : la publication
      suivante doit emporter les deux, sinon les suppressions de l'autre
      appareil seraient oubliées. */
   let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
   let mergedExpenses = null
+  let mergedCashflow = null
   let mergedDeleted = null
   let outRev = sha
   let response
   try {
-    response = await send(out, outRev, outBills, outExpenses, outDeleted)
+    response = await send(out, outRev, outBills, outExpenses, outDeleted, outCashflow)
   } catch (error) {
     return {
       ok: false,
@@ -227,9 +236,13 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
       mergedExpenses = mergeExpenses(outExpenses || {}, current.expenses, outDeleted).expenses
       outExpenses = mergedExpenses
     }
+    if (current.cashflow && typeof current.cashflow === 'object' && !Array.isArray(current.cashflow)) {
+      mergedCashflow = mergeCashFlow(outCashflow || {}, current.cashflow, outDeleted)
+      outCashflow = mergedCashflow
+    }
     outRev = String(current.rev ?? 0)
     try {
-      response = await send(out, outRev, outBills, outExpenses, outDeleted)
+      response = await send(out, outRev, outBills, outExpenses, outDeleted, outCashflow)
     } catch (error) {
       return {
         ok: false,
@@ -261,9 +274,9 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
 
   const data = await response.json().catch(() => null)
   const rev = Number(data?.rev)
-  /* Un Worker v7 renvoie `version: 7` ; un Worker v5 ne renvoie pas de
+  /* Un Worker v8 renvoie `version: 8` ; un Worker v5 ne renvoie pas de
      version du tout, donc 5 : c'est ainsi que l'application repère un
-     Worker qui reçoit les dépenses sans les garder. */
+     Worker qui reçoit une collection sans la garder. */
   const docVersion = Number.isFinite(Number(data?.version)) ? Number(data.version) : 5
   return {
     ok: true,
@@ -273,6 +286,7 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
     list: out === list ? null : out,
     bills: mergedBills,
     expenses: mergedExpenses,
+    cashflow: mergedCashflow,
     deleted: mergedDeleted,
     status: 'ok',
   }

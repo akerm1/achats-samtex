@@ -14,17 +14,18 @@
 /* ------------------------------------------------------------------ */
 
 import { mergeBills, mergeProducts, mergeExpenses } from './backup.js'
+import { mergeCashFlow } from './cashflow-model.js'
 import { mergeMaps } from './deletions.js'
 import { APP_VERSION } from '../core/app.js'
 
 const API = 'https://api.github.com'
 export const DATA_PATH = 'products.json'
 
-/* Version du document : 7 = il transporte les dépenses (comme le Worker) et
-   les pierres tombales des suppressions. Un products.json plus ancien n'a
-   pas de numéro — donc 3, la dernière version qui n'emportait que liste,
-   réglages et factures. */
-export const DOC_VERSION = 7
+/* Version du document : 8 = il transporte aussi la caisse (personnes et
+   transferts). 7 transportait les dépenses et les pierres tombales. Un
+   products.json plus ancien n'a pas de numéro — donc 3, la dernière version
+   qui n'emportait que liste, réglages et factures. */
+export const DOC_VERSION = 8
 
 export const READ_ONLY_MESSAGE =
   'Lecture seule : un jeton GitHub valide est nécessaire pour publier vos modifications.'
@@ -147,6 +148,11 @@ async function readContents(response) {
       parsed?.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
         ? parsed.expenses
         : null,
+    /* `null` = document écrit avant la caisse : l'appareil garde la sienne. */
+    cashflow:
+      parsed?.cashflow && typeof parsed.cashflow === 'object' && !Array.isArray(parsed.cashflow)
+        ? parsed.cashflow
+        : null,
     /* `null` = fichier écrit avant la v7, donc aucune suppression connue. */
     deleted:
       parsed?.deleted && typeof parsed.deleted === 'object' && !Array.isArray(parsed.deleted)
@@ -195,7 +201,7 @@ export async function fetchRemoteList(config) {
     if (reachable === null) {
       return { ok: false, list: null, sha: null, status: 'offline', message: 'Impossible de joindre GitHub.' }
     }
-    return { ok: true, list: null, bills: null, expenses: null, deleted: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
+    return { ok: true, list: null, bills: null, expenses: null, cashflow: null, deleted: null, sha: null, docVersion: 0, status: 'ok', readOnly: !canWrite(config) }
   }
 
   if (response.status === 401 && canWrite(config)) {
@@ -245,7 +251,7 @@ export async function fetchRemoteList(config) {
  * @param {object|null} expenses état des dépenses à publier, `null` pour ne rien changer
  * @returns {Promise<{ok:boolean, sha:string|null, docVersion:number, list:Array|null, bills:Array|null, expenses:object|null, status:string, message?:string}>}
  */
-export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null) {
+export async function putRemoteList(config, list, sha, settings, bills, expenses, deleted = null, cashflow = null) {
   if (!config) return { ok: false, sha: null, status: 'config' }
   /* Sans jeton (ou jeton refusé), GitHub refusera l'écriture : inutile
      d'envoyer la requête, et l'utilisateur garde sa liste locale intacte. */
@@ -266,9 +272,12 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
   let outBills = bills ?? null
   let outExpenses =
     expenses && typeof expenses === 'object' && !Array.isArray(expenses) ? expenses : null
+  let outCashflow =
+    cashflow && typeof cashflow === 'object' && !Array.isArray(cashflow) ? cashflow : null
   let outDeleted = deleted && typeof deleted === 'object' ? { ...deleted } : {}
   let mergedBills = null
   let mergedExpenses = null
+  let mergedCashflow = null
   let mergedDeleted = null
 
   const buildBody = (ref) => {
@@ -283,6 +292,7 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
         products: outList,
         bills: outBills,
         expenses: outExpenses,
+        cashflow: outCashflow,
         deleted: outDeleted,
       },
       null,
@@ -314,6 +324,7 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
     list: outList === list ? null : outList,
     bills: mergedBills,
     expenses: mergedExpenses,
+    cashflow: mergedCashflow,
     deleted: mergedDeleted,
   })
 
@@ -388,6 +399,10 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
     if (fresh.expenses && typeof fresh.expenses === 'object') {
       mergedExpenses = mergeExpenses(outExpenses || {}, fresh.expenses, outDeleted).expenses
       outExpenses = mergedExpenses
+    }
+    if (fresh.cashflow && typeof fresh.cashflow === 'object') {
+      mergedCashflow = mergeCashFlow(outCashflow || {}, fresh.cashflow, outDeleted)
+      outCashflow = mergedCashflow
     }
     const retry = await send(fresh.sha)
     if (retry.ok) {

@@ -34,6 +34,8 @@ export const DELETED = {
   expenses: 'exp.expenses',
   expenseInvestments: 'exp.investments',
   revenues: 'exp.revenues',
+  cashPersons: 'cash.persons',
+  cashTransfers: 'cash.transfers',
 }
 
 const keyOf = (collection, id) => `${collection}|${id}`

@@ -11,6 +11,7 @@ import {
   normalizePerson,
   normalizeTransfer,
 } from './cashflow-model.js'
+import { DELETED, mark, snapshot, stampFor, without } from './deletions.js'
 
 const KEY = 'purchase-gros-cashflow-v1'
 
@@ -68,6 +69,11 @@ export function getSnapshot() {
   }
 }
 
+/** Vrai si l'appareil porte une caisse qui mérite d'être publiée. */
+export function hasData() {
+  return Boolean(state.persons.length || state.transfers.length)
+}
+
 /* ------------------------------------------------------------------ */
 /* Persons Management                                                 */
 /* ------------------------------------------------------------------ */
@@ -104,6 +110,15 @@ export function deletePerson(id) {
   const index = state.persons.findIndex(p => p.id === id)
   if (index < 0) return null
   
+  const person = state.persons[index]
+  /* Les pierres tombales voyagent : sans elles, la personne (et ses
+     transferts) reviendrait à la fusion suivante. */
+  mark(DELETED.cashPersons, id, stampFor(person))
+  mark(DELETED.cashTransfers, state.transfers
+    .filter(t => t.from === id || t.to === id)
+    .map(t => t.id)
+    .filter(Boolean), stampFor(state.transfers))
+  
   // Supprimer les transferts liés à cette personne
   state = {
     ...state,
@@ -114,7 +129,7 @@ export function deletePerson(id) {
   }
   persist()
   emit()
-  return { person: state.persons[index], index }
+  return { person, index }
 }
 
 /* ------------------------------------------------------------------ */
@@ -204,6 +219,9 @@ export function deleteTransfer(id) {
   
   const transfer = state.transfers[index]
   
+  /* Pierre tombale : la suppression doit voyager avec le document. */
+  mark(DELETED.cashTransfers, id, stampFor(transfer))
+  
   // Restaurer les soldes des personnes
   if (transfer.from) {
     const fromPerson = findPerson(transfer.from)
@@ -229,7 +247,45 @@ export function deleteTransfer(id) {
   
   persist()
   emit()
-  return { transfer: state.transfers[index] || transfer, index }
+  return { transfer, index }
+}
+
+/* ------------------------------------------------------------------ */
+/* Synchronisation                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Applique au local les pierres tombales apprises du distant. */
+export function applyDeletions(map = snapshot()) {
+  const persons = without(map, DELETED.cashPersons, state.persons)
+  const transfers = without(map, DELETED.cashTransfers, state.transfers)
+  if (persons.length === state.persons.length && transfers.length === state.transfers.length) {
+    return false
+  }
+  state = { ...state, persons, transfers }
+  persist()
+  emit()
+  return true
+}
+
+/**
+ * Adopte l'état distant. Le filtre passe avant la normalisation : une ligne
+ * sans `updatedAt` serait datée à l'instant et battrait sa pierre tombale.
+ */
+export function applyRemoteCashFlow(incoming) {
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return false
+  const map = snapshot()
+  const keep = (key, collection) =>
+    Array.isArray(incoming[key]) ? without(map, collection, incoming[key]) : incoming[key]
+  const next = normalizeCashFlow({
+    ...incoming,
+    persons: keep('persons', DELETED.cashPersons),
+    transfers: keep('transfers', DELETED.cashTransfers),
+  })
+  if (JSON.stringify(next) === JSON.stringify(state)) return false
+  state = next
+  persist()
+  emit()
+  return true
 }
 
 /* ------------------------------------------------------------------ */
