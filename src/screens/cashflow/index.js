@@ -75,7 +75,7 @@ function header() {
           <span class="stat-value ${totalBalancesClass}">${formatMoney(totalPersonBalances, settings.currency)}</span>
         </div>
         <div class="stat">
-          <span class="stat-label">Reste disponible</span>
+          <span class="stat-label ${remainingClass}">Reste disponible</span>
           <span class="stat-value ${remainingClass}">${formatMoney(remaining, settings.currency)}</span>
         </div>
       </div>
