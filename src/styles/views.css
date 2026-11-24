@@ -23,6 +23,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Le solde de la caisse peut être vert ou rouge selon son signe. */
+.screen-total.text-success {
+  color: var(--success);
+}
+
+.screen-total.text-danger {
+  color: var(--danger);
+}
+
 .list-results {
   display: flex;
   flex-direction: column;

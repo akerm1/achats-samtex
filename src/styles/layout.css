@@ -528,6 +528,17 @@
   color: var(--success);
 }
 
+/* Couleurs de solde sur les statuts : vert ≥ 0, rouge < 0. */
+.stat-value.text-success,
+.stat-label.text-success {
+  color: var(--success);
+}
+
+.stat-value.text-danger,
+.stat-label.text-danger {
+  color: var(--danger);
+}
+
 /* Compatibilité avec l'ancien en-tête (les autres écrans s'y rallient). */
 .view-head {
   display: flex;

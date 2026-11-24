@@ -68,7 +68,7 @@ function header() {
       <div class="screen-stats">
         <div class="stat ${cashLibreClass}">
           <span class="stat-label ${cashLibreClass}">Cash libre</span>
-          <span class="stat-value">${formatMoney(availableCash, settings.currency)}</span>
+          <span class="stat-value ${cashLibreClass}">${formatMoney(availableCash, settings.currency)}</span>
         </div>
         <div class="stat">
           <span class="stat-label ${totalBalancesClass}">Soldes personnes</span>
