@@ -67,11 +67,11 @@ function header() {
       </div>
       <div class="screen-stats">
         <div class="stat ${cashLibreClass}">
-          <span class="stat-label">Cash libre</span>
+          <span class="stat-label ${cashLibreClass}">Cash libre</span>
           <span class="stat-value">${formatMoney(availableCash, settings.currency)}</span>
         </div>
         <div class="stat">
-          <span class="stat-label">Soldes personnes</span>
+          <span class="stat-label ${totalBalancesClass}">Soldes personnes</span>
           <span class="stat-value ${totalBalancesClass}">${formatMoney(totalPersonBalances, settings.currency)}</span>
         </div>
         <div class="stat">
