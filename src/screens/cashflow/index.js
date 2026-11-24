@@ -49,7 +49,8 @@ function header() {
   /* Ce qui reste vraiment une fois les soldes des personnes honorés. */
   const remaining = Math.round((availableCash - totalPersonBalances) * 100) / 100
   const remainingClass = remaining >= 0 ? 'text-success' : 'text-danger'
-  const totalBalancesClass = totalPersonBalances > 0 ? 'text-success' : totalPersonBalances < 0 ? 'text-danger' : ''
+  const totalBalancesClass = totalPersonBalances >= 0 ? 'text-success' : 'text-danger'
+  const cashLibreClass = availableCash >= 0 ? 'text-success' : 'text-danger'
 
   return `
     <header class="screen-head">
@@ -61,11 +62,11 @@ function header() {
             ${formatMoney(remaining, settings.currency)} reste disponible
           </span>
           · ${formatMoney(availableCash, settings.currency)} de cash libre
-          ${totalPersonBalances ? ` · ${formatMoney(totalPersonBalances, settings.currency)} avec les personnes` : ''}
+          · ${formatMoney(totalPersonBalances, settings.currency)} avec les personnes
         </p>
       </div>
       <div class="screen-stats">
-        <div class="stat stat--success">
+        <div class="stat ${cashLibreClass}">
           <span class="stat-label">Cash libre</span>
           <span class="stat-value">${formatMoney(availableCash, settings.currency)}</span>
         </div>
