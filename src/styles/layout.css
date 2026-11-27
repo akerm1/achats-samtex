@@ -528,6 +528,49 @@
   color: var(--success);
 }
 
+/* En-tête épinglé : les totaux restent visibles pendant le défilement. */
+.screen-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 1rem 0;
+  margin: -1rem 0 0;
+}
+
+/* Encart sélection : fond bleu clair pour le total des lignes cochées. */
+.stat--selection {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.stat--selection .stat-label {
+  color: color-mix(in srgb, var(--primary) 78%, var(--ink-3));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stat--selection .stat-value {
+  color: var(--primary);
+}
+
+/* Bouton × dans le badge de sélection : petit, discret, efface tout. */
+.stat-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.stat-clear:hover {
+  opacity: 1;
+}
+
 /* Couleurs de solde sur les statuts : vert ≥ 0, rouge < 0. */
 .stat-value.text-success,
 .stat-label.text-success {
@@ -537,6 +580,23 @@
 .stat-value.text-danger,
 .stat-label.text-danger {
   color: var(--danger);
+}
+
+/* Sélection multiple : appui long pour initier, appui court pour ajouter. */
+.is-selected {
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent) !important;
+}
+
+.is-pressing {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+[data-selectable] {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 /* Compatibilité avec l'ancien en-tête (les autres écrans s'y rallient). */

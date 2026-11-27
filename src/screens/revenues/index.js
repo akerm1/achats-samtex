@@ -45,6 +45,11 @@ let compareMode = false
 let compareUnit = 'day' /* « day » ou « month » */
 let comparePeriods = [] /* périodes ajoutées : { unit, key } — sans année */
 
+/* Sélection multiple : un appui long ouvre le mode, les appuis suivants
+   ajoutent ou retirent des lignes. Le total s'affiche en direct. */
+let selectedIds = new Set()
+let longPressTimer = null
+
 /** Une date « AAAA-MM-JJ » reste locale : midi évite le décalage de fuseau. */
 function dayLabel(date) {
   return formatDate(`${String(date || '')}T12:00:00`)
@@ -106,23 +111,37 @@ function header() {
   const days = new Set(revenues.map((revenue) => revenue.date)).size
   const comparison = compareMode ? compareRows(revenues) : []
   const compareTotal = comparison.reduce((sum, row) => sum + row.total, 0)
+  /* Total des lignes sélectionnées par appui long, affiché en direct. */
+  const selectedTotal = revenues
+    .filter((revenue) => selectedIds.has(revenue.id))
+    .reduce((sum, revenue) => sum + (revenue.amount || 0), 0)
 
   return `
     <header class="screen-head">
       <div class="screen-head-main">
         <span class="screen-eyebrow">Entrées du shop</span>
-        <h1 class="screen-title">Recettes</h1>
+        <h1 class="screen-title text-success">Recettes</h1>
         <p class="screen-sub">
           <strong>${revenues.length}</strong> entrée${revenues.length > 1 ? 's' : ''}
           ${total ? ` · <span class="screen-total text-success">${formatMoney(total, settings.currency)}</span>` : ''}
         </p>
       </div>
       <div class="screen-stats">
+        ${selectedIds.size > 0
+          ? `<div class="stat stat--selection" data-role="selection-total">
+              <span class="stat-label">
+                Sélection · ${selectedIds.size}
+                <button type="button" class="stat-clear" data-action="clear-selection" aria-label="Effacer la sélection">${icon('x', 12)}</button>
+              </span>
+              <span class="stat-value text-success">${formatMoney(selectedTotal, settings.currency)}</span>
+            </div>`
+          : ''
+        }
         <div class="stat stat--success" data-role="month-total">
           <span class="stat-label">Ce mois</span>
           <span class="stat-value">${formatMoney(monthTotal, settings.currency)}</span>
         </div>
-        <div class="stat stat--accent">
+        <div class="stat stat--success" data-role="total-stats">
           <span class="stat-label">Total · ${days} jour${days > 1 ? 's' : ''}</span>
           <span class="stat-value">${formatMoney(total, settings.currency)}</span>
         </div>
@@ -165,7 +184,7 @@ function toolbar() {
 
 function revenueCard(revenue, settings, { showDate = false } = {}) {
   return `
-    <article class="card revenue-card" data-id="${esc(revenue.id)}">
+    <article class="card revenue-card${selectedIds.has(revenue.id) ? ' is-selected' : ''}" data-id="${esc(revenue.id)}" data-selectable="${esc(revenue.id)}">
       <div class="card-body">
         <div class="card-top">
           <div class="card-name-row">
@@ -208,7 +227,7 @@ function listHtml(revenues, settings) {
       ${revenues
         .map(
           (revenue) => `
-        <article class="revenue-row" data-id="${esc(revenue.id)}">
+        <article class="revenue-row${selectedIds.has(revenue.id) ? ' is-selected' : ''}" data-id="${esc(revenue.id)}" data-selectable="${esc(revenue.id)}">
           <div class="revenue-row-when">
             <strong>${esc(dayLabel(revenue.date))}</strong>
             ${revenue.note ? `<span>${esc(revenue.note)}</span>` : ''}
@@ -238,6 +257,9 @@ function emptyState() {
 
 function results() {
   const { revenues, settings } = expStore.getExpenses()
+  /* Changer de vue ou de filtre efface la sélection : les ids ne
+     correspondent plus forcément à ce qui est affiché. */
+  selectedIds.clear()
   if (compareMode) return compareHtml(compareRows(revenues), settings)
   /* « Du » et « Au » filtrent la liste ; vides, ils ne retirent rien. */
   const period = revenues.filter(
@@ -295,6 +317,125 @@ function compareHtml(rows, settings) {
     </div>`
 }
 
+/** Met à jour uniquement l'en-tête (total sélection) sans repeindre la liste. */
+function refreshSelectionTotal() {
+  if (!host) return
+  const head = host.querySelector('.screen-stats')
+  if (!head) return
+  const section = host.querySelector('.view--revenues')
+  if (!section) return
+  /* On re-render le header entier : il est petit, pas besoin d'optimiser. */
+  const newHead = document.createElement('template')
+  newHead.innerHTML = header().trim()
+  const oldHead = host.querySelector('.screen-head')
+  if (oldHead) oldHead.replaceWith(newHead.content.firstChild)
+}
+
+/** Bascule la sélection d'une recette : ajoute si absente, retire sinon. */
+function toggleSelection(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id)
+  } else {
+    selectedIds.add(id)
+  }
+  if (!host) return
+  const el = host.querySelector(`[data-selectable="${CSS.escape(id)}"]`)
+  if (el) el.classList.toggle('is-selected', selectedIds.has(id))
+  refreshSelectionTotal()
+}
+
+/** Efface toute la sélection et rafraîchit l'en-tête. */
+function clearSelection() {
+  if (!selectedIds.size) return
+  selectedIds.clear()
+  if (!host) return
+  host.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'))
+  refreshSelectionTotal()
+}
+
+/** Attache les gestes de sélection : appui long pour initier, appui court
+   pour ajouter/retirer une ligne, effacer depuis le badge. */
+function bindSelection() {
+  if (!host) return
+  const LONG_PRESS_MS = 400
+  let pending = null
+
+  const cancelPending = () => {
+    if (pending) {
+      clearTimeout(pending.timer)
+      pending = null
+    }
+  }
+
+  const findSelectable = (target) => {
+    if (!target || !(target instanceof Element)) return null
+    return target.closest('[data-selectable]')
+  }
+
+  const isInteractiveTarget = (target) => {
+    /* On laisse les boutons d'action (modifier, supprimer) fonctionner
+       normalement : l'appui long ne doit pas interférer avec eux. */
+    return Boolean(target?.closest('button, a, input, textarea, [contenteditable="true"]'))
+  }
+
+  host.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return
+    const row = findSelectable(event.target)
+    if (!row || isInteractiveTarget(event.target)) return
+    const id = row.getAttribute('data-selectable')
+    if (!id) return
+    pending = {
+      id,
+      row,
+      fired: false,
+      timer: setTimeout(() => {
+        if (!pending) return
+        pending.fired = true
+        row.classList.add('is-pressing')
+        /* Si rien n'était sélectionné, l'appui long démarre la sélection
+           avec cette ligne, comme dans la galerie du téléphone. */
+        if (selectedIds.size === 0) {
+          toggleSelection(id)
+        } else {
+          toggleSelection(id)
+        }
+        if (navigator.vibrate) navigator.vibrate(20)
+      }, LONG_PRESS_MS),
+    }
+  })
+
+  host.addEventListener('pointerup', (event) => {
+    if (!pending) return
+    const { id, fired } = pending
+    cancelPending()
+    /* Si l'appui long n'a pas déclenché mais qu'on est en mode sélection,
+       un appui court sur une ligne l'ajoute/retire de la sélection. */
+    if (!fired && selectedIds.size > 0) {
+      const row = findSelectable(event.target)
+      if (row && row.getAttribute('data-selectable') === id && !isInteractiveTarget(event.target)) {
+        event.preventDefault()
+        toggleSelection(id)
+      }
+    }
+  })
+
+  host.addEventListener('pointercancel', cancelPending)
+  host.addEventListener('pointerleave', cancelPending)
+  host.addEventListener('contextmenu', (event) => {
+    /* Sur desktop, le clic droit ne doit pas ouvrir le menu pendant
+       un appui long en cours. */
+    if (pending && pending.fired) event.preventDefault()
+  })
+
+  host.addEventListener('click', (event) => {
+    const clearBtn = event.target.closest('[data-action="clear-selection"]')
+    if (clearBtn) {
+      event.preventDefault()
+      clearSelection()
+    }
+  })
+}
+
 function paint() {
   if (!host) return
   host.innerHTML = `
@@ -349,6 +490,7 @@ function paint() {
       paint()
     },
   })
+  bindSelection()
 }
 
 export const revenuesView = {
