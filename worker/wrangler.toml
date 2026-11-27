@@ -23,3 +23,16 @@ id = "5eda21ff1f0c43bc83d2919ff7c988be"
 
 # Secret LIST_KEY : le chemin du lien privé. Jamais écrit dans ce fichier,
 # uniquement via `wrangler secret put` (voir setup.ps1).
+
+# Dépôt GitHub lu par la sauvegarde Telegram quand il est plus récent que le
+# lien privé. Mettez vos propres valeurs si le dépôt change.
+[vars]
+GITHUB_OWNER = "akerm1"
+GITHUB_REPO = "achats-test"
+GITHUB_BRANCH = "main"
+
+# Sauvegarde quotidienne sur Telegram (facultatif).
+# Le cron tourne en UTC : 06:00 UTC = 07:00 à Alger (UTC+1).
+# Sans les secrets TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID, le cron ne fait rien.
+[triggers]
+crons = ["0 6 * * *"]

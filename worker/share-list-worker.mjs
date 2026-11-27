@@ -39,7 +39,7 @@ const DOC_VERSION = 8
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-Rev',
   'Access-Control-Max-Age': '86400',
   'Cache-Control': 'no-store',
@@ -97,6 +97,101 @@ function mergeDeleted(current, incoming) {
     if (!(out[key] >= at)) out[key] = at
   }
   return out
+}
+
+/* --- Sauvegarde Telegram -------------------------------------------- */
+/*                                                                     */
+/* Chaque jour, le cron du Worker relit le document publié et l'envoie  */
+/* en JSON à un bot Telegram (sendDocument). C'est le seul envoi qui    */
+/* part vraiment tous les jours : un navigateur ne tourne pas quand     */
+/* l'application est fermée, un Worker Cloudflare si.                   */
+/*                                                                     */
+/* Secrets facultatifs : TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID.        */
+/* Sans eux, le cron ne fait rien — aucune erreur, aucun message.       */
+
+const TELEGRAM_API = 'https://api.telegram.org'
+
+/* Le partage vit soit dans le KV du Worker (lien privé), soit dans
+   `products.json` d'un dépôt GitHub. L'application peut changer de
+   fournisseur : la sauvegarde Telegram prend donc le document le plus
+   récent des deux, au lieu de risquer d'envoyer une copie périmée. */
+const GITHUB_DEFAULTS = { owner: 'akerm1', repo: 'achats-test', branch: 'main' }
+
+function githubUrl(env) {
+  const owner = String(env.GITHUB_OWNER || GITHUB_DEFAULTS.owner)
+  const repo = String(env.GITHUB_REPO || GITHUB_DEFAULTS.repo)
+  const branch = String(env.GITHUB_BRANCH || GITHUB_DEFAULTS.branch)
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/products.json`
+}
+
+async function readSharedDocument(env) {
+  const local = await env.LIST.get(DOC_KEY, 'json')
+  let remote = null
+  try {
+    const response = await fetch(`${githubUrl(env)}?t=${Date.now()}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    if (response.ok) remote = await response.json().catch(() => null)
+  } catch {
+    /* GitHub injoignable : le KV reste la source. */
+  }
+  const localAt = Date.parse(local?.updatedAt || '') || 0
+  const remoteAt = Date.parse(remote?.updatedAt || '') || 0
+  if (remote && remoteAt > localAt) return { raw: remote, source: 'GitHub' }
+  return { raw: local, source: 'lien privé' }
+}
+
+/** Le document envoyé : les mêmes collections qu'une sauvegarde JSON. */
+function backupOf(raw) {
+  return {
+    app: 'mes-achats',
+    version: DOC_VERSION,
+    exportedAt: new Date().toISOString(),
+    settings: raw?.settings || null,
+    products: Array.isArray(raw?.products) ? raw.products : [],
+    bills: Array.isArray(raw?.bills) ? raw.bills : [],
+    expenses: expensesOf(raw?.expenses),
+    cashflow: cashflowOf(raw?.cashflow),
+    deleted: deletedOf(raw?.deleted),
+  }
+}
+
+async function sendTelegramBackup(env) {
+  const token = String(env.TELEGRAM_BOT_TOKEN || '').trim()
+  const chatId = String(env.TELEGRAM_CHAT_ID || '').trim()
+  if (!token || !chatId) {
+    return { ok: false, skipped: true, message: 'Telegram non configuré (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID absents).' }
+  }
+
+  const { raw, source } = await readSharedDocument(env)
+  if (!raw) {
+    return { ok: false, skipped: true, message: 'Aucune donnée publiée (ni lien privé, ni GitHub) pour l’instant.' }
+  }
+
+  /* Compact : le document peut porter les photos des tickets, et Telegram
+     refuse au-delà de 50 Mo. */
+  const json = JSON.stringify(backupOf(raw))
+  const stamp = new Date().toISOString().slice(0, 10)
+  const form = new FormData()
+  form.set('chat_id', chatId)
+  form.set('caption', `Sauvegarde mes-achats — ${stamp} (${source})`)
+  form.set('document', new Blob([json], { type: 'application/json' }), `mes-achats-${stamp}.json`)
+
+  let response
+  try {
+    response = await fetch(`${TELEGRAM_API}/bot${token}/sendDocument`, { method: 'POST', body: form })
+  } catch (error) {
+    return { ok: false, message: `Telegram injoignable : ${String(error?.message || error)}` }
+  }
+  const result = await response.json().catch(() => null)
+  if (!response.ok || result?.ok === false) {
+    return {
+      ok: false,
+      message: `Telegram a refusé l'envoi (${response.status}) : ${result?.description || 'réponse illisible'}`,
+    }
+  }
+  return { ok: true, message: `Sauvegarde envoyée à Telegram (${Math.round(json.length / 1024)} Ko).` }
 }
 
 async function handleGet(env) {
@@ -249,9 +344,21 @@ export default {
 
     if (request.method === 'GET') return handleGet(env)
     if (request.method === 'PUT') return handlePut(request, env)
+    /* Envoi manuel depuis Réglages → « Envoyer maintenant ». Le lien privé
+       fait office d'authentification, comme pour la lecture et l'écriture. */
+    if (request.method === 'POST' && url.searchParams.has('telegram')) {
+      return json(await sendTelegramBackup(env))
+    }
     return new Response('Method not allowed', {
       status: 405,
-      headers: { ...CORS_HEADERS, Allow: 'GET, PUT, OPTIONS' },
+      headers: { ...CORS_HEADERS, Allow: 'GET, PUT, POST, OPTIONS' },
     })
+  },
+
+  /* Déclenché par le cron de wrangler.toml : une fois par jour, même si
+     aucun appareil n'a l'application ouverte. */
+  async scheduled(controller, env) {
+    if (!env.LIST) return
+    await sendTelegramBackup(env)
   },
 }

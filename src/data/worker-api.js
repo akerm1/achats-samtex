@@ -291,6 +291,32 @@ export async function putRemoteList(config, list, sha, settings, bills, expenses
   }
 }
 
+/**
+ * Envoi manuel de la sauvegarde JSON à Telegram, pour tester la
+ * configuration. L'envoi quotidien, lui, est fait par le cron du Worker :
+ * l'application n'a pas besoin d'être ouverte.
+ */
+export async function sendTelegramBackup(config) {
+  if (!canWrite(config)) {
+    return { ok: false, message: "L'envoi Telegram passe par le lien privé : choisissez « Lien privé » comme partage." }
+  }
+  const url = new URL(config.endpoint)
+  url.searchParams.set('telegram', '1')
+  let response
+  try {
+    response = await fetch(url, { method: 'POST', headers: { Accept: 'application/json' } })
+  } catch (error) {
+    return { ok: false, message: `Impossible de joindre le lien privé (${String(error?.message || error)})` }
+  }
+  if (response.status === 404) return { ok: false, message: notFoundMessage() }
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload) return { ok: false, message: failureMessage(response) }
+  return {
+    ok: payload.ok === true,
+    message: String(payload.message || (payload.ok === true ? 'Sauvegarde envoyée.' : 'Envoi refusé.')),
+  }
+}
+
 /** Vérifie le lien sans rien écrire. */
 export async function testConnection(config) {
   if (!config) return { ok: false, message: 'Lien incomplet.' }

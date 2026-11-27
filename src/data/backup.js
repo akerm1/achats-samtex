@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------ */
 
 import { normalizeBillList } from './bills-model.js'
+import { normalizeCashFlow } from './cashflow-model.js'
 import { mergeExpenses as mergeExpensesState, normalizeExpenses } from './expenses-model.js'
 import { DELETED, without } from './deletions.js'
 import { downloadText } from '../core/utils.js'
@@ -40,30 +41,38 @@ export function backupFilename(extension, prefix = 'mes-achats') {
 /**
  * Analyse un fichier de sauvegarde JSON. Les anciens formats sont refusés
  * proprement : un tableau nu (v1, produits seuls) n'a plus rien à importer.
- * @returns {{ok:boolean, bills:Array, expenses:object|null, message?:string}}
+ *
+ * Le fichier Telegram porte en plus `cashflow` (personnes et transferts) :
+ * il est relu ici pour qu'une restauration ne perde pas la caisse.
+ * @returns {{ok:boolean, bills:Array, expenses:object|null, cashflow:object|null, message?:string}}
  */
 export function parseBackup(text) {
   let parsed
   try {
     parsed = JSON.parse(String(text || ''))
   } catch {
-    return { ok: false, bills: [], expenses: null, message: 'Fichier JSON illisible.' }
+    return { ok: false, bills: [], expenses: null, cashflow: null, message: 'Fichier JSON illisible.' }
   }
   if (Array.isArray(parsed) || !parsed || typeof parsed !== 'object') {
-    return { ok: false, bills: [], expenses: null, message: 'Ce fichier ne contient pas de données à importer.' }
+    return { ok: false, bills: [], expenses: null, cashflow: null, message: 'Ce fichier ne contient pas de données à importer.' }
   }
   const bills = normalizeBillList(Array.isArray(parsed.bills) ? parsed.bills : [])
   const expenses =
     parsed.expenses && typeof parsed.expenses === 'object' && !Array.isArray(parsed.expenses)
       ? normalizeExpenses(parsed.expenses)
       : null
+  const cashflow =
+    parsed.cashflow && typeof parsed.cashflow === 'object' && !Array.isArray(parsed.cashflow)
+      ? normalizeCashFlow(parsed.cashflow)
+      : null
   const hasExpenses = Boolean(
     expenses && (expenses.expenses.length || expenses.investments.length || expenses.revenues.length),
   )
-  if (!bills.length && !hasExpenses) {
-    return { ok: false, bills: [], expenses: null, message: 'Aucune facture ni dépense dans ce fichier.' }
+  const hasCashflow = Boolean(cashflow && (cashflow.persons.length || cashflow.transfers.length))
+  if (!bills.length && !hasExpenses && !hasCashflow) {
+    return { ok: false, bills: [], expenses: null, cashflow: null, message: 'Aucune facture, dépense ou caisse dans ce fichier.' }
   }
-  return { ok: true, bills, expenses }
+  return { ok: true, bills, expenses, cashflow }
 }
 
 /** Même fusion pour les factures : le conflit se joue aussi par `id`. */

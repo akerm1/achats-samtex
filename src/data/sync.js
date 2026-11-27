@@ -67,6 +67,9 @@ export function testConnection(config) {
     : github.testConnection(config)
 }
 
+/** Envoi Telegram : le Worker seul peut le faire (cron ou envoi manuel). */
+export const sendTelegramBackup = worker.sendTelegramBackup
+
 /** Valeurs par défaut lues dans `sync-defaults.json` (dépôt public). */
 export function fetchDefaultConfig() {
   return github.fetchDefaultConfig()

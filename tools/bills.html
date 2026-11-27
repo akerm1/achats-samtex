@@ -281,6 +281,74 @@ async function workerBench() {
     keptCash.cashflow?.persons?.[0]?.id === 'person_a',
     keptCash.cashflow ? 'caisse intacte' : 'caisse perdue',
   )
+
+  /* Le cron Telegram : il doit envoyer le document publié en JSON, et ne
+     rien faire sans les deux secrets. `fetch` est remplacé le temps du banc
+     pour ne pas dépendre du réseau. */
+  const sent = []
+  const realFetch = window.fetch
+  let githubDoc = {
+    updatedAt: '2099-01-01T00:00:00.000Z',
+    products: [{ id: 'gh-product' }],
+    bills: [{ id: 'gh-bill' }],
+    expenses: { categories: [], expenses: [{ id: 'gh-expense' }], investments: [], revenues: [] },
+    cashflow: { persons: [], transfers: [] },
+    deleted: {},
+  }
+  window.fetch = async (url, options) => {
+    const href = String(url)
+    sent.push({ url: href, options })
+    if (href.includes('raw.githubusercontent.com')) {
+      if (!githubDoc) return new Response('not found', { status: 404 })
+      return new Response(JSON.stringify(githubDoc), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  const sentDocument = async () => {
+    const upload = sent.filter((item) => item.url.includes('/sendDocument')).at(-1)
+    const form = upload?.options?.body
+    const document = form?.get?.('document')
+    const text = document ? await document.text() : ''
+    return { upload, form, parsed: text ? JSON.parse(text) : null }
+  }
+  try {
+    await worker.scheduled({}, env)
+    check('worker : sans secrets Telegram, le cron n’envoie rien', sent.length === 0, `${sent.length} appel(s)`)
+
+    const tgEnv = { ...env, TELEGRAM_BOT_TOKEN: 'bot-token', TELEGRAM_CHAT_ID: '42' }
+    await worker.scheduled({}, tgEnv)
+    const first = await sentDocument()
+    check(
+      'worker : le cron Telegram prend le document le plus récent (GitHub)',
+      Boolean(first.upload) && first.form.get('chat_id') === '42' && first.parsed?.products?.[0]?.id === 'gh-product',
+      first.upload ? `${first.parsed?.products?.length ?? '?'} produit(s), ${first.form.get('caption')}` : 'aucun envoi',
+    )
+    check(
+      'worker : le JSON Telegram contient factures, dépenses et caisse',
+      Array.isArray(first.parsed?.bills) && Array.isArray(first.parsed?.expenses?.expenses) && Array.isArray(first.parsed?.cashflow?.persons),
+      first.parsed ? 'collections présentes' : 'JSON illisible',
+    )
+
+    /* GitHub injoignable : le KV du lien privé reprend la main. */
+    githubDoc = null
+    sent.length = 0
+    await worker.scheduled({}, tgEnv)
+    const fallback = await sentDocument()
+    check(
+      'worker : GitHub injoignable, le cron retombe sur le lien privé',
+      fallback.upload && fallback.parsed?.products?.length === 0 && String(fallback.form.get('caption')).includes('lien privé'),
+      fallback.form ? String(fallback.form.get('caption')) : 'aucun envoi',
+    )
+
+    const manual = await worker.fetch(
+      new Request(`${endpoint}?telegram=1`, { method: 'POST' }),
+      tgEnv,
+    )
+    const manualBody = await manual.json()
+    check('worker : l’envoi manuel depuis les Réglages répond ok', manual.status === 200 && manualBody.ok === true, JSON.stringify(manualBody))
+  } finally {
+    window.fetch = realFetch
+  }
 }
 
 /* L'aiguillage du partage (`sync.js`) est le seul chemin qu'empronte le
@@ -360,6 +428,22 @@ async function backupBench() {
     'sauvegarde : catégories, investissements et recettes aussi',
     withExpenses.expenses?.categories?.some((c) => c.id === 'tools') && withExpenses.expenses?.investments?.[0]?.id === 'i1' && withExpenses.expenses?.revenues?.[0]?.id === 'r1',
     withExpenses.expenses ? `${withExpenses.expenses.categories?.length ?? 0} catégorie(s), ${withExpenses.expenses.investments?.length ?? 0} investissement(s), ${withExpenses.expenses.revenues?.length ?? 0} recette(s)` : 'rien dans le fichier',
+  )
+
+  /* Le fichier envoyé à Telegram porte aussi la caisse : l'import doit la
+     relire, sinon une restauration perd les personnes et les transferts. */
+  const telegram = JSON.stringify({ app: 'mes-achats', bills: [], expenses: EXPENSES, cashflow: CASHFLOW })
+  const restored = backup.parseBackup(telegram)
+  check(
+    'sauvegarde : le fichier Telegram restaure aussi la caisse',
+    restored.ok && restored.cashflow?.persons?.[0]?.id === 'person_a' && restored.cashflow?.transfers?.[0]?.id === 'transfer_1',
+    restored.cashflow ? `${restored.cashflow.persons?.length ?? 0} personne(s), ${restored.cashflow.transfers?.length ?? 0} transfert(s)` : 'caisse absente',
+  )
+  const cashOnly = backup.parseBackup(JSON.stringify({ cashflow: CASHFLOW }))
+  check(
+    'sauvegarde : une sauvegarde de caisse seule est acceptée',
+    cashOnly.ok && cashOnly.cashflow?.persons?.length === 2,
+    cashOnly.ok ? 'caisse seule lue' : cashOnly.message,
   )
 }
 

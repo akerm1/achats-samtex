@@ -212,6 +212,34 @@ if ($secret.ExitCode -ne 0) {
   Stop_With "Échec de l'enregistrement du secret (clé : $key)."
 }
 
+# --- 4b. Telegram (facultatif) -------------------------------------------
+# Le Worker envoie chaque jour le document publié en JSON à un bot Telegram
+# (voir `scheduled` dans share-list-worker.mjs). Sans ces deux secrets, le
+# cron ne fait rien : aucun risque pour qui n'en veut pas.
+Step '4b' 'Sauvegarde quotidienne sur Telegram (facultatif)'
+Write-Host '    Laissez vide pour ne rien changer (le bot reste désactivé ou tel quel).' -ForegroundColor DarkGray
+Write-Host '    Jeton obtenu auprès de @BotFather ; identifiant du chat via @userinfobot.' -ForegroundColor DarkGray
+$telegramToken = (Read-Host '    Jeton du bot Telegram').Trim()
+if ($telegramToken) {
+  $telegramChat = (Read-Host '    Identifiant du chat (ex. 123456789)').Trim()
+  if (-not $telegramChat) {
+    Stop_With 'Jeton Telegram fourni sans identifiant de chat.'
+  }
+  $tgToken = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('secret', 'put', 'TELEGRAM_BOT_TOKEN')) -StdInText $telegramToken
+  if ($tgToken.ExitCode -ne 0) {
+    Write-Host $tgToken.Output
+    Stop_With 'Échec de l''enregistrement de TELEGRAM_BOT_TOKEN.'
+  }
+  $tgChat = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('secret', 'put', 'TELEGRAM_CHAT_ID')) -StdInText $telegramChat
+  if ($tgChat.ExitCode -ne 0) {
+    Write-Host $tgChat.Output
+    Stop_With 'Échec de l''enregistrement de TELEGRAM_CHAT_ID.'
+  }
+  Write-Host '    Secrets Telegram enregistrés.' -ForegroundColor DarkGray
+} else {
+  Write-Host '    Telegram ignoré.' -ForegroundColor DarkGray
+}
+
 # --- 5. Déploiement -------------------------------------------------------
 Step 5 'Déploiement du Worker'
 $deploy = Invoke-Native -Exe 'npx' -CmdArgs ($WRANGLER + @('deploy'))

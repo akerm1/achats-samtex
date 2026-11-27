@@ -22,7 +22,8 @@ import { EXPORT_FORMATS, formatOf } from '../../data/exporter.js'
 import { EXPORT_SCOPES } from '../../data/export-tables.js'
 import { EXPORT_PERIODS, getAutoExport, isDue, nextRunAt, supportsDestination } from '../../app/autoexport.js'
 import { getExpenses, importExpenses } from '../../data/expenses-store.js'
-import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, testConnection } from '../../data/sync.js'
+import { importCashFlow } from '../../data/cashflow-store.js'
+import { LINK_PLACEHOLDER, fetchDefaultConfig, normalizeConfig, sendTelegramBackup, testConnection } from '../../data/sync.js'
 import {
   getBills,
   getConfig,
@@ -263,7 +264,7 @@ function shareTile() {
 function dataTile() {
   return tile(
     'Sauvegarde & import',
-    'Enregistrez les factures et les dépenses dans un fichier JSON, à réimporter ensuite dans l\'application. L\'import en mode « fusion » met à jour les éléments existants et ajoute les nouveaux.',
+    'Enregistrez les factures, les dépenses et la caisse dans un fichier JSON, à réimporter ensuite dans l\'application. L\'import en mode « fusion » met à jour les éléments existants et ajoute les nouveaux.',
     `<div class="u-row u-wrap">
       <button type="button" class="btn btn--secondary btn--sm" data-action="export-json">${icon('save', 13)} Sauvegarde JSON</button>
       <button type="button" class="btn btn--secondary btn--sm" data-action="import-json">${icon('upload', 13)} Importer</button>
@@ -367,6 +368,35 @@ function exportTile() {
       <p class="setting-sub">${fileLine}</p>
     </div>`,
     { wide: true, iconName: 'download' },
+  )
+}
+
+/**
+ * Sauvegarde Telegram : le Worker envoie le document publié chaque jour,
+ * même application fermée. Le bouton ne fait qu'un envoi immédiat pour
+ * vérifier que le bot est bien configuré.
+ */
+function telegramTile() {
+  const worker = getConfig()?.provider === 'worker'
+  return tile(
+    'Sauvegarde Telegram',
+    worker
+      ? `Chaque jour, votre lien privé envoie le document publié en JSON à votre bot
+         Telegram — même quand l'application est fermée. Le bot et l'heure se règlent
+         une fois dans <code>worker/setup.ps1</code> (ou via les secrets Cloudflare
+         <code>TELEGRAM_BOT_TOKEN</code> et <code>TELEGRAM_CHAT_ID</code>).`
+      : `Disponible quand le partage est un <strong>lien privé</strong> : c'est le
+         Worker Cloudflare qui envoie le fichier chaque jour, l'application n'a pas
+         besoin d'être ouverte.`,
+    worker
+      ? `<div class="u-row u-wrap">
+           <button type="button" class="btn btn--secondary btn--sm" data-action="telegram-now">
+             ${icon('send', 13)} Envoyer maintenant
+           </button>
+           <span class="setting-sub">Envoi immédiat pour vérifier la configuration.</span>
+         </div>`
+      : '',
+    { wide: true, iconName: 'send' },
   )
 }
 
@@ -548,7 +578,7 @@ function template() {
 
       ${group('Interface &amp; Affichage', themeTile(), 'display', true)}
       ${group('Synchronisation &amp; Partage', shareTile(), 'sync')}
-      ${group('Gestion des Données', dataTile() + exportTile() + dangerTile(), 'data')}
+      ${group('Gestion des Données', dataTile() + exportTile() + telegramTile() + dangerTile(), 'data')}
       ${group('Informations &amp; Assistance', installTile() + updateTile() + aboutTile(), 'info')}
 
     </section>`
@@ -624,6 +654,17 @@ async function handleTest() {
   setSyncMessage(result.message, result.ok ? 'ok' : 'error')
 }
 
+async function handleTelegramNow() {
+  const config = getConfig()
+  if (config?.provider !== 'worker') {
+    toast("Choisissez d'abord le partage « Lien privé ».", { type: 'error' })
+    return
+  }
+  toast('Envoi de la sauvegarde à Telegram…', { type: 'info' })
+  const result = await sendTelegramBackup(config)
+  toast(result.message, { type: result.ok ? 'ok' : 'error' })
+}
+
 /** Import d'une sauvegarde : factures et dépenses. */
 async function handleImport(event) {
   const file = event.target.files?.[0]
@@ -646,9 +687,13 @@ async function handleImport(event) {
   const expensesResult = parsed.expenses
     ? importExpenses(parsed.expenses, { mode })
     : { added: 0, updated: 0 }
+  const cashflowResult = parsed.cashflow
+    ? importCashFlow(parsed.cashflow, { mode })
+    : { added: 0, updated: 0 }
   const details = [
     parsed.bills.length ? `${billResult.added + billResult.updated} facture(s)` : '',
     parsed.expenses ? `${expensesResult.added + expensesResult.updated} dépense(s)/investissement(s)/recette(s)` : '',
+    parsed.cashflow ? `${cashflowResult.added + cashflowResult.updated} personne(s)/transfert(s)` : '',
   ].filter(Boolean)
   toast(`${details.join(' · ') || 'Rien à importer'}.`, { type: 'ok' })
 }
@@ -720,6 +765,7 @@ function bind() {
   paintQuota()
 
   host.querySelector('[data-action="test-share"]')?.addEventListener('click', handleTest)
+  host.querySelector('[data-action="telegram-now"]')?.addEventListener('click', handleTelegramNow)
   host.querySelector('[data-action="check-update"]')?.addEventListener('click', handleCheckUpdate)
   host.querySelector('[data-action="import-json"]')?.addEventListener('click', () =>
     host.querySelector('[data-role="import-file"]')?.click(),

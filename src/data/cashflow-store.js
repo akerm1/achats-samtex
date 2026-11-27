@@ -7,6 +7,7 @@ import { toast } from '../core/feedback.js'
 import { round2, toNumber } from '../core/utils.js'
 import {
   emptyCashFlow,
+  mergeCashFlow,
   normalizeCashFlow,
   normalizePerson,
   normalizeTransfer,
@@ -319,21 +320,18 @@ export function importCashFlow(data, { mode = 'merge' } = {}) {
     }
   }
   
-  // Merge mode - simple union for now
-  const merged = normalizeCashFlow(data)
+  // Merge mode : union par `id`, l'entrant gagne — réimporter le même
+  // fichier ne doit pas dupliquer les personnes ni les transferts.
+  const merged = mergeCashFlow(state, data)
   const addedPersons = merged.persons.filter(
-    p => !state.persons.find(existing => existing.id === p.id)
+    (p) => !state.persons.find((existing) => existing.id === p.id),
   ).length
   const addedTransfers = merged.transfers.filter(
-    t => !state.transfers.find(existing => existing.id === t.id)
+    (t) => !state.transfers.find((existing) => existing.id === t.id),
   ).length
-  
-  state = {
-    persons: [...state.persons, ...merged.persons],
-    transfers: [...state.transfers, ...merged.transfers],
-    settings: merged.settings,
-  }
-  
+
+  state = merged
+
   persist()
   emit()
   return { added: addedPersons + addedTransfers, updated: 0 }

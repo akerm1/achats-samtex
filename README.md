@@ -375,6 +375,34 @@ script (`UnauthorizedAccessException`), les étapes manuelles sont :
    **Tester la connexion** → **Enregistrer**. Puis **Importer depuis GitHub** pour
    récupérer la liste existante.
 
+### Sauvegarde quotidienne sur Telegram (facultatif)
+
+Le Worker peut envoyer **une fois par jour** le document publié en fichier JSON
+(`mes-achats-AAAA-MM-JJ.json`) à un bot Telegram — même quand aucun appareil
+n'a l'application ouverte. C'est le cron Cloudflare qui s'en charge, pas le
+navigateur. Il compare le document du **lien privé** et celui du dépôt
+**GitHub** (`GITHUB_OWNER` / `GITHUB_REPO` / `GITHUB_BRANCH` dans
+`worker/wrangler.toml`) et envoie **le plus récent des deux** : la sauvegarde
+suit donc votre partage, quel qu'il soit.
+
+1. Sur Telegram, parlez à **@BotFather** → `/newbot` → notez le **jeton**.
+2. Ouvrez votre bot et envoyez-lui `/start` (obligatoire : un bot ne peut pas
+   écrire le premier). Récupérez votre **identifiant de chat** via **@userinfobot**.
+3. Relancez `worker\setup.ps1` : il demande le jeton et l'identifiant, puis les
+   enregistre comme secrets `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`.
+4. Vérifiez dans l'application : **Réglages → Sauvegarde Telegram → Envoyer
+   maintenant** (visible quand le partage est un lien privé).
+
+L'heure du cron est dans `worker/wrangler.toml` (`crons = ["0 6 * * *"]`, en
+UTC — 06:00 UTC = 07:00 à Alger). Avec la méthode manuelle (dashboard), ajoutez
+aussi ce cron dans **Settings → Triggers → Cron Triggers**. Sans les deux
+secrets, le cron ne fait rien. Pour l'arrêter : `npx wrangler secret delete
+TELEGRAM_BOT_TOKEN` puis `TELEGRAM_CHAT_ID`.
+
+> Le JSON envoyé contient les produits, factures (photos comprises), dépenses,
+> caisse et suppressions. Il peut donc être volumineux : Telegram accepte
+> 50 Mo par document, et le Worker refuse déjà les documents au-delà de 20 Mo.
+
 ### Version 7.6 — la couleur prend toute la place dans la carte
 
 - **La pastille de couleur n'est plus une petite puce** au milieu des métadonnées :
